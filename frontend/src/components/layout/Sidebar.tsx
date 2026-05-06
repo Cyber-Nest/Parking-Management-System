@@ -36,7 +36,7 @@ export default function Sidebar({
     { href: "/payments", icon: CreditCard, label: "Payments" },
     { href: "/penalty-tickets", icon: Ticket, label: "Penalty Tickets" },
     { href: "/officer-management", icon: UserCog, label: "Officer Management" },
-    { href: "/parking-plan", icon: Map, label: "Parking Plan" },
+    { href: "/parking-plan", icon: Map, label: "Parking Plan & Penalty" },
     { href: "/reports", icon: FileBarChart, label: "Reports" },
     { href: "/setting", icon: Settings, label: "Settings" },
   ];
@@ -134,7 +134,7 @@ export default function Sidebar({
           })}
         </nav>
 
-        {/* Footer / Logout */}
+        {/* Logout */}
         <div className="p-4 mt-auto">
           <button
             onClick={handleLogout}

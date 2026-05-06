@@ -159,7 +159,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Table Area */}
-        <div className="overflow-x-auto">
+        <div className="overflow-x-hidden">
           <table className="w-full text-left border-collapse">
             <thead className="bg-gray-50/50">
               <tr className="text-[10px] uppercase font-black text-gray-400 tracking-widest">
