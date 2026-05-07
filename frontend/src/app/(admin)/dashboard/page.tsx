@@ -1,75 +1,79 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  LayoutDashboard,
-  Car,
-  CircleDollarSign,
-  AlertCircle,
-  CheckCircle2,
-  TrendingUp,
-  Clock,
-  ChevronRight,
-  MoreHorizontal,
-} from "lucide-react";
-import DashboardCharts from "@/components/chart/DashboardCharts";
-export default function DashboardPage() {
-  const [activeTab, setActiveTab] = useState("parking");
+import { useRouter } from "next/navigation";
+import { ChevronRight } from "lucide-react";
 
-  const stats = [
-    {
-      label: "Total Bookings",
-      value: "1,280",
-      icon: LayoutDashboard,
-      color: "var(--color-primary)",
-    },
-    {
-      label: "Active Parking",
-      value: "84",
-      icon: Car,
-      color: "var(--color-success)",
-    },
-    {
-      label: "Total Payment",
-      value: "$42,500",
-      icon: CircleDollarSign,
-      color: "var(--color-info)",
-    },
-    {
-      label: "Unpaid Penalty",
-      value: "$1,200",
-      icon: AlertCircle,
-      color: "var(--color-accent)",
-    },
-    {
-      label: "Paid Penalty",
-      value: "$3,450",
-      icon: CheckCircle2,
-      color: "var(--color-success)",
-    },
-    {
-      label: "Total Revenue",
-      value: "$45,950",
-      icon: TrendingUp,
-      color: "var(--color-primary-dark)",
-    },
-    {
-      label: "Expired Session",
-      value: "12",
-      icon: Clock,
-      color: "var(--color-text-muted)",
-    },
-    {
-      label: "Today's Vehicles",
-      value: "256",
-      icon: Car,
-      color: "var(--color-info)",
-    },
-  ];
+// Components
+import { TableSkeleton } from "@/components/common/TableSkeleton";
+import DashboardCharts from "@/components/chart/DashboardCharts";
+import { DashboardStatCard } from "@/components/dashboard/DashboardStatCard";
+import { DashboardStatsSkeleton } from "@/components/dashboard/DashboardStatsSkeleton";
+
+//Services
+import { dashboardService } from "@/services/dashboard.service";
+import type { StatCard, TableRow } from "@/services/dashboard.service";
+export default function DashboardPage() {
+  const [activeTab, setActiveTab] = useState<"parking" | "penalties">(
+    "parking",
+  );
+  const [stats, setStats] = useState<StatCard[]>([]);
+  const [allParkingData, setAllParkingData] = useState<TableRow[]>([]);
+  const [allPenaltyData, setAllPenaltyData] = useState<TableRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const router = useRouter();
+  const itemsPerPage = 10; //10 items per page for table
+
+  //data fetching
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setLoading(true);
+        setError("");
+
+        const [statsRes, parkingRes, penaltiesRes] = await Promise.all([
+          dashboardService.getDashboardStats(),
+          dashboardService.getParkingSessions(),
+          dashboardService.getPenaltySessions(),
+        ]);
+
+        setStats(statsRes);
+        setAllParkingData(parkingRes);
+        setAllPenaltyData(penaltiesRes);
+      } catch (err) {
+        console.error(err);
+        setError("Failed to load dashboard data.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
+  //table pagination
+  const currentAllData = useMemo(() => {
+    return activeTab === "parking" ? allParkingData : allPenaltyData;
+  }, [activeTab, allParkingData, allPenaltyData]);
+
+  const totalPages = Math.ceil(currentAllData.length / itemsPerPage);
+
+  const paginatedTableData = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return currentAllData.slice(start, start + itemsPerPage);
+  }, [currentAllData, currentPage]);
+
+  // Reset page when tab changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab]);
 
   return (
-    <div className="px-4 md:px-6 py-8 space-y-8 bg-[var(--color-bg)] min-h-screen max-w-[1600px] mx-auto">
+    <div className="px-4 md:px-4 space-y-8 bg-[var(--color-bg)] min-h-screen max-w-[1600px] mx-auto">
       {/* Header Section */}
       <motion.div
         initial={{ opacity: 0, y: -10 }}
@@ -86,50 +90,30 @@ export default function DashboardPage() {
         </p>
       </motion.div>
 
-      {/* Stats Grid */}
+      {/* Error State */}
+      {error && (
+        <div className="bg-red-50 border border-red-100 text-red-600 text-sm font-semibold rounded-2xl p-4">
+          {error}
+        </div>
+      )}
+
+      {/* Stats  */}
       <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-4 gap-4 md:gap-5">
-        {stats.map((stat, i) => {
-          const IconComponent = stat.icon;
-
-          return (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
-              className="p-4 md:p-5 bg-white rounded-2xl border border-[var(--color-border)] shadow-[var(--shadow-card)] hover:shadow-[var(--shadow-soft)] transition-all flex flex-col justify-between min-h-[140px] md:min-h-[160px]"
-            >
-              <div className="flex justify-between items-start">
-                <div
-                  className="p-2 md:p-3 rounded-xl bg-opacity-10 shadow-sm"
-                  style={{ backgroundColor: stat.color }}
-                >
-                  <IconComponent
-                    size={20}
-                    className="md:w-6 md:h-6"
-                    style={{ color: "white" }}
-                  />
-                </div>
-              </div>
-
-              <div className="mt-4">
-                <p className="text-[10px] md:text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider truncate">
-                  {stat.label}
-                </p>
-                <h3 className="text-lg md:text-xl xl:text-2xl font-black text-[var(--color-text-primary)] mt-0.5 tracking-tight">
-                  {stat.value}
-                </h3>
-              </div>
-            </motion.div>
-          );
-        })}
+        {loading ? (
+          <DashboardStatsSkeleton />
+        ) : (
+          stats.map((stat, i) => (
+            <DashboardStatCard key={stat.id} stat={stat} index={i} />
+          ))
+        )}
       </div>
 
-      {/* Charts Row */}
+      {/* Charts*/}
       <DashboardCharts />
 
-      {/*Tabs Table Section */}
+      {/* Tabs Table Section */}
       <div className="bg-white rounded-3xl border border-[var(--color-border)] shadow-[var(--shadow-card)] overflow-hidden">
+        {/* Top Header */}
         <div className="p-6 border-b border-gray-50 flex flex-wrap justify-between items-center gap-4">
           <div className="flex bg-gray-100 p-1.5 rounded-2xl">
             <button
@@ -153,14 +137,24 @@ export default function DashboardPage() {
               Recent Penalties
             </button>
           </div>
-          <button className="text-[var(--color-primary)] text-xs font-black uppercase tracking-widest flex items-center gap-1 hover:opacity-80 transition-opacity">
+
+          <button
+            onClick={() => {
+              if (activeTab === "parking") {
+                router.push("/active-parking");
+              } else {
+                router.push("/penalty-tickets");
+              }
+            }}
+            className="text-[var(--color-primary)] text-xs font-black uppercase tracking-widest flex items-center gap-1 hover:opacity-80 transition-opacity"
+          >
             View All <ChevronRight size={14} />
           </button>
         </div>
 
-        {/* Table Area */}
+        {/* Table */}
         <div className="overflow-x-hidden">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left border-collapse min-w-[700px]">
             <thead className="bg-gray-50/50">
               <tr className="text-[10px] uppercase font-black text-gray-400 tracking-widest">
                 <th className="px-8 py-5">Plate Number</th>
@@ -177,11 +171,22 @@ export default function DashboardPage() {
               </tr>
             </thead>
             <tbody className="text-sm divide-y divide-gray-50">
-              <AnimatePresence mode="wait">
-                {(activeTab === "parking" ? mockParking : mockPenalties).map(
-                  (row, i) => (
+              {loading ? (
+                <TableSkeleton rows={4} cols={5} />
+              ) : paginatedTableData.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={5}
+                    className="text-center py-16 text-sm font-semibold text-gray-400"
+                  >
+                    No records found.
+                  </td>
+                </tr>
+              ) : (
+                <AnimatePresence mode="wait">
+                  {paginatedTableData.map((row, i) => (
                     <motion.tr
-                      key={`${activeTab}-${i}`}
+                      key={`${activeTab}-${row.id}`}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.03 }}
@@ -207,59 +212,79 @@ export default function DashboardPage() {
                         {row.col5}
                       </td>
                     </motion.tr>
-                  ),
-                )}
-              </AnimatePresence>
+                  ))}
+                </AnimatePresence>
+              )}
             </tbody>
           </table>
         </div>
+
+        {/* Pagination */}
+        {!loading && currentAllData.length > itemsPerPage && (
+          <div className="px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-gray-100 bg-gray-50/30">
+            <p className="text-[12px] font-medium text-gray-500">
+              Showing{" "}
+              <span className="font-bold text-gray-700">
+                {(currentPage - 1) * itemsPerPage + 1}
+              </span>{" "}
+              to{" "}
+              <span className="font-bold text-gray-700">
+                {Math.min(currentPage * itemsPerPage, currentAllData.length)}
+              </span>{" "}
+              of {currentAllData.length} records
+            </p>
+            <div className="flex items-center gap-1.5">
+              <button
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                className="p-2 rounded-lg hover:bg-white border border-gray-200 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <ChevronRight className="rotate-180" size={16} />
+              </button>
+              {Array.from(
+                { length: Math.min(totalPages, 5) },
+                (_, i) => i + 1,
+              ).map((page) => (
+                <button
+                  key={page}
+                  onClick={() => setCurrentPage(page)}
+                  className={`w-9 h-9 flex items-center justify-center rounded-lg text-xs font-bold transition-all ${
+                    currentPage === page
+                      ? "bg-[var(--color-primary)] text-white shadow-md shadow-[var(--color-primary)]/20"
+                      : "hover:bg-white text-gray-600"
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+              {totalPages > 5 && (
+                <>
+                  <span className="text-gray-400">...</span>
+                  <button
+                    onClick={() => setCurrentPage(totalPages)}
+                    className={`w-9 h-9 flex items-center justify-center rounded-lg text-xs font-bold transition-all ${
+                      currentPage === totalPages
+                        ? "bg-[var(--color-primary)] text-white shadow-md shadow-[var(--color-primary)]/20"
+                        : "hover:bg-white text-gray-600"
+                    }`}
+                  >
+                    {totalPages}
+                  </button>
+                </>
+              )}
+              <button
+                disabled={currentPage === totalPages}
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                }
+                className="p-2 rounded-lg hover:bg-white border border-gray-200 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
-const mockParking = [
-  {
-    plate: "ABC-1234",
-    col2: "May 21, 2025 08:15 AM",
-    col3: "May 21, 2025 10:15 AM",
-    status: "Active",
-    statusColor: "bg-emerald-50 text-emerald-600",
-    col5: "$2.00",
-  },
-  {
-    plate: "GHI-9101",
-    col2: "May 21, 2025 06:30 AM",
-    col3: "May 21, 2025 08:30 AM",
-    status: "Expired",
-    statusColor: "bg-red-50 text-red-600",
-    col5: "$2.00",
-  },
-  {
-    plate: "MNO-6789",
-    col2: "May 21, 2025 09:10 AM",
-    col3: "May 21, 2025 11:10 AM",
-    status: "Active",
-    statusColor: "bg-emerald-50 text-emerald-600",
-    col5: "$2.00",
-  },
-];
-
-const mockPenalties = [
-  {
-    plate: "GHI-9101",
-    col2: "Overstay Parking",
-    col3: "$20.00",
-    status: "Unpaid",
-    statusColor: "bg-red-50 text-red-600",
-    col5: "May 21, 2025 08:35 AM",
-  },
-  {
-    plate: "STU-5678",
-    col2: "Expired Ticket",
-    col3: "$10.00",
-    status: "Paid",
-    statusColor: "bg-emerald-50 text-emerald-600",
-    col5: "May 20, 2025 06:15 PM",
-  },
-];
