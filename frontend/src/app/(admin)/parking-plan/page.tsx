@@ -28,6 +28,7 @@ import {
   parkingPlanAndRulesService,
   PenaltyRule,
 } from "@/services/parkingPlanAndRules.service";
+import toast from "react-hot-toast";
 
 interface PlanForm {
   name: string;
@@ -90,6 +91,7 @@ export default function ParkingPlanAndRulesPage() {
         setRules(rulesRes);
       } catch (error) {
         console.error(error);
+        toast.error("Failed to fetch data");
       } finally {
         setLoading(false);
       }
@@ -159,7 +161,7 @@ export default function ParkingPlanAndRulesPage() {
   const handleSubmit = () => {
     if (activeTab === "plans") {
       if (!planForm.name || !planForm.price) {
-        alert("Please fill all fields");
+        toast.error("Please fill all fields");
         return;
       }
 
@@ -186,12 +188,14 @@ export default function ParkingPlanAndRulesPage() {
         setPlans((prev) =>
           prev.map((item) => (item.id === editingItem.id ? newPlan : item)),
         );
+        toast.success("Plan updated successfully");
       } else {
         setPlans((prev) => [newPlan, ...prev]);
+        toast.success("Plan added successfully");
       }
     } else {
       if (!ruleForm.violation || !ruleForm.amount) {
-        alert("Please fill all fields");
+        toast.error("Please fill all fields");
         return;
       }
 
@@ -218,8 +222,10 @@ export default function ParkingPlanAndRulesPage() {
         setRules((prev) =>
           prev.map((item) => (item.id === editingItem.id ? newRule : item)),
         );
+        toast.success("Rule updated successfully");
       } else {
         setRules((prev) => [newRule, ...prev]);
+        toast.success("Rule added successfully");
       }
     }
     resetForm();

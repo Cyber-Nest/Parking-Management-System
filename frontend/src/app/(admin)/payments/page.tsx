@@ -13,7 +13,7 @@ import {
 
 import { StatCard } from "@/components/common/StatCard";
 import { TableSkeleton } from "@/components/common/TableSkeleton";
-import { Toast } from "@/components/common/Toast";
+import toast from "react-hot-toast";
 import { PaymentActionDropdown } from "@/components/payment/PaymentActionDropdown";
 import { PaymentDetailsDrawer } from "@/components/payment/PaymentDetailsDrawer";
 
@@ -82,21 +82,12 @@ export default function PaymentsPage() {
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [isDetailsDrawerOpen, setIsDetailsDrawerOpen] = useState(false);
 
-  // Toast state
-  const [toast, setToast] = useState<{
-    message: string;
-    type: "success" | "error" | "info";
-    isOpen: boolean;
-  }>({
-    message: "",
-    type: "success",
-    isOpen: false,
-  });
-
-  const itemsPerPage = 10; // 10 items per page
+  const itemsPerPage = 10;
 
   const showToast = (message: string, type: "success" | "error" | "info") => {
-    setToast({ message, type, isOpen: true });
+    if (type === "success") toast.success(message);
+    else if (type === "error") toast.error(message);
+    else toast(message, { icon: 'ℹ️' });
   };
 
   // Fetch Data
@@ -485,14 +476,6 @@ export default function PaymentsPage() {
         isOpen={isDetailsDrawerOpen}
         onClose={() => setIsDetailsDrawerOpen(false)}
         payment={selectedPayment}
-      />
-
-      {/* Toast Notification */}
-      <Toast
-        message={toast.message}
-        type={toast.type}
-        isOpen={toast.isOpen}
-        onClose={() => setToast((prev) => ({ ...prev, isOpen: false }))}
       />
     </>
   );

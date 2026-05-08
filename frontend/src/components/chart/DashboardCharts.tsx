@@ -27,6 +27,7 @@ import {
   ParkingItem,
   PenaltyItem,
 } from "@/services/chart.service";
+import toast from "react-hot-toast";
 
 export default function DashboardCharts() {
   const [revFilter, setRevFilter] = useState<RevenueFilter>("1 Month");
@@ -62,6 +63,7 @@ export default function DashboardCharts() {
       } catch (error) {
         console.error(error);
         setError("Failed to load charts.");
+        toast.error("Failed to load charts.");
       } finally {
         setLoading(false);
       }

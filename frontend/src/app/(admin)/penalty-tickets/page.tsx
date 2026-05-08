@@ -27,6 +27,7 @@ import {
   PenaltyTicket,
   PenaltyStats,
 } from "@/services/penalty.service";
+import toast from "react-hot-toast";
 
 const PERIOD_TABS = [
   "Today",
@@ -75,6 +76,7 @@ export default function PenaltyTicketsPage() {
         setTickets(ticketsRes);
       } catch (error) {
         console.error(error);
+        toast.error("Failed to fetch data");
       } finally {
         setLoading(false);
       }
@@ -123,7 +125,7 @@ export default function PenaltyTicketsPage() {
 
   const handleReprint = (ticket: PenaltyTicket) => {
     console.log("Generate ticket PDF:", ticket.id);
-    alert(`Reprinting ticket: ${ticket.id}`);
+    toast.success(`Reprinting ticket: ${ticket.id}`);
   };
 
   const handleMarkPaid = (ticket: PenaltyTicket) => {
@@ -143,7 +145,7 @@ export default function PenaltyTicketsPage() {
       return item;
     });
     setTickets(updated as any);
-    alert(`Ticket ${ticket.id} marked as paid`);
+    toast.success(`Ticket ${ticket.id} marked as paid`);
   };
 
   const handleCancel = (ticket: PenaltyTicket) => {
@@ -160,12 +162,12 @@ export default function PenaltyTicketsPage() {
       return item;
     });
     setTickets(updated as any);
-    alert(`Ticket ${ticket.id} has been cancelled`);
+    toast.success(`Ticket ${ticket.id} has been cancelled`);
   };
 
   const handleEdit = (ticket: PenaltyTicket) => {
     console.log("Edit ticket:", ticket.id);
-    alert(`Edit ticket: ${ticket.id} - This feature coming soon`);
+    toast("Edit ticket: This feature coming soon", { icon: 'ℹ️' });
   };
 
   const handleAddNote = (ticket: PenaltyTicket) => {
@@ -193,7 +195,7 @@ export default function PenaltyTicketsPage() {
         return item;
       });
       setTickets(updated);
-      alert("Note added successfully");
+      toast.success("Note added successfully");
     }
   };
 

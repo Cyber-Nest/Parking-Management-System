@@ -16,7 +16,7 @@ import {
 
 import { StatCard } from "@/components/common/StatCard";
 import { TableSkeleton } from "@/components/common/TableSkeleton";
-import { Toast } from "@/components/common/Toast";
+import toast from "react-hot-toast";
 import { ActionDropdown } from "@/components/active-parking/ActionDropdown";
 import { SessionDetailsDrawer } from "@/components/active-parking/SessionDetailsDrawer";
 
@@ -84,21 +84,12 @@ export default function ActiveParkingSessionsPage() {
   const [planFilter, setPlanFilter] = useState("All Plans");
   const [statusFilter, setStatusFilter] = useState("All Status");
 
-  // Toast state
-  const [toast, setToast] = useState<{
-    message: string;
-    type: "success" | "error" | "info";
-    isOpen: boolean;
-  }>({
-    message: "",
-    type: "success",
-    isOpen: false,
-  });
-
-  const itemsPerPage = 10; // 10 items per page table
+  const itemsPerPage = 10;
 
   const showToast = (message: string, type: "success" | "error" | "info") => {
-    setToast({ message, type, isOpen: true });
+    if (type === "success") toast.success(message);
+    else if (type === "error") toast.error(message);
+    else toast(message, { icon: 'ℹ️' });
   };
 
   // Fetch Data
@@ -514,14 +505,6 @@ export default function ActiveParkingSessionsPage() {
         isOpen={isDetailsDrawerOpen}
         onClose={() => setIsDetailsDrawerOpen(false)}
         session={selectedSession}
-      />
-
-      {/* Toast Notification */}
-      <Toast
-        message={toast.message}
-        type={toast.type}
-        isOpen={toast.isOpen}
-        onClose={() => setToast((prev) => ({ ...prev, isOpen: false }))}
       />
     </>
   );

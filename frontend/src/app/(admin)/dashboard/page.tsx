@@ -14,6 +14,8 @@ import { DashboardStatsSkeleton } from "@/components/dashboard/DashboardStatsSke
 //Services
 import { dashboardService } from "@/services/dashboard.service";
 import type { StatCard, TableRow } from "@/services/dashboard.service";
+import toast from "react-hot-toast";
+
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<"parking" | "penalties">(
     "parking",
@@ -47,6 +49,7 @@ export default function DashboardPage() {
       } catch (err) {
         console.error(err);
         setError("Failed to load dashboard data.");
+        toast.error("Failed to load dashboard data.");
       } finally {
         setLoading(false);
       }

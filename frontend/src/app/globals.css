@@ -70,14 +70,24 @@ body {
   }
 }
 
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 5px;
 }
 
-::-webkit-scrollbar-track {
+/* ::-webkit-scrollbar-track {
   background: green;
-}
+} */
 
 ::-webkit-scrollbar-thumb {
   background: var(--color-primary-light);
