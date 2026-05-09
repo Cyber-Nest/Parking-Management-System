@@ -292,7 +292,7 @@ export const AuditLogsSettings = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div
-                        className="max-w-[120px] truncate font-mono text-[11px] text-red-400 bg-red-50/50 px-2 py-1 rounded border border-red-100/50"
+                        className="max-w-[120px] truncate font-mono text-[11px] text-red-400 bg-var(--color-error-light)/50 px-2 py-1 rounded border border-[var(--color-error-light)]/50"
                         title={log.oldValue}
                       >
                         {log.oldValue || "--"}
@@ -300,7 +300,7 @@ export const AuditLogsSettings = () => {
                     </td>
                     <td className="px-6 py-4">
                       <div
-                        className="max-w-[120px] truncate font-mono text-[11px] text-emerald-600 bg-emerald-50/50 px-2 py-1 rounded border border-emerald-100/50"
+                        className="max-w-[120px] truncate font-mono text-[11px] text-emerald-600 bg-var(--color-success-light)/50 px-2 py-1 rounded border border-[var(--color-success-light)]/50"
                         title={log.newValue}
                       >
                         {log.newValue || "--"}

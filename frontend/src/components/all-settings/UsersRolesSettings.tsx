@@ -88,41 +88,46 @@ const ActionDropdown = ({ onEdit, onDelete, onToggleStatus, status }: any) => {
   }, []);
 
   return (
-    <div className="relative" ref={menuRef}>
+    <div className="relative overflow-visible" ref={menuRef}>
       <button
         onClick={() => setOpen(!open)}
-        className="p-2 rounded-lg hover:bg-[var(--color-surface-soft)] transition-all"
+        className="p-1.5 sm:p-2 rounded-lg hover:bg-[var(--color-surface-soft)] transition-all active:scale-95"
       >
-        <MoreVertical size={16} />
+        <MoreVertical
+          size={14}
+          className="sm:w-[15px] sm:h-[15px] md:w-[16px] md:h-[16px]"
+        />
       </button>
+
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            className="absolute right-0 top-8 z-50 w-40 bg-white border border-[var(--color-border)] rounded-xl shadow-lg overflow-hidden"
+            initial={{ opacity: 0, y: 8, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.95 }}
+            transition={{ duration: 0.15 }}
+            className="absolute right-0 top-8 z-50 w-40 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl shadow-lg overflow-hidden"
           >
             <button
               onClick={() => {
                 onEdit();
                 setOpen(false);
               }}
-              className="w-full px-4 py-2 text-left text-sm font-semibold hover:bg-[var(--color-surface-soft)] flex items-center gap-2"
+              className="w-full px-4 py-2.5 text-left text-xs sm:text-sm font-semibold hover:bg-[var(--color-surface-soft)] flex items-center gap-2 text-[var(--color-text-primary)] transition-all"
             >
-              <Edit2 size={14} /> Edit
+              <Edit2 size={13} className="sm:w-[14px] sm:h-[14px]" /> Edit
             </button>
             <button
               onClick={() => {
                 onToggleStatus();
                 setOpen(false);
               }}
-              className="w-full px-4 py-2 text-left text-sm font-semibold hover:bg-[var(--color-surface-soft)] flex items-center gap-2"
+              className="w-full px-4 py-2.5 text-left text-xs sm:text-sm font-semibold hover:bg-[var(--color-surface-soft)] flex items-center gap-2 text-[var(--color-text-primary)] transition-all"
             >
               {status === "active" ? (
-                <UserX size={14} />
+                <UserX size={13} className="sm:w-[14px] sm:h-[14px]" />
               ) : (
-                <UserCheck size={14} />
+                <UserCheck size={13} className="sm:w-[14px] sm:h-[14px]" />
               )}
               {status === "active" ? "Deactivate" : "Activate"}
             </button>
@@ -131,9 +136,9 @@ const ActionDropdown = ({ onEdit, onDelete, onToggleStatus, status }: any) => {
                 onDelete();
                 setOpen(false);
               }}
-              className="w-full px-4 py-2 text-left text-sm font-semibold text-red-500 hover:bg-red-50 flex items-center gap-2"
+              className="w-full px-4 py-2.5 text-left text-xs sm:text-sm font-semibold text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-2 transition-all"
             >
-              <Trash2 size={14} /> Delete
+              <Trash2 size={13} className="sm:w-[14px] sm:h-[14px]" /> Delete
             </button>
           </motion.div>
         )}

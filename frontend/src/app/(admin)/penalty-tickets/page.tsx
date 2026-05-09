@@ -167,7 +167,7 @@ export default function PenaltyTicketsPage() {
 
   const handleEdit = (ticket: PenaltyTicket) => {
     console.log("Edit ticket:", ticket.id);
-    toast("Edit ticket: This feature coming soon", { icon: 'ℹ️' });
+    toast("Edit ticket: This feature coming soon", { icon: "ℹ️" });
   };
 
   const handleAddNote = (ticket: PenaltyTicket) => {
@@ -213,16 +213,6 @@ export default function PenaltyTicketsPage() {
       <div className="min-h-screen px-2 md:px-4 lg:px-4 bg-[var(--color-bg)]">
         {/* Header */}
         <header className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-          {/* <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              Penalty{" "}
-              <span className="text-[var(--color-primary)]">Tickets</span>
-            </h1>
-            <p className="text-[var(--color-text-secondary)] text-sm">
-              Manage and track all issued penalty tickets
-            </p>
-          </div> */}
-
           <div>
             <h1 className="text-xl md:text-3xl font-black tracking-tight text-[var(--color-text-primary)]">
               Penalty{" "}
@@ -241,8 +231,6 @@ export default function PenaltyTicketsPage() {
             icon={<Ticket size={22} className="text-[var(--color-info)]" />}
             title="Total Tickets"
             value={stats.totalTickets}
-            trend="12 from yesterday"
-            trendUp
           />
           <StatCard
             icon={
@@ -266,8 +254,6 @@ export default function PenaltyTicketsPage() {
             }
             title="Total Penalty Amount"
             value={stats.totalPenaltyAmount}
-            trend="18.5% last week"
-            trendUp
           />
         </div>
 

@@ -4,9 +4,7 @@ import React, { useEffect, useState } from "react";
 import {
   Percent,
   DollarSign,
-  Info,
   Save,
-  RotateCcw,
   ChevronDown,
   Wallet2,
   Calculator,
@@ -71,6 +69,7 @@ export const TaxSettings = () => {
     refundApprovalRequired: "yes",
   });
 
+  // Fetch data
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -102,13 +101,14 @@ export const TaxSettings = () => {
     }
   };
 
-  if (loading)
+  if (loading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-pulse">
-        <div className="h-[400px] bg-gray-100 rounded-[32px]" />
-        <div className="h-[400px] bg-gray-100 rounded-[32px]" />
+        <div className="h-[400px] bg-gray-100  rounded-[32px]" />
+        <div className="h-[400px] bg-gray-100  rounded-[32px]" />
       </div>
     );
+  }
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -116,7 +116,7 @@ export const TaxSettings = () => {
         {/* Left Card: Base Financials */}
         <div className="bg-[var(--color-surface)] p-8 rounded-[32px] border border-[var(--color-border)] shadow-[var(--shadow-card)]">
           <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 bg-teal-50 rounded-xl flex items-center justify-center text-[var(--color-primary)]">
+            <div className="w-10 h-10 bg-[var(--color-primary)]/10 rounded-xl flex items-center justify-center text-[var(--color-primary)]">
               <Wallet2 size={20} />
             </div>
             <h3 className="font-bold text-lg text-[var(--color-text-primary)] tracking-tight">
@@ -190,7 +190,7 @@ export const TaxSettings = () => {
         {/* Right Card: Billing Logic */}
         <div className="bg-[var(--color-surface)] p-8 rounded-[32px] border border-[var(--color-border)] shadow-[var(--shadow-card)] flex flex-col">
           <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-[var(--color-accent)]">
+            <div className="w-10 h-10 bg-[var(--color-accent)]/10 rounded-xl flex items-center justify-center text-[var(--color-accent)]">
               <Calculator size={20} />
             </div>
             <h3 className="font-bold text-lg text-[var(--color-text-primary)] tracking-tight">
@@ -215,26 +215,11 @@ export const TaxSettings = () => {
               onChange={(v) => handleChange("refundApprovalRequired", v)}
             />
           </div>
-
-          {/* <div className="mt-8 p-4 bg-blue-50/50 rounded-2xl border border-blue-100/50 flex gap-3 items-start">
-            <Info size={18} className="text-blue-500 shrink-0 mt-0.5" />
-            <p className="text-[11px] text-blue-700 font-medium leading-relaxed">
-              Tax changes apply only to new sessions. Refund policies are retroactive.
-            </p>
-          </div> */}
         </div>
       </div>
 
-      {/*Save Bar Bottom */}
+      {/* Save Bar Bottom */}
       <div className="mt-8 pt-6 border-t border-[var(--color-border)] flex items-center justify-end">
-        {/* <button
-          onClick={() => toast("Resetting...")}
-          className="flex items-center gap-2 text-xs font-bold text-[var(--color-text-muted)] hover:text-red-500 transition-colors"
-        >
-          <RotateCcw size={14} />
-          Reset to Factory Defaults
-        </button> */}
-
         <button
           onClick={handleSave}
           disabled={saving}

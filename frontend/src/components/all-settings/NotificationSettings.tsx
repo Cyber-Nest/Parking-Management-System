@@ -180,15 +180,15 @@ export const NotificationSettings = () => {
 
         {/* Right Section: Status Preview Card */}
         <div className="lg:col-span-6 flex flex-col gap-6">
-          <div className="bg-blue-50/40 p-10 rounded-[32px] border border-blue-100/50 flex flex-col items-start gap-6 h-full min-h-[300px]">
-            <div className="w-14 h-14 bg-white rounded-2xl shadow-sm flex items-center justify-center text-blue-500">
+          <div className="bg-[var(--color-surface-soft)] p-10 rounded-[32px] border border-[var(--color-border)]/50 flex flex-col items-start gap-6 h-full min-h-[300px]">
+            <div className="w-14 h-14 bg-white rounded-2xl shadow-sm flex items-center justify-center text-[var(--color-primary)]">
               <Mail size={28} strokeWidth={1.5} />
             </div>
             <div>
-              <h3 className="text-lg font-black text-blue-900 tracking-tight">
+              <h3 className="text-lg font-black text-[var(--color-text-primary)] tracking-tight">
                 Notifications Status
               </h3>
-              <p className="text-sm text-blue-700/70 font-medium leading-relaxed mt-2">
+              <p className="text-sm text-[var(--color-text-muted)] font-medium leading-relaxed mt-2">
                 Email notifications will be sent based on the settings
                 configured. Our system ensures delivery within seconds of the
                 event trigger.
@@ -196,11 +196,11 @@ export const NotificationSettings = () => {
             </div>
 
             <div className="mt-auto w-full space-y-3">
-              <div className="flex items-center gap-3 text-[11px] font-bold text-blue-800 bg-white/50 p-3 rounded-xl border border-blue-100">
+              <div className="flex items-center gap-3 text-[11px] font-bold text-[var(--color-primary)] bg-[var(--color-surface-soft)] p-3 rounded-xl border border-[var(--color-primary)]/10">
                 <CheckCircle2 size={16} />
                 <span>Mail Server: Online (AWS SES)</span>
               </div>
-              <div className="flex items-center gap-3 text-[11px] font-bold text-blue-800 bg-white/50 p-3 rounded-xl border border-blue-100">
+              <div className="flex items-center gap-3 text-[11px] font-bold text-[var(--color-primary)] bg-[var(--color-surface-soft)] p-3 rounded-xl border border-[var(--color-primary)]/10">
                 <AlertCircle size={16} />
                 <span>SMS Gateway: Integrating...</span>
               </div>

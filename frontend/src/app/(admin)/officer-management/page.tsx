@@ -21,16 +21,30 @@ import { motion, AnimatePresence } from "framer-motion";
 import { StatCard } from "@/components/common/StatCard";
 import { TableSkeleton } from "@/components/common/TableSkeleton";
 import { ViewOfficerDrawer } from "@/components/officer-management/ViewOfficerDrawer";
-import { OfficerFormDrawer } from "@/components/officer-management/OfficerFormDrawer";
+import {
+  OfficerFormDrawer,
+  OfficerFormData,
+} from "@/components/officer-management/OfficerFormDrawer";
 
 import { officerService, Officer } from "@/services/officer.service";
 
-interface OfficerFormData {
-  name: string;
-  email: string;
-  phone: string;
-  role: string;
-}
+const initialFormData: OfficerFormData = {
+  name: "",
+  email: "",
+  phone: "",
+  role: "",
+  employeeId: "",
+  employmentType: "",
+  hireDate: "",
+  emergencyContactName: "",
+  emergencyPhone: "",
+  emergencyRelationship: "",
+  addressStreet: "",
+  addressCity: "",
+  addressProvince: "",
+  addressPostalCode: "",
+  profilePhoto: null,
+};
 
 export default function OfficerManagementPage() {
   const [officers, setOfficers] = useState<Officer[]>([]);
@@ -43,12 +57,7 @@ export default function OfficerManagementPage() {
   const [statusFilter, setStatusFilter] = useState("All Status");
   const [roleFilter, setRoleFilter] = useState("All Roles");
   const [currentPage, setCurrentPage] = useState(1);
-  const [formData, setFormData] = useState<OfficerFormData>({
-    name: "",
-    email: "",
-    phone: "",
-    role: "",
-  });
+  const [formData, setFormData] = useState<OfficerFormData>(initialFormData);
 
   const itemsPerPage = 10;
 
@@ -104,7 +113,7 @@ export default function OfficerManagementPage() {
 
   // Form
   const resetForm = () => {
-    setFormData({ name: "", email: "", phone: "", role: "" });
+    setFormData(initialFormData);
     setEditingOfficer(null);
   };
 
@@ -116,10 +125,21 @@ export default function OfficerManagementPage() {
   const openEditForm = (officer: Officer) => {
     setEditingOfficer(officer);
     setFormData({
-      name: officer.name,
-      email: officer.email,
-      phone: officer.phone,
-      role: officer.role,
+      name: officer.name || "",
+      email: officer.email || "",
+      phone: officer.phone || "",
+      role: officer.role || "",
+      employeeId: officer.employeeId || officer.id || "",
+      employmentType: officer.employmentType || "",
+      hireDate: officer.hireDate || "",
+      emergencyContactName: officer.emergencyContactName || "",
+      emergencyPhone: officer.emergencyPhone || "",
+      emergencyRelationship: officer.emergencyRelationship || "",
+      addressStreet: officer.addressStreet || "",
+      addressCity: officer.addressCity || "",
+      addressProvince: officer.addressProvince || "",
+      addressPostalCode: officer.addressPostalCode || "",
+      profilePhoto: officer.profilePhoto || null,
     });
     setIsFormOpen(true);
   };
@@ -209,15 +229,6 @@ export default function OfficerManagementPage() {
       <div className="relative min-h-screen bg-[var(--color-bg)] px-4 md:px-4 lg:px-4 overflow-hidden">
         {/* Header */}
         <header className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 ">
-          {/* <div>
-            <h1 className="text-2xl font-black tracking-tight">
-              Officer{" "}
-              <span className="text-[var(--color-primary)]">Management</span>
-            </h1>
-            <p className="text-[var(--color-text-secondary)] text-sm">
-              Manage officers who issue penalty tickets and enforce rules.
-            </p>
-          </div> */}
           <div>
             <h1 className="text-xl md:text-3xl font-black tracking-tight text-[var(--color-text-primary)]">
               Officer{" "}
@@ -243,8 +254,6 @@ export default function OfficerManagementPage() {
             title="Total Officers"
             value={stats.totalOfficers}
             subValue="All registered"
-            trend="Active now"
-            trendUp
           />
           <StatCard
             icon={<UserCheck size={24} className="text-emerald-500" />}
@@ -263,8 +272,6 @@ export default function OfficerManagementPage() {
             title="Tickets Issued"
             value={stats.totalTickets}
             subValue="By all officers"
-            trend="+14% vs avg"
-            trendUp
           />
         </div>
 
@@ -498,47 +505,56 @@ function OfficerActionDropdown({ officer, onView, onEdit, onDisable }: any) {
   }, []);
 
   return (
-    <div className="relative flex justify-center" ref={menuRef}>
+    <div
+      className="relative flex justify-center overflow-visible"
+      ref={menuRef}
+    >
       <button
         onClick={() => setOpen(!open)}
-        className="w-10 h-10 rounded-xl border border-[var(--color-border)] flex items-center justify-center hover:bg-[var(--color-surface-soft)] transition-all"
+        className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-xl border border-[var(--color-border)] flex items-center justify-center hover:bg-[var(--color-surface-soft)] transition-all active:scale-95"
       >
-        <MoreVertical size={16} />
+        <MoreVertical
+          size={16}
+          className="sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"
+        />
       </button>
+
       <AnimatePresence>
         {open && (
           <motion.div
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 8 }}
-            className="absolute right-0 top-12 z-50 w-52 bg-white border border-[var(--color-border)] rounded-2xl shadow-xl overflow-hidden"
+            initial={{ opacity: 0, y: 8, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.95 }}
+            transition={{ duration: 0.15 }}
+            className="absolute right-0 top-10 sm:top-12 z-50 w-48 sm:w-52 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-xl overflow-hidden"
           >
             <button
               onClick={() => {
                 onView(officer);
                 setOpen(false);
               }}
-              className="w-full px-4 py-3 flex items-center gap-3 text-sm font-semibold hover:bg-[var(--color-surface-soft)] transition-all"
+              className="w-full px-4 py-3 flex items-center gap-3 text-sm font-semibold hover:bg-[var(--color-surface-soft)] transition-all text-[var(--color-text-primary)]"
             >
-              <Eye size={15} /> View Officer
+              <Eye size={15} className="sm:w-[15px] sm:h-[15px]" /> View Officer
             </button>
             <button
               onClick={() => {
                 onEdit(officer);
                 setOpen(false);
               }}
-              className="w-full px-4 py-3 flex items-center gap-3 text-sm font-semibold hover:bg-[var(--color-surface-soft)] transition-all"
+              className="w-full px-4 py-3 flex items-center gap-3 text-sm font-semibold hover:bg-[var(--color-surface-soft)] transition-all text-[var(--color-text-primary)]"
             >
-              <Edit2 size={15} /> Edit Officer
+              <Edit2 size={15} className="sm:w-[15px] sm:h-[15px]" /> Edit
+              Officer
             </button>
             <button
               onClick={() => {
                 onDisable(officer.id);
                 setOpen(false);
               }}
-              className={`w-full px-4 py-3 flex items-center gap-3 text-sm font-semibold hover:bg-[var(--color-surface-soft)] transition-all text-red-500`}
+              className={`w-full px-4 py-3 flex items-center gap-3 text-sm font-semibold transition-all text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20`}
             >
-              <Ban size={15} />{" "}
+              <Ban size={15} className="sm:w-[15px] sm:h-[15px]" />{" "}
               {officer.accessStatus === "Disabled"
                 ? "Enable Officer"
                 : "Disable Officer"}

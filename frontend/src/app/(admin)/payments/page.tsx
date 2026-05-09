@@ -182,14 +182,6 @@ export default function PaymentsPage() {
       <div className="min-h-screen px-2 md:px-4 lg:px-4 bg-[var(--color-bg)]">
         {/* Header */}
         <header className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 ">
-          {/* <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              Pay<span className="text-[var(--color-primary)]">ments</span>
-            </h1>
-            <p className="text-[var(--color-text-secondary)] text-sm">
-              View and manage all payments
-            </p>
-          </div> */}
           <div>
             <h1 className="text-xl md:text-3xl font-black tracking-tight text-[var(--color-text-primary)]">
               Pay<span className="text-[var(--color-primary)]">ments</span>

@@ -89,7 +89,7 @@ export default function ActiveParkingSessionsPage() {
   const showToast = (message: string, type: "success" | "error" | "info") => {
     if (type === "success") toast.success(message);
     else if (type === "error") toast.error(message);
-    else toast(message, { icon: 'ℹ️' });
+    else toast(message, { icon: "ℹ️" });
   };
 
   // Fetch Data
@@ -223,15 +223,6 @@ export default function ActiveParkingSessionsPage() {
       <div className="min-h-screen px-4 bg-[var(--color-bg)]">
         {/* Header */}
         <header className="flex items-center justify-between mb-8">
-          {/* <div>
-            <h1 className="text-2xl font-black tracking-tight">
-              Active Parking{" "}
-              <span className="text-[var(--color-primary)]">Sessions</span>
-            </h1>
-            <p className="text-sm text-[var(--color-text-secondary)] mt-1">
-              Manage and track all currently running parking sessions
-            </p>
-          </div> */}
           <div>
             <h1 className="text-xl md:text-3xl font-black tracking-tight text-[var(--color-text-primary)]">
               Active Parking{" "}
@@ -250,27 +241,21 @@ export default function ActiveParkingSessionsPage() {
             icon={<Car size={22} className="text-emerald-500" />}
             title="Total Active"
             value={stats.totalActive}
-            trend="12 from yesterday"
-            trendUp
           />
           <StatCard
             icon={<Clock size={22} className="text-orange-400" />}
             title="Expiring Soon"
             value={stats.expiringSoon}
-            trend="High Volume"
           />
           <StatCard
             icon={<Flag size={22} className="text-red-400" />}
             title="Unpaid / Issues"
             value={stats.unpaidIssues}
-            trend="2 from yesterday"
           />
           <StatCard
             icon={<Wallet size={22} className="text-[var(--color-primary)]" />}
             title="Today's Revenue"
             value={stats.todayRevenue}
-            trend="18.5% last week"
-            trendUp
           />
         </div>
 

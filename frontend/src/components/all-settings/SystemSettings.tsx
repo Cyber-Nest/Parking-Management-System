@@ -5,7 +5,6 @@ import {
   Clock,
   Globe,
   Calendar,
-  Timer,
   Save,
   RotateCcw,
   Info,
@@ -13,12 +12,90 @@ import {
   Languages,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import {
-  settingsService,
-  SystemSettings as SystemSettingsType,
-} from "@/services/settings.service";
+import { useSystem } from "@/contexts/SystemContext";
+import { formatDateTime } from "@/utils/dateHelper";
 
-//Select Component for System Settings
+// Timezone Options - Canada First, Then India, Then International
+const TIMEZONE_OPTIONS = [
+  // Canada
+  {
+    value: "America/Toronto",
+    label: "(UTC-05:00) Toronto - Eastern Time",
+    region: "Ontario, Quebec",
+  },
+  {
+    value: "America/Vancouver",
+    label: "(UTC-08:00) Vancouver - Pacific Time",
+    region: "British Columbia",
+  },
+  {
+    value: "America/Edmonton",
+    label: "(UTC-07:00) Edmonton - Mountain Time",
+    region: "Alberta",
+  },
+  {
+    value: "America/Winnipeg",
+    label: "(UTC-06:00) Winnipeg - Central Time",
+    region: "Manitoba",
+  },
+  {
+    value: "America/Halifax",
+    label: "(UTC-04:00) Halifax - Atlantic Time",
+    region: "Nova Scotia, New Brunswick",
+  },
+  {
+    value: "America/St_Johns",
+    label: "(UTC-03:30) St. John's - Newfoundland Time",
+    region: "Newfoundland",
+  },
+  // India
+  {
+    value: "Asia/Kolkata",
+    label: "(UTC+05:30) Kolkata - Indian Standard Time",
+    region: "India",
+  },
+  // International
+  {
+    value: "America/New_York",
+    label: "(UTC-05:00) New York - Eastern Time",
+    region: "USA",
+  },
+  {
+    value: "Europe/London",
+    label: "(UTC+00:00) London - GMT",
+    region: "United Kingdom",
+  },
+  { value: "Asia/Dubai", label: "(UTC+04:00) Dubai - GST", region: "UAE" },
+  {
+    value: "Australia/Sydney",
+    label: "(UTC+10:00) Sydney - AEDT",
+    region: "Australia",
+  },
+];
+
+// Language Options
+const LANGUAGE_OPTIONS = [
+  { value: "en", label: "English (Canada)" },
+  { value: "fr", label: "French (Canada)" },
+  { value: "en-US", label: "English (US)" },
+  { value: "hi", label: "Hindi (India)" },
+  { value: "es", label: "Spanish" },
+];
+
+// Date Format Options
+const DATE_FORMAT_OPTIONS = [
+  { value: "DD/MM/YYYY", label: "DD/MM/YYYY (31/12/2024) - Canada / Europe" },
+  { value: "MM/DD/YYYY", label: "MM/DD/YYYY (12/31/2024) - USA" },
+  { value: "YYYY-MM-DD", label: "YYYY-MM-DD (2024-12-31) - ISO Standard" },
+];
+
+// Time Format Options
+const TIME_FORMAT_OPTIONS = [
+  { value: "12h", label: "12 Hour (hh:mm AM/PM) - Canada / USA" },
+  { value: "24h", label: "24 Hour (HH:mm) - Europe / Military" },
+];
+
+// SELECT COMPONENT
 const SystemSelect = ({ label, icon, value, onChange, options }: any) => {
   return (
     <div className="space-y-2">
@@ -29,7 +106,7 @@ const SystemSelect = ({ label, icon, value, onChange, options }: any) => {
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full pl-5 pr-12 py-3.5 bg-[var(--color-surface-soft)] border border-[var(--color-border)] rounded-2xl text-[13px] font-bold text-[var(--color-text-primary)] focus:border-[var(--color-primary)] focus:bg-white focus:ring-[6px] focus:ring-[var(--color-primary)]/5 transition-all outline-none appearance-none cursor-pointer"
+          className="w-full pl-5 pr-12 py-3.5 bg-[var(--color-surface-soft)] border border-[var(--color-border)] rounded-2xl text-[13px] font-bold text-[var(--color-text-primary)] focus:border-[var(--color-primary)] focus:bg-[var(--color-surface)] focus:ring-[6px] focus:ring-[var(--color-primary)]/5 transition-all outline-none appearance-none cursor-pointer dark:bg-[var(--color-surface)] dark:text-[var(--color-text-primary)] dark:border-[var(--color-border)]"
         >
           {options.map((opt: any) => (
             <option key={opt.value} value={opt.value}>
@@ -46,10 +123,40 @@ const SystemSelect = ({ label, icon, value, onChange, options }: any) => {
   );
 };
 
+//INFO CARD
+
+const InfoCard = ({ icon, title, value, subValue, iconBg, iconColor }: any) => {
+  return (
+    <div className="bg-[var(--color-surface)] p-6 rounded-[28px] border border-[var(--color-border)] shadow-sm flex flex-col gap-4">
+      <div className="flex justify-between items-start">
+        <div className={`p-2 rounded-lg ${iconBg}`}>
+          {React.cloneElement(icon, { className: iconColor, size: 18 })}
+        </div>
+      </div>
+      <div>
+        <p className="text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest">
+          {title}
+        </p>
+        <h2 className="text-xl font-black text-[var(--color-text-primary)] mt-1">
+          {value}
+        </h2>
+        {subValue && (
+          <p className="text-[10px] text-[var(--color-text-secondary)] font-medium mt-0.5">
+            {subValue}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export const SystemSettings = () => {
+  const { system, branding, updateSystemSettings, refreshSettings } =
+    useSystem();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [settings, setSettings] = useState<SystemSettingsType>({
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [localSettings, setLocalSettings] = useState({
     timezone: "America/Toronto",
     language: "en",
     dateFormat: "DD/MM/YYYY",
@@ -57,30 +164,37 @@ export const SystemSettings = () => {
     sessionExpiryDisplay: "countdown",
   });
 
+  // Sync with context
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const data = await settingsService.getSystemSettings();
-        setSettings(data);
-      } catch (error) {
-        toast.error("Failed to load settings");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
+    if (system) {
+      setLocalSettings({
+        timezone: system.timezone || "America/Toronto",
+        language: system.language || "en",
+        dateFormat: system.dateFormat || "DD/MM/YYYY",
+        timeFormat: system.timeFormat || "12h",
+        sessionExpiryDisplay: system.sessionExpiryDisplay || "countdown",
+      });
+      setLoading(false);
+    }
+  }, [system]);
+
+  // Update current time every second
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+    return () => clearInterval(timer);
   }, []);
 
-  const handleChange = (field: keyof SystemSettingsType, value: string) => {
-    setSettings((prev) => ({ ...prev, [field]: value }));
+  const handleChange = (field: string, value: string) => {
+    setLocalSettings((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSave = async () => {
     try {
       setSaving(true);
-      const response = await settingsService.updateSystemSettings(settings);
-      toast.success(response.message);
+      await updateSystemSettings(localSettings);
+      toast.success("System settings updated successfully!");
     } catch (error) {
       toast.error("Failed to save settings");
     } finally {
@@ -88,144 +202,140 @@ export const SystemSettings = () => {
     }
   };
 
-  if (loading)
-    return <div className="h-96 bg-gray-100 rounded-[32px] animate-pulse" />;
+  const handleDiscard = async () => {
+    if (system) {
+      setLocalSettings({
+        timezone: system.timezone || "America/Toronto",
+        language: system.language || "en",
+        dateFormat: system.dateFormat || "DD/MM/YYYY",
+        timeFormat: system.timeFormat || "12h",
+        sessionExpiryDisplay: system.sessionExpiryDisplay || "countdown",
+      });
+      toast("Changes discarded", { icon: "ℹ️" });
+    }
+  };
+
+  const handleReset = async () => {
+    try {
+      setLoading(true);
+      await refreshSettings();
+      toast.success("Settings reset to default");
+    } catch (error) {
+      toast.error("Failed to reset settings");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Get formatted time
+  const formattedTime = formatDateTime(currentTime, localSettings);
+
+  const getTimezoneRegion = () => {
+    const found = TIMEZONE_OPTIONS.find(
+      (opt) => opt.value === localSettings.timezone,
+    );
+    return found?.region || "Canada";
+  };
+
+  const getLanguageLabel = () => {
+    const found = LANGUAGE_OPTIONS.find(
+      (opt) => opt.value === localSettings.language,
+    );
+    return found?.label || "English (Canada)";
+  };
+
+  const getThemeLabel = () => {
+    const mode = branding?.darkMode || "light";
+    if (mode === "dark") return "Dark Mode";
+    if (mode === "light") return "Light Mode";
+    return "System Default";
+  };
+
+  if (loading) {
+    return (
+      <div className="h-96 bg-gray-100 dark:bg-gray-800 rounded-[32px] animate-pulse" />
+    );
+  }
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-8">
-      {/* Cards (Status Display) */}
+      {/* 3 Info Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-[var(--color-surface)] p-6 rounded-[28px] border border-[var(--color-border)] shadow-sm flex flex-col gap-4">
-          <div className="flex justify-between items-start">
-            <div className="p-2 bg-blue-50 rounded-lg text-blue-500">
-              <Globe size={18} />
-            </div>
-            <span className="px-2 py-0.5 bg-green-100 text-[10px] font-black text-green-600 rounded uppercase">
-              Active
-            </span>
-          </div>
-          <div>
-            <p className="text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest">
-              Current System Time
-            </p>
-            <h2 className="text-xl font-black text-[var(--color-text-primary)] mt-1">
-              14:45:02
-            </h2>
-            <p className="text-[10px] text-[var(--color-text-secondary)] font-medium">
-              Eastern Daylight Time
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-[var(--color-surface)] p-6 rounded-[28px] border border-[var(--color-border)] shadow-sm flex flex-col gap-4">
-          <div className="p-2 bg-orange-50 rounded-lg text-orange-500 w-fit">
-            <Languages size={18} />
-          </div>
-          <div>
-            <p className="text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest">
-              Localization
-            </p>
-            <h2 className="text-xl font-black text-[var(--color-text-primary)] mt-1">
-              EN-CA
-            </h2>
-            <p className="text-[10px] text-[var(--color-text-secondary)] font-medium">
-              Default Language: English
-            </p>
-          </div>
-        </div>
-
-        <div className="bg-[var(--color-surface)] p-6 rounded-[28px] border border-[var(--color-border)] shadow-sm flex flex-col gap-4">
-          <div className="p-2 bg-teal-50 rounded-lg text-teal-600 w-fit">
-            <Timer size={18} />
-          </div>
-          <div>
-            <p className="text-[11px] font-bold text-[var(--color-text-muted)] uppercase tracking-widest">
-              Active Session
-            </p>
-            <h2 className="text-xl font-black text-[var(--color-text-primary)] mt-1">
-              29:45
-            </h2>
-            <p className="text-[10px] text-[var(--color-text-secondary)] font-medium">
-              Remaining until expiry
-            </p>
-          </div>
-        </div>
+        <InfoCard
+          icon={<Globe />}
+          title="Current System Time"
+          value={formattedTime}
+          subValue={getTimezoneRegion()}
+          iconBg="bg-blue-50 dark:bg-blue-900/30"
+          iconColor="text-blue-500 dark:text-blue-400"
+        />
+        <InfoCard
+          icon={<Languages />}
+          title="Localization"
+          value={getLanguageLabel()}
+          subValue={`Date: ${localSettings.dateFormat} • Time: ${localSettings.timeFormat === "12h" ? "12-hour" : "24-hour"}`}
+          iconBg="bg-orange-50 dark:bg-orange-900/30"
+          iconColor="text-orange-500 dark:text-orange-400"
+        />
+        <InfoCard
+          icon={branding?.darkMode === "dark" ? <Clock /> : <Clock />}
+          title="Theme Mode"
+          value={getThemeLabel()}
+          subValue="Appearance preference"
+          iconBg="bg-teal-50 dark:bg-teal-900/30"
+          iconColor="text-teal-600 dark:text-teal-400"
+        />
       </div>
 
       {/* Main Settings Card */}
       <div className="bg-[var(--color-surface)] rounded-[32px] border border-[var(--color-border)] shadow-[var(--shadow-card)] overflow-hidden">
         <div className="p-8 md:p-10 space-y-8">
+          {/* 4 Settings Fields */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <SystemSelect
               label="Timezone"
               icon={<Globe />}
-              value={settings.timezone}
+              value={localSettings.timezone}
               onChange={(v: string) => handleChange("timezone", v)}
-              options={[
-                { value: "America/Toronto", label: "(UTC-06:00) Toronto" },
-                { value: "Asia/Kolkata", label: "(UTC+05:30) India" },
-              ]}
+              options={TIMEZONE_OPTIONS}
             />
             <SystemSelect
               label="Default Language"
               icon={<Languages />}
-              value={settings.language}
+              value={localSettings.language}
               onChange={(v: string) => handleChange("language", v)}
-              options={[
-                { value: "en", label: "English" },
-                { value: "fr", label: "French" },
-              ]}
+              options={LANGUAGE_OPTIONS}
             />
             <SystemSelect
               label="Date Format"
               icon={<Calendar />}
-              value={settings.dateFormat}
+              value={localSettings.dateFormat}
               onChange={(v: string) => handleChange("dateFormat", v)}
-              options={[
-                { value: "DD/MM/YYYY", label: "DD/MM/YYYY" },
-                { value: "MM/DD/YYYY", label: "MM/DD/YYYY" },
-              ]}
+              options={DATE_FORMAT_OPTIONS}
             />
-            {/* <SystemSelect
-              label="Session Expiry Display"
-              icon={<Timer />}
-              value={settings.sessionExpiryDisplay}
-              onChange={(v: string) => handleChange("sessionExpiryDisplay", v)}
-              options={[
-                { value: "countdown", label: "Countdown" },
-                { value: "static", label: "Static" },
-              ]}
-            /> */}
             <SystemSelect
               label="Time Format"
               icon={<Clock />}
-              value={settings.timeFormat}
+              value={localSettings.timeFormat}
               onChange={(v: string) => handleChange("timeFormat", v)}
-              options={[
-                { value: "12h", label: "12 Hour (hh:mm AM/PM)" },
-                { value: "24h", label: "24 Hour (HH:mm)" },
-              ]}
+              options={TIME_FORMAT_OPTIONS}
             />
           </div>
-
-          {/* Info Alert Area */}
-          {/* <div className="bg-[var(--color-info-bg)]/40 p-5 rounded-2xl border border-[var(--color-info-bg)] flex gap-4 items-start animate-in fade-in duration-700">
-            <Info size={20} className="text-[var(--color-info)] mt-0.5" />
-            <div>
-              <h4 className="text-[13px] font-bold text-[var(--color-info)]">
-                Regional Localization
-              </h4>
-              <p className="text-[12px] text-[var(--color-info)]/80 font-medium leading-relaxed mt-0.5">
-                Changing these settings will update the display format for all
-                reports, receipts, and dashboards across the portal.
-              </p>
-            </div>
-          </div> */}
         </div>
 
-        {/* Card Footer Actions */}
+        {/* Footer Actions */}
         <div className="bg-[var(--color-surface-soft)] px-8 py-5 border-t border-[var(--color-border)] flex items-center justify-end gap-4">
-          <button className="text-[13px] font-bold text-[var(--color-text-muted)] hover:text-red-500 transition-colors">
+          <button
+            onClick={handleReset}
+            className="text-[13px] font-bold text-[var(--color-text-muted)] hover:text-[var(--color-primary)] transition-colors px-4 py-2 rounded-xl"
+          >
+            <RotateCcw size={14} className="inline mr-2" />
+            Reset
+          </button>
+          <button
+            onClick={handleDiscard}
+            className="text-[13px] font-bold text-[var(--color-text-muted)] hover:text-red-500 transition-colors px-4 py-2 rounded-xl"
+          >
             Discard
           </button>
           <button
