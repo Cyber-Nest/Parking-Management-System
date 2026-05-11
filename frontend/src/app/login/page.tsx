@@ -43,6 +43,11 @@ export default function LoginPage() {
 
       toast.success(data.message || "Login successful");
 
+      const accessToken = data?.data?.accessToken;
+      const refreshToken = data?.data?.refreshToken;
+      if (accessToken) document.cookie = `token=${encodeURIComponent(accessToken)}; path=/`;
+      if (refreshToken) document.cookie = `refreshToken=${encodeURIComponent(refreshToken)}; path=/`;
+
       router.push("/dashboard");
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Login failed");

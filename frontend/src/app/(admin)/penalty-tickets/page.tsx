@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Plus,
   Search,
@@ -24,6 +24,7 @@ import {
   TrendingDown,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { getTicketSummary, listTickets, TicketStatus } from "@/services/tickets.service";
 
 const StatCard = ({ icon, title, value, subValue, trend, trendUp }: any) => (
   <motion.div
@@ -65,11 +66,51 @@ const StatCard = ({ icon, title, value, subValue, trend, trendUp }: any) => (
 export default function PenaltyTicketsPage() {
   const [activeTab, setActiveTab] = useState("Today");
   const [showCustomDate, setShowCustomDate] = useState(false);
+  const [q, setQ] = useState("");
+  const [status, setStatus] = useState<"All Status" | "Paid" | "Unpaid">("All Status");
+  const [isLoading, setIsLoading] = useState(true);
+  const [summary, setSummary] = useState<any>(null);
+  const [tickets, setTickets] = useState<any[]>([]);
+  const [total, setTotal] = useState(0);
 
   const handleTabClick = (tab: string) => {
     setActiveTab(tab);
     setShowCustomDate(tab === "Custom Period");
   };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchAll = async () => {
+      try {
+        setIsLoading(true);
+
+        const statusParam: TicketStatus | undefined =
+          status === "All Status" ? undefined : status === "Paid" ? "paid" : "unpaid";
+
+        const [summaryRes, listRes] = await Promise.all([
+          getTicketSummary(),
+          listTickets({ page: 1, limit: 20, q: q || undefined, status: statusParam }),
+        ]);
+
+        if (!isMounted) return;
+        setSummary(summaryRes?.data ?? null);
+        setTickets(listRes?.data?.items ?? []);
+        setTotal(listRes?.data?.total ?? 0);
+      } catch (e) {
+        console.error("[PenaltyTicketsPage] load failed", e);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    void fetchAll();
+    return () => {
+      isMounted = false;
+    };
+  }, [q, status, activeTab]);
+
+  const rows = useMemo(() => (isLoading ? [] : tickets), [isLoading, tickets]);
 
   return (
     <div className="min-h-screen p-4 md:p-4 lg:p-4">
@@ -90,7 +131,7 @@ export default function PenaltyTicketsPage() {
         <StatCard
           icon={<Ticket size={22} className="text-[var(--color-info)]" />}
           title="Total Tickets Today"
-          value="28"
+          value={String(summary?.totalToday ?? 0)}
           trend="12 from yesterday"
           trendUp
         />
@@ -99,23 +140,23 @@ export default function PenaltyTicketsPage() {
             <ReceiptText size={22} className="text-[var(--color-accent)]" />
           }
           title="Unpaid Tickets"
-          value="16"
-          subValue="$1,120.00"
+          value={String(summary?.unpaidCount ?? 0)}
+          subValue={`$${Number(summary?.unpaidAmount ?? 0).toFixed(2)}`}
         />
         <StatCard
           icon={
             <BadgeCheck size={22} className="text-[var(--color-success)]" />
           }
           title="Paid Tickets"
-          value="9"
-          subValue="$720.00"
+          value={String(summary?.paidCount ?? 0)}
+          subValue={`$${Number(summary?.paidAmount ?? 0).toFixed(2)}`}
         />
         <StatCard
           icon={
             <Wallet size={22} className="text-[var(--color-primary-light)]" />
           }
           title="Total Penalty Amount"
-          value="$1,840.00"
+          value={`$${Number(summary?.totalPenaltyAmount ?? 0).toFixed(2)}`}
           trend="18.5% last week"
           trendUp
         />
@@ -145,7 +186,11 @@ export default function PenaltyTicketsPage() {
             </div>
 
             <div className="flex items-center gap-2 ml-auto">
-              <select className="input w-auto min-w-[140px] text-xs font-medium bg-[var(--color-surface-soft)]">
+              <select
+                className="input w-auto min-w-[140px] text-xs font-medium bg-[var(--color-surface-soft)]"
+                value={status}
+                onChange={(e) => setStatus(e.target.value as any)}
+              >
                 <option>All Status</option>
                 <option>Paid</option>
                 <option>Unpaid</option>
@@ -194,6 +239,8 @@ export default function PenaltyTicketsPage() {
                 type="text"
                 placeholder="Search by ticket no. or license plate..."
                 className="input pl-10 text-sm"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
               />
             </div>
 
@@ -227,56 +274,60 @@ export default function PenaltyTicketsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-border)] text-[13px]">
-              {[1, 2, 3, 4, 5].map((item, idx) => (
+              {rows.map((row, idx) => (
                 <tr
                   key={idx}
                   className="hover:bg-[var(--color-surface-soft)]/50 transition-colors"
                 >
                   <td className="px-6 py-4 font-bold text-[var(--color-primary)]">
-                    TKT-10024{idx}
+                    {row.ticket_number}
                   </td>
                   <td className="px-6 py-4">
                     <div className="font-bold text-[var(--color-text-primary)]">
-                      ABC-1234
+                      {row.license_plate}
                     </div>
-                    <div className="text-[11px] text-[var(--color-text-secondary)]">
-                      Toyota Vios (White)
-                    </div>
+                    <div className="text-[11px] text-[var(--color-text-secondary)]" />
                   </td>
                   <td className="px-6 py-4">
                     <span className="px-2.5 py-1 rounded-md bg-orange-50 text-[var(--color-accent)] text-[11px] font-bold border border-orange-100">
-                      Expired Parking
+                      {row.reason}
                     </span>
                   </td>
                   <td className="px-6 py-4 font-medium text-[var(--color-text-secondary)]">
-                    Lot A - Front
+                    -
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div>
                         <div className="font-bold text-[var(--color-text-primary)]">
-                          John Smith
+                          {row.officer_name}
                         </div>
                         <div className="text-[11px] text-[var(--color-text-muted)]">
-                          OF-1001
+                          {row.officer_id}
                         </div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-6 py-4 font-black text-sm">$50.00</td>
+                  <td className="px-6 py-4 font-black text-sm">
+                    ${Number(row.amount ?? 0).toFixed(2)}
+                  </td>
                   <td className="px-6 py-4">
                     <span
-                      className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-tight ${idx % 3 === 0 ? "bg-orange-100 text-[var(--color-accent-dark)]" : "bg-[var(--color-success-bg)] text-[var(--color-success)]"}`}
+                      className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-tight ${
+                        row.status === "unpaid"
+                          ? "bg-orange-100 text-[var(--color-accent-dark)]"
+                          : "bg-[var(--color-success-bg)] text-[var(--color-success)]"
+                      }`}
                     >
-                      {idx % 3 === 0 ? "Unpaid" : "Paid"}
+                      {String(row.status).toUpperCase()}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     <div className="font-medium text-[var(--color-text-primary)]">
-                      May 21, 2025
+                      {row.date_issued ? new Date(row.date_issued).toLocaleDateString() : "-"}
                     </div>
                     <div className="text-[11px] text-[var(--color-text-muted)] font-bold">
-                      09:15 AM
+                      {row.date_issued ? new Date(row.date_issued).toLocaleTimeString() : ""}
                     </div>
                   </td>
                   <td className="px-6 py-4">
@@ -304,9 +355,9 @@ export default function PenaltyTicketsPage() {
           <p className="text-[12px] font-medium text-[var(--color-text-secondary)]">
             Showing{" "}
             <span className="text-[var(--color-text-primary)] font-bold">
-              1 to 8
+              1 to {rows.length}
             </span>{" "}
-            of 28 tickets
+            of {total} tickets
           </p>
           <div className="flex items-center gap-1.5">
             <button className="p-2 rounded-lg hover:bg-white border border-[var(--color-border)] transition-all">

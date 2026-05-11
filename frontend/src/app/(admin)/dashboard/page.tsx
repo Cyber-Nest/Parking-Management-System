@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   LayoutDashboard,
@@ -14,59 +14,106 @@ import {
   MoreHorizontal,
 } from "lucide-react";
 import DashboardCharts from "@/components/chart/DashboardCharts";
+import { getTicketSummary, listTickets } from "@/services/tickets.service";
+import { getPaymentSummary } from "@/services/payments.service";
+import { getOfficerSummary } from "@/services/officers.service";
+import { listParkingPlans } from "@/services/parkingPlans.service";
+import { listSessions } from "@/services/sessions.service";
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState("parking");
+  const [isLoading, setIsLoading] = useState(true);
+  const [ticketSummary, setTicketSummary] = useState<any>(null);
+  const [paymentSummary, setPaymentSummary] = useState<any>(null);
+  const [officerSummary, setOfficerSummary] = useState<any>(null);
+  const [planCount, setPlanCount] = useState<number>(0);
+  const [recentTickets, setRecentTickets] = useState<any[]>([]);
+  const [recentSessions, setRecentSessions] = useState<any[]>([]);
 
-  const stats = [
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchDashboard = async () => {
+      try {
+        setIsLoading(true);
+        const [tSum, pSum, oSum, plansRes, recentRes, sessionsRes] = await Promise.all([
+          getTicketSummary(),
+          getPaymentSummary(),
+          getOfficerSummary(),
+          listParkingPlans(),
+          listTickets({ page: 1, limit: 5 }),
+          listSessions({ page: 1, limit: 5 }),
+        ]);
+
+        if (!isMounted) return;
+        setTicketSummary(tSum?.data ?? null);
+        setPaymentSummary(pSum?.data ?? null);
+        setOfficerSummary(oSum?.data ?? null);
+        setPlanCount((plansRes?.data ?? []).length);
+        setRecentTickets(recentRes?.data?.items ?? []);
+        setRecentSessions(sessionsRes?.data?.items ?? []);
+      } catch (e) {
+        console.error("[DashboardPage] load failed", e);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    void fetchDashboard();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const stats = useMemo(() => [
     {
       label: "Total Bookings",
-      value: "1,280",
+      value: String(planCount),
       icon: LayoutDashboard,
       color: "var(--color-primary)",
     },
     {
       label: "Active Parking",
-      value: "84",
+      value: "—",
       icon: Car,
       color: "var(--color-success)",
     },
     {
       label: "Total Payment",
-      value: "$42,500",
+      value: `$${Number(paymentSummary?.todayAmount ?? 0).toFixed(2)}`,
       icon: CircleDollarSign,
       color: "var(--color-info)",
     },
     {
       label: "Unpaid Penalty",
-      value: "$1,200",
+      value: String(ticketSummary?.unpaidCount ?? 0),
       icon: AlertCircle,
       color: "var(--color-accent)",
     },
     {
       label: "Paid Penalty",
-      value: "$3,450",
+      value: String(ticketSummary?.paidCount ?? 0),
       icon: CheckCircle2,
       color: "var(--color-success)",
     },
     {
       label: "Total Revenue",
-      value: "$45,950",
+      value: `$${Number((paymentSummary?.parkingRevenue ?? 0) + (paymentSummary?.penaltyRevenue ?? 0)).toFixed(2)}`,
       icon: TrendingUp,
       color: "var(--color-primary-dark)",
     },
     {
       label: "Expired Session",
-      value: "12",
+      value: "—",
       icon: Clock,
       color: "var(--color-text-muted)",
     },
     {
       label: "Today's Vehicles",
-      value: "256",
+      value: String(officerSummary?.ticketsIssuedToday ?? 0),
       icon: Car,
       color: "var(--color-info)",
     },
-  ];
+  ], [officerSummary?.ticketsIssuedToday, paymentSummary?.todayAmount, paymentSummary?.parkingRevenue, paymentSummary?.penaltyRevenue, planCount, ticketSummary?.paidCount, ticketSummary?.unpaidCount]);
 
   return (
     <div className="px-4 md:px-6 py-8 space-y-8 bg-[var(--color-bg)] min-h-screen max-w-[1600px] mx-auto">
@@ -178,7 +225,10 @@ export default function DashboardPage() {
             </thead>
             <tbody className="text-sm divide-y divide-gray-50">
               <AnimatePresence mode="wait">
-                {(activeTab === "parking" ? mockParking : mockPenalties).map(
+                {(activeTab === "parking"
+                  ? (isLoading ? [] : recentSessions)
+                  : (isLoading ? [] : recentTickets)
+                ).map(
                   (row, i) => (
                     <motion.tr
                       key={`${activeTab}-${i}`}
@@ -188,23 +238,41 @@ export default function DashboardPage() {
                       className="hover:bg-gray-50/50 transition-colors group"
                     >
                       <td className="px-8 py-4 font-black text-[var(--color-text-primary)]">
-                        {row.plate}
+                        {activeTab === "parking" ? row.license_plate : row.license_plate}
                       </td>
                       <td className="px-8 py-4 font-semibold text-[var(--color-text-secondary)]">
-                        {row.col2}
+                        {activeTab === "parking"
+                          ? (row.start_time ? new Date(row.start_time).toLocaleString() : "-")
+                          : row.reason}
                       </td>
                       <td className="px-8 py-4 font-semibold text-[var(--color-text-secondary)]">
-                        {row.col3}
+                        {activeTab === "parking"
+                          ? (row.end_time ? new Date(row.end_time).toLocaleString() : "-")
+                          : `$${Number(row.amount ?? 0).toFixed(2)}`}
                       </td>
                       <td className="px-8 py-4">
                         <span
-                          className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tight ${row.statusColor}`}
+                          className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tight ${
+                            activeTab === "parking"
+                              ? row.status === "active"
+                                ? "bg-emerald-50 text-emerald-600"
+                                : row.status === "expired"
+                                  ? "bg-red-50 text-red-600"
+                                  : "bg-gray-100 text-gray-600"
+                              : row.status === "unpaid"
+                                ? "bg-red-50 text-red-600"
+                                : "bg-emerald-50 text-emerald-600"
+                          }`}
                         >
-                          {row.status}
+                          {String(row.status)}
                         </span>
                       </td>
                       <td className="px-8 py-4 font-black text-[var(--color-text-primary)]">
-                        {row.col5}
+                        {activeTab === "parking"
+                          ? (row.plan_name ?? "-")
+                          : row.date_issued
+                            ? new Date(row.date_issued).toLocaleString()
+                            : "-"}
                       </td>
                     </motion.tr>
                   ),

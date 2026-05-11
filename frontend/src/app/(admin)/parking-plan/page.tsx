@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Plus,
   Search,
@@ -18,6 +18,7 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { listParkingPlans } from "@/services/parkingPlans.service";
 
 //StatCard
 const StatCard = ({ icon, title, value, subValue, trend, trendUp }: any) => (
@@ -82,6 +83,36 @@ function ActionBtn({ icon, color, variant = "default", onClick }: any) {
 export default function ParkingSettingsPage() {
   const [activeTab, setActiveTab] = useState("plans");
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [plans, setPlans] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (activeTab !== "plans") return;
+    let isMounted = true;
+
+    const fetchPlans = async () => {
+      try {
+        setIsLoading(true);
+        const res = await listParkingPlans();
+        if (!isMounted) return;
+        setPlans(res?.data ?? []);
+      } catch (e) {
+        console.error("[ParkingSettingsPage] load plans failed", e);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    void fetchPlans();
+    return () => {
+      isMounted = false;
+    };
+  }, [activeTab]);
+
+  const tableRows = useMemo(() => {
+    if (activeTab !== "plans") return [];
+    return isLoading ? [] : plans;
+  }, [activeTab, isLoading, plans]);
 
   return (
     <div className="min-h-screen px-3 md:px-4 lg:px-4 bg-[var(--color-bg)]">
@@ -112,8 +143,8 @@ export default function ParkingSettingsPage() {
             <StatCard
               icon={<LayoutGrid size={22} className="text-emerald-500" />}
               title="Total Plans"
-              value="6"
-              trend="2 added this month"
+              value={String(plans.length)}
+              trend="Loaded from API"
               trendUp
             />
             <StatCard
@@ -225,32 +256,32 @@ export default function ParkingSettingsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[var(--color-border)] text-[13px]">
-                {[1, 2, 3, 4, 5, 6].map((item, idx) => (
+                {(activeTab === "plans" ? tableRows : [1, 2, 3, 4, 5]).map((item: any, idx: number) => (
                   <tr
                     key={idx}
                     className="hover:bg-[var(--color-surface-soft)]/50 transition-colors"
                   >
                     <td className="px-6 py-4 font-bold text-[var(--color-primary)]">
-                      {activeTab === "plans" ? `PLAN-10${idx}` : `PEN-40${idx}`}
+                      {activeTab === "plans" ? item.id : `PEN-40${idx}`}
                     </td>
                     <td className="px-6 py-4">
                       <div className="font-bold text-[var(--color-text-primary)]">
                         {activeTab === "plans"
-                          ? "Hourly Standard"
+                          ? item.name
                           : "Expired Parking"}
                       </div>
                       <div className="text-[11px] text-[var(--color-text-secondary)]">
                         {activeTab === "plans"
-                          ? "Type: Hourly"
+                          ? "Type: Plan"
                           : "Violation Code: EXP-01"}
                       </div>
                     </td>
                     <td className="px-6 py-4 font-medium">
-                      {activeTab === "plans" ? "60 mins" : "$50.00"}
+                      {activeTab === "plans" ? `${item.duration} mins` : "$50.00"}
                     </td>
                     <td className="px-6 py-4">
                       <div className="font-black">
-                        {activeTab === "plans" ? "$2.00" : "10 mins"}
+                        {activeTab === "plans" ? `$${Number(item.price ?? 0).toFixed(2)}` : "10 mins"}
                       </div>
                       {activeTab === "plans" && (
                         <div className="text-[10px] text-emerald-500 font-bold">
@@ -289,7 +320,7 @@ export default function ParkingSettingsPage() {
             <span className="text-[var(--color-text-primary)] font-bold">
               1 to 6
             </span>{" "}
-            of {activeTab === "plans" ? "6 plans" : "5 rules"}
+            of {activeTab === "plans" ? `${plans.length} plans` : "5 rules"}
           </p>
           <div className="flex items-center gap-1.5">
             <button className="p-2 rounded-full hover:bg-white border border-[var(--color-border)] transition-all text-[var(--color-text-secondary)] hover:text-[var(--color-primary)]">

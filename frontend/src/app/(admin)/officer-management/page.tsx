@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Plus,
   Search,
@@ -20,62 +20,78 @@ import {
   TrendingDown,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { getOfficerSummary, listOfficers, OfficerRoleUi, OfficerStatusUi } from "@/services/officers.service";
 
-// Types & Dummy Data
-const INITIAL_DATA = [
-  {
-    id: "OF-1001",
-    name: "John Smith",
-    email: "john.smith@parking.com",
-    phone: "+1234567890",
-    role: "Officer",
-    status: "Active",
-    tickets: 156,
-    date: "May 21, 2025",
-    time: "09:15 AM",
-  },
-  {
-    id: "OF-1002",
-    name: "Sarah Wright",
-    email: "sarah.w@parking.com",
-    phone: "+1987654321",
-    role: "Supervisor",
-    status: "Active",
-    tickets: 92,
-    date: "May 21, 2025",
-    time: "10:30 AM",
-  },
-  {
-    id: "OF-1003",
-    name: "Adam Milner",
-    email: "adam.m@parking.com",
-    phone: "+1555012345",
-    role: "Officer",
-    status: "Inactive",
-    tickets: 210,
-    date: "May 20, 2025",
-    time: "11:45 AM",
-  },
-];
+type OfficerRow = {
+  id: string;
+  officer_id: string;
+  full_name: string;
+  email: string;
+  phone: string | null;
+  role?: OfficerRoleUi;
+  status: OfficerStatusUi;
+  tickets_issued?: number;
+  last_login_at: string | null;
+  created_at?: string;
+};
 
 export default function OfficerManagementPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("All Status");
   const [roleFilter, setRoleFilter] = useState("All Roles");
+  const [isLoading, setIsLoading] = useState(true);
+  const [summary, setSummary] = useState<any>(null);
+  const [officers, setOfficers] = useState<OfficerRow[]>([]);
+  const [total, setTotal] = useState(0);
 
-  const filteredOfficers = useMemo(() => {
-    return INITIAL_DATA.filter((officer) => {
-      const matchesSearch =
-        officer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        officer.id.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStatus =
-        statusFilter === "All Status" || officer.status === statusFilter;
-      const matchesRole =
-        roleFilter === "All Roles" || officer.role === roleFilter;
-      return matchesSearch && matchesStatus && matchesRole;
-    });
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchAll = async () => {
+      try {
+        setIsLoading(true);
+
+        const status =
+          statusFilter === "All Status"
+            ? undefined
+            : (statusFilter === "Active" ? "ACTIVE" : "DISABLED");
+
+        const role =
+          roleFilter === "All Roles"
+            ? undefined
+            : (roleFilter === "Officer" ? "OFFICER" : "SUPERVISOR");
+
+        const [summaryRes, listRes] = await Promise.all([
+          getOfficerSummary(),
+          listOfficers({
+            page: 1,
+            limit: 50,
+            q: searchQuery || undefined,
+            status: status as OfficerStatusUi | undefined,
+            role: role as OfficerRoleUi | undefined,
+          }),
+        ]);
+
+        if (!isMounted) return;
+
+        setSummary(summaryRes?.data ?? null);
+        setOfficers(listRes?.data?.items ?? []);
+        setTotal(listRes?.data?.total ?? 0);
+      } catch (e) {
+        console.error("[OfficerManagementPage] load failed", e);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    void fetchAll();
+    return () => {
+      isMounted = false;
+    };
   }, [searchQuery, statusFilter, roleFilter]);
+
+  const filteredOfficers = useMemo(() => officers, [officers]);
 
   const handleReset = () => {
     setSearchQuery("");
@@ -228,7 +244,7 @@ export default function OfficerManagementPage() {
         <StatCard
           icon={<Users size={24} className="text-purple-600" />}
           title="Total Officers"
-          value="24"
+          value={String(summary?.totalOfficers ?? total ?? 0)}
           subValue="All registered"
           trend="Active now"
           trendUp
@@ -236,19 +252,19 @@ export default function OfficerManagementPage() {
         <StatCard
           icon={<UserCheck size={24} className="text-emerald-500" />}
           title="Active Officers"
-          value="20"
+          value={String(summary?.activeOfficers ?? 0)}
           subValue="Currently active"
         />
         <StatCard
           icon={<UserX size={24} className="text-rose-500" />}
           title="Disabled Officers"
-          value="3"
+          value={String(summary?.disabledOfficers ?? 0)}
           subValue="Cannot login"
         />
         <StatCard
           icon={<Ticket size={24} className="text-blue-600" />}
           title="Tickets Issued Today"
-          value="68"
+          value={String(summary?.ticketsIssuedToday ?? 0)}
           subValue="By all officers"
           trend="+14% vs avg"
           trendUp
@@ -312,13 +328,13 @@ export default function OfficerManagementPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-border)] text-[13px]">
-              {filteredOfficers.map((officer, idx) => (
+              {(isLoading ? [] : filteredOfficers).map((officer, idx) => (
                 <tr
-                  key={idx}
+                  key={officer.id ?? idx}
                   className="hover:bg-[var(--color-surface-soft)]/50 transition-colors group"
                 >
                   <td className="px-6 py-4 font-bold text-[var(--color-primary)]">
-                    {officer.id}
+                    {officer.officer_id}
                   </td>
 
                   <td className="px-6 py-4">
@@ -331,13 +347,13 @@ export default function OfficerManagementPage() {
                       </div>
                       <div className="flex flex-col">
                         <span className="font-black text-[var(--color-text-primary)] text-sm">
-                          {officer.name}
+                          {officer.full_name}
                         </span>
                         <span className="text-[11px] text-[var(--color-primary)] font-semibold mt-0.5">
                           {officer.email}
                         </span>
                         <span className="text-[10px] text-[var(--color-text-muted)] font-bold">
-                          {officer.phone}
+                          {officer.phone ?? "-"}
                         </span>
                       </div>
                     </div>
@@ -345,7 +361,7 @@ export default function OfficerManagementPage() {
 
                   <td className="px-6 py-4">
                     <span className="px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-600 text-[10px] font-black border border-indigo-100 uppercase">
-                      {officer.role}
+                      {officer.role ?? "OFFICER"}
                     </span>
                   </td>
 
@@ -353,18 +369,20 @@ export default function OfficerManagementPage() {
                     <span
                       className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${officer.status === "Active" ? "bg-[var(--color-success-bg)] text-[var(--color-success)]" : "bg-orange-100 text-orange-600"}`}
                     >
-                      {officer.status}
+                      {officer.status === "ACTIVE" ? "Active" : "Disabled"}
                     </span>
                   </td>
 
                   <td className="px-6 py-4 font-black text-center text-sm">
-                    {officer.tickets}
+                    {officer.tickets_issued ?? 0}
                   </td>
 
                   <td className="px-6 py-4">
-                    <div className="text-[11px] font-bold">{officer.date}</div>
+                    <div className="text-[11px] font-bold">
+                      {officer.last_login_at ? new Date(officer.last_login_at).toLocaleDateString() : "-"}
+                    </div>
                     <div className="text-[10px] text-[var(--color-text-muted)]">
-                      {officer.time}
+                      {officer.last_login_at ? new Date(officer.last_login_at).toLocaleTimeString() : ""}
                     </div>
                   </td>
 
@@ -391,7 +409,7 @@ export default function OfficerManagementPage() {
             <span className="text-[var(--color-text-primary)]">
               1 to {filteredOfficers.length}
             </span>{" "}
-            of 24 officers
+            of {total} officers
           </p>
           <div className="flex items-center gap-1.5">
             <button className="p-2 rounded-xl border border-[var(--color-border)] hover:bg-white transition-all">

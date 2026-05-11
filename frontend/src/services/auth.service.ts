@@ -12,8 +12,20 @@ export const loginUser = async (payload: LoginPayload) => {
   return response.data;
 };
 
-export const logoutUser = async () => {
-  const response = await axiosInstance.post(API_ENDPOINTS.AUTH.LOGOUT);
+export const refreshAccessToken = async (refreshToken: string) => {
+  const response = await axiosInstance.post(API_ENDPOINTS.AUTH.REFRESH, { refreshToken });
+
+  return response.data;
+};
+
+export const getMe = async () => {
+  const response = await axiosInstance.get(API_ENDPOINTS.AUTH.ME);
+
+  return response.data;
+};
+
+export const logoutUser = async (refreshToken: string) => {
+  const response = await axiosInstance.post(API_ENDPOINTS.AUTH.LOGOUT, { refreshToken });
 
   return response.data;
 };

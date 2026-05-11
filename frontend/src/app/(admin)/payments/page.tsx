@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   Plus,
   Search,
@@ -22,6 +22,7 @@ import {
   TrendingDown,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { getPaymentSummary, listPayments, PaymentMethod, PaymentStatus, PaymentType } from "@/services/payments.service";
 
 //Stat Card
 const StatCard = ({ icon, title, value, subValue, trend, trendUp }: any) => (
@@ -161,92 +162,20 @@ function ActionButton({
   );
 }
 
-//Table Data
-const payments = [
-  {
-    id: "PAY-100501",
-    date: "May 21, 2025",
-    time: "09:45 AM",
-    plate: "ABC-1234",
-    sessionId: "PKG-10045",
-    type: "Parking",
-    amount: "$2.00",
-    method: "Card",
-    status: "Paid",
-    processedBy: "Customer",
-  },
-  {
-    id: "PAY-100500",
-    date: "May 21, 2025",
-    time: "09:20 AM",
-    plate: "DEF-5678",
-    sessionId: "PKG-10046",
-    type: "Parking",
-    amount: "$10.00",
-    method: "Cash",
-    status: "Paid",
-    processedBy: "Admin",
-  },
-  {
-    id: "PAY-100499",
-    date: "May 21, 2025",
-    time: "08:55 AM",
-    plate: "GHI-9101",
-    sessionId: "PEN-20015",
-    type: "Penalty",
-    amount: "$15.00",
-    method: "Stripe",
-    status: "Paid",
-    processedBy: "Customer",
-  },
-  {
-    id: "PAY-100498",
-    date: "May 21, 2025",
-    time: "08:35 AM",
-    plate: "JKL-2345",
-    sessionId: "PKG-10044",
-    type: "Extension",
-    amount: "$3.00",
-    method: "Card",
-    status: "Paid",
-    processedBy: "Customer",
-  },
-  {
-    id: "PAY-100497",
-    date: "May 21, 2025",
-    time: "08:15 AM",
-    plate: "MNO-6789",
-    sessionId: "PEN-20014",
-    type: "Penalty",
-    amount: "$20.00",
-    method: "Cash",
-    status: "Pending",
-    processedBy: "Admin",
-  },
-  {
-    id: "PAY-100496",
-    date: "May 21, 2025",
-    time: "07:50 AM",
-    plate: "PQR-3456",
-    sessionId: "PKG-10043",
-    type: "Parking",
-    amount: "$2.00",
-    method: "Stripe",
-    status: "Failed",
-    processedBy: "Customer",
-  },
-  {
-    id: "PAY-100495",
-    date: "May 20, 2025",
-    time: "06:40 PM",
-    plate: "STU-7890",
-    sessionId: "REF-30010",
-    type: "Refund",
-    amount: "$2.00",
-    method: "Card",
-    status: "Refunded",
-    processedBy: "Admin",
-  },
+const toStatusLabel = (s: PaymentStatus) =>
+  s === "success" ? "Paid" : s === "pending" ? "Pending" : s === "failed" ? "Failed" : "Refunded";
+
+const toTypeLabel = (t: PaymentType) =>
+  t === "parking" ? "Parking" : t === "penalty" ? "Penalty" : "Extension";
+
+const METHOD_OPTIONS: { label: string; value?: PaymentMethod }[] = [
+  { label: "All Methods", value: undefined },
+  { label: "visa", value: "visa" },
+  { label: "mastercard", value: "mastercard" },
+  { label: "amex", value: "amex" },
+  { label: "credit_card", value: "credit_card" },
+  { label: "debit_card", value: "debit_card" },
+  { label: "apple_pay", value: "apple_pay" },
 ];
 
 const TYPE_TABS = ["All Types", "Parking", "Penalty", "Extension", "Refund"];
@@ -262,11 +191,80 @@ export default function PaymentsPage() {
   const [activePeriod, setActivePeriod] = useState("Today");
   const [activeType, setActiveType] = useState("All Types");
   const [showCustomDate, setShowCustomDate] = useState(false);
+  const [q, setQ] = useState("");
+  const [status, setStatus] = useState<"All Status" | "Paid" | "Pending" | "Failed" | "Refunded">("All Status");
+  const [method, setMethod] = useState<string>("All Methods");
+  const [isLoading, setIsLoading] = useState(true);
+  const [summary, setSummary] = useState<any>(null);
+  const [rows, setRows] = useState<any[]>([]);
+  const [total, setTotal] = useState(0);
 
   const handlePeriodClick = (tab: string) => {
     setActivePeriod(tab);
     setShowCustomDate(tab === "Custom Period");
   };
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchAll = async () => {
+      try {
+        setIsLoading(true);
+
+        const statusParam: PaymentStatus | undefined =
+          status === "All Status"
+            ? undefined
+            : status === "Paid"
+              ? "success"
+              : status === "Pending"
+                ? "pending"
+                : status === "Failed"
+                  ? "failed"
+                  : "refunded";
+
+        const typeParam: PaymentType | undefined =
+          activeType === "All Types"
+            ? undefined
+            : activeType === "Parking"
+              ? "parking"
+              : activeType === "Penalty"
+                ? "penalty"
+                : activeType === "Extension"
+                  ? "extension"
+                  : undefined;
+
+        const methodParam = METHOD_OPTIONS.find((x) => x.label === method)?.value;
+
+        const [summaryRes, listRes] = await Promise.all([
+          getPaymentSummary(),
+          listPayments({
+            page: 1,
+            limit: 25,
+            q: q || undefined,
+            status: statusParam,
+            payment_type: typeParam,
+            payment_method: methodParam,
+          }),
+        ]);
+
+        if (!isMounted) return;
+        setSummary(summaryRes?.data ?? null);
+        setRows(listRes?.data?.items ?? []);
+        setTotal(listRes?.data?.total ?? 0);
+      } catch (e) {
+        console.error("[PaymentsPage] load failed", e);
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
+    };
+
+    void fetchAll();
+    return () => {
+      isMounted = false;
+    };
+  }, [q, status, method, activeType, activePeriod]);
+
+  const tableRows = useMemo(() => (isLoading ? [] : rows), [isLoading, rows]);
 
   return (
     <div className="min-h-screen px-2 md:px-4 lg:px-4">
@@ -287,28 +285,28 @@ export default function PaymentsPage() {
         <StatCard
           icon={<CreditCard size={22} className="text-[var(--color-info)]" />}
           title="Today's Payments"
-          value="$1,245.00"
-          subValue="18 Transactions"
+          value={`$${Number(summary?.todayAmount ?? 0).toFixed(2)}`}
+          subValue={`${Number(summary?.todayPayments ?? 0)} Transactions`}
         />
         <StatCard
           icon={<Car size={22} className="text-emerald-500" />}
           title="Parking Revenue"
-          value="$985.00"
-          subValue="12 Transactions"
+          value={`$${Number(summary?.parkingRevenue ?? 0).toFixed(2)}`}
+          subValue=""
         />
         <StatCard
           icon={
             <AlertTriangle size={22} className="text-[var(--color-accent)]" />
           }
           title="Penalty Revenue"
-          value="$260.00"
-          subValue="6 Transactions"
+          value={`$${Number(summary?.penaltyRevenue ?? 0).toFixed(2)}`}
+          subValue=""
         />
         <StatCard
           icon={<Clock size={22} className="text-orange-400" />}
           title="Pending / Failed"
-          value="$75.00"
-          subValue="2 Transactions"
+          value={`$${Number(summary?.pendingFailedAmount ?? 0).toFixed(2)}`}
+          subValue=""
         />
       </div>
 
@@ -353,6 +351,8 @@ export default function PaymentsPage() {
                 type="text"
                 placeholder="Search by license plate or payment ID..."
                 className="input pl-9 text-sm w-full"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
               />
             </div>
 
@@ -361,7 +361,11 @@ export default function PaymentsPage() {
               <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">
                 Payment Status
               </span>
-              <select className="input w-auto min-w-[150px] text-xs font-medium bg-[var(--color-surface-soft)] ">
+              <select
+                className="input w-auto min-w-[150px] text-xs font-medium bg-[var(--color-surface-soft)] "
+                value={status}
+                onChange={(e) => setStatus(e.target.value as any)}
+              >
                 <option>All Status</option>
                 <option>Paid</option>
                 <option>Pending</option>
@@ -375,11 +379,14 @@ export default function PaymentsPage() {
               <span className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider ml-1">
                 Payment Method
               </span>
-              <select className="input w-auto min-w-[150px] text-xs font-medium bg-[var(--color-surface-soft)]">
-                <option>All Methods</option>
-                <option>Card</option>
-                <option>Cash</option>
-                <option>Stripe</option>
+              <select
+                className="input w-auto min-w-[150px] text-xs font-medium bg-[var(--color-surface-soft)]"
+                value={method}
+                onChange={(e) => setMethod(e.target.value)}
+              >
+                {METHOD_OPTIONS.map((o) => (
+                  <option key={o.label}>{o.label}</option>
+                ))}
               </select>
             </div>
 
@@ -430,7 +437,7 @@ export default function PaymentsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-border)] text-[13px]">
-              {payments.map((row, idx) => (
+              {tableRows.map((row, idx) => (
                 <tr
                   key={idx}
                   className="hover:bg-[var(--color-surface-soft)]/50 transition-colors"
@@ -443,37 +450,39 @@ export default function PaymentsPage() {
                   {/* Date & Time */}
                   <td className="px-6 py-4">
                     <div className="font-medium text-[var(--color-text-primary)]">
-                      {row.date}
+                      {row.created_at ? new Date(row.created_at).toLocaleDateString() : "-"}
                     </div>
                     <div className="text-[11px] text-[var(--color-text-muted)] font-bold">
-                      {row.time}
+                      {row.created_at ? new Date(row.created_at).toLocaleTimeString() : ""}
                     </div>
                   </td>
 
                   {/* License Plate */}
                   <td className="px-6 py-4 font-bold text-[var(--color-text-primary)]">
-                    {row.plate}
+                    {row.license_plate}
                   </td>
 
                   {/* Session ID */}
                   <td className="px-6 py-4 font-bold text-[var(--color-primary)]">
-                    {row.sessionId}
+                    {row.session_id ?? row.ticket_id ?? "-"}
                   </td>
 
                   {/* Type */}
                   <td className="px-6 py-4">
-                    <TypeBadge type={row.type} />
+                    <TypeBadge type={toTypeLabel(row.payment_type)} />
                   </td>
 
                   {/* Amount */}
-                  <td className="px-6 py-4 font-black text-sm">{row.amount}</td>
+                  <td className="px-6 py-4 font-black text-sm">
+                    ${Number(row.amount ?? 0).toFixed(2)}
+                  </td>
 
                   {/* Method */}
-                  <td className="px-6 py-4">{row.method}</td>
+                  <td className="px-6 py-4">{String(row.payment_method)}</td>
 
                   {/* Status */}
                   <td className="px-6 py-4">
-                    <StatusBadge status={row.status} />
+                    <StatusBadge status={toStatusLabel(row.status)} />
                   </td>
 
                   {/* Processed By */}
@@ -502,9 +511,9 @@ export default function PaymentsPage() {
           <p className="text-[12px] font-medium text-[var(--color-text-secondary)]">
             Showing{" "}
             <span className="text-[var(--color-text-primary)] font-bold">
-              1 to 7
+              1 to {tableRows.length}
             </span>{" "}
-            of 78 payments
+            of {total} payments
           </p>
           <div className="flex items-center gap-1.5">
             <button className="p-2 rounded-lg hover:bg-white border border-[var(--color-border)] transition-all">
