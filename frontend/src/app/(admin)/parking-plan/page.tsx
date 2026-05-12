@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Plus,
   Search,
@@ -17,6 +18,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { getTokenValue } from "@/lib/axios";
 
 import { StatCard } from "@/components/common/StatCard";
 import { TableSkeleton } from "@/components/common/TableSkeleton";
@@ -54,6 +56,7 @@ export default function ParkingPlanAndRulesPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [editingItem, setEditingItem] = useState<any>(null);
   const [plans, setPlans] = useState<ParkingPlan[]>([]);
   const [rules, setRules] = useState<PenaltyRule[]>([]);
@@ -78,9 +81,18 @@ export default function ParkingPlanAndRulesPage() {
 
   const itemsPerPage = 10; //table 10 items per page
 
+  const router = useRouter();
+
   // Fetch Data
   useEffect(() => {
     const fetchData = async () => {
+      const token = getTokenValue("token");
+      if (!token) {
+        setLoading(false);
+        router.push("/login");
+        return;
+      }
+
       try {
         setLoading(true);
         const [plansRes, rulesRes] = await Promise.all([
@@ -97,7 +109,7 @@ export default function ParkingPlanAndRulesPage() {
       }
     };
     fetchData();
-  }, []);
+  }, [router]);
 
   // Stats
   const stats = useMemo(() => {
@@ -113,6 +125,7 @@ export default function ParkingPlanAndRulesPage() {
   // Filter Data
   const filteredData = useMemo(() => {
     const data = activeTab === "plans" ? plans : rules;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return data.filter((item: any) => {
       const query = search.toLowerCase();
       if (activeTab === "plans") {
@@ -232,6 +245,7 @@ export default function ParkingPlanAndRulesPage() {
   };
 
   // Edit Handler
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleEdit = (item: any) => {
     setEditingItem(item);
     if (activeTab === "plans") {
@@ -272,9 +286,9 @@ export default function ParkingPlanAndRulesPage() {
         prev.map((item) =>
           item.id === id
             ? {
-                ...item,
-                status: item.status === "Active" ? "Inactive" : "Active",
-              }
+              ...item,
+              status: item.status === "Active" ? "Inactive" : "Active",
+            }
             : item,
         ),
       );
@@ -283,9 +297,9 @@ export default function ParkingPlanAndRulesPage() {
         prev.map((item) =>
           item.id === id
             ? {
-                ...item,
-                status: item.status === "Active" ? "Inactive" : "Active",
-              }
+              ...item,
+              status: item.status === "Active" ? "Inactive" : "Active",
+            }
             : item,
         ),
       );
@@ -390,11 +404,10 @@ export default function ParkingPlanAndRulesPage() {
                 setCurrentPage(1);
                 setSearch("");
               }}
-              className={`px-5 py-2 text-xs font-semibold rounded-[var(--radius-sm)] transition-all ${
-                activeTab === "plans"
+              className={`px-5 py-2 text-xs font-semibold rounded-[var(--radius-sm)] transition-all ${activeTab === "plans"
                   ? "bg-white text-[var(--color-primary)] shadow-sm"
                   : "text-[var(--color-text-secondary)]"
-              }`}
+                }`}
             >
               Parking Plans
             </button>
@@ -404,11 +417,10 @@ export default function ParkingPlanAndRulesPage() {
                 setCurrentPage(1);
                 setSearch("");
               }}
-              className={`px-5 py-2 text-xs font-semibold rounded-[var(--radius-sm)] transition-all ${
-                activeTab === "rules"
+              className={`px-5 py-2 text-xs font-semibold rounded-[var(--radius-sm)] transition-all ${activeTab === "rules"
                   ? "bg-white text-[var(--color-primary)] shadow-sm"
                   : "text-[var(--color-text-secondary)]"
-              }`}
+                }`}
             >
               Penalty Rules
             </button>
@@ -474,6 +486,7 @@ export default function ParkingPlanAndRulesPage() {
                   </td>
                 </tr>
               ) : (
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 paginatedData.map((item: any, idx: number) => (
                   <tr
                     key={idx}
@@ -507,11 +520,10 @@ export default function ParkingPlanAndRulesPage() {
                     <td className="px-6 py-4">
                       <button
                         onClick={() => handleToggleStatus(item.id)}
-                        className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
-                          item.status === "Active"
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${item.status === "Active"
                             ? "bg-emerald-100 text-emerald-600"
                             : "bg-orange-100 text-orange-600"
-                        }`}
+                          }`}
                       >
                         {item.status}
                       </button>
@@ -565,11 +577,10 @@ export default function ParkingPlanAndRulesPage() {
                 <button
                   key={page}
                   onClick={() => setCurrentPage(page)}
-                  className={`w-9 h-9 rounded-full text-xs font-bold transition-all ${
-                    currentPage === page
+                  className={`w-9 h-9 rounded-full text-xs font-bold transition-all ${currentPage === page
                       ? "bg-[var(--color-primary)] text-white"
                       : "hover:bg-white"
-                  }`}
+                    }`}
                 >
                   {page}
                 </button>

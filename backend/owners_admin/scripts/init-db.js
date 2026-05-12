@@ -16,7 +16,7 @@ const run = async () => {
     multipleStatements: true,
   });
 
-  const sql = `
+  const baseSql = `
     CREATE DATABASE IF NOT EXISTS \`${database}\`;
     USE \`${database}\`;
 
@@ -153,15 +153,6 @@ const run = async () => {
       CONSTRAINT fk_ticket_photo_ticket FOREIGN KEY (ticket_id) REFERENCES penalty_tickets(id) ON DELETE CASCADE
     );
 
-    ALTER TABLE payments
-      ADD CONSTRAINT fk_payment_session FOREIGN KEY (session_id) REFERENCES parking_sessions(id) ON DELETE SET NULL;
-
-    ALTER TABLE payments
-      ADD CONSTRAINT fk_payment_ticket FOREIGN KEY (ticket_id) REFERENCES penalty_tickets(id) ON DELETE SET NULL;
-
-    ALTER TABLE penalty_tickets
-      ADD CONSTRAINT fk_ticket_payment FOREIGN KEY (payment_id) REFERENCES payments(id) ON DELETE SET NULL;
-
     CREATE TABLE IF NOT EXISTS email_logs (
       id BIGINT AUTO_INCREMENT PRIMARY KEY,
       recipient_email VARCHAR(191) NOT NULL,
@@ -240,11 +231,30 @@ const run = async () => {
     );
   `;
 
+  const alterSql = `
+    ALTER TABLE payments
+      ADD CONSTRAINT fk_payment_session FOREIGN KEY (session_id) REFERENCES parking_sessions(id) ON DELETE SET NULL;
+
+    ALTER TABLE payments
+      ADD CONSTRAINT fk_payment_ticket FOREIGN KEY (ticket_id) REFERENCES penalty_tickets(id) ON DELETE SET NULL;
+
+    ALTER TABLE penalty_tickets
+      ADD CONSTRAINT fk_ticket_payment FOREIGN KEY (payment_id) REFERENCES payments(id) ON DELETE SET NULL;
+  `;
+
   try {
-    await conn.query(sql);
+    await conn.query(baseSql);
   } catch (error) {
     const message = error && error.message ? error.message : String(error);
-    // Ignore duplicate FK constraint errors when rerunning init
+    if (!message.includes('Duplicate foreign key constraint name')) {
+      throw error;
+    }
+  }
+
+  try {
+    await conn.query(alterSql);
+  } catch (error) {
+    const message = error && error.message ? error.message : String(error);
     if (!message.includes('Duplicate foreign key constraint name')) {
       throw error;
     }

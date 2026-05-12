@@ -12,6 +12,7 @@ import {
   SystemSettings,
   BrandingSettings,
 } from "@/services/settings.service";
+import { getTokenValue } from "@/lib/axios";
 
 interface SystemContextType {
   system: SystemSettings | null;
@@ -96,6 +97,13 @@ export const SystemProvider = ({ children }: { children: React.ReactNode }) => {
       const stored = getFromStorage();
       if (stored.system) setSystem(stored.system);
       if (stored.branding) setBranding(stored.branding);
+
+      const token = getTokenValue("token");
+      if (!token) {
+        // Skip protected settings fetch until the user logs in.
+        setLoading(false);
+        return;
+      }
 
       // Then fetch from API
       const [systemRes, brandingRes] = await Promise.all([

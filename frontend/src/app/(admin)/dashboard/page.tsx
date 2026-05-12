@@ -155,7 +155,7 @@ export default function DashboardPage() {
         {/* Mobile Card View (< 768px) */}
         <div className="block md:hidden divide-y divide-[var(--color-border)]">
           {loading ? (
-            <TableSkeleton rows={4} cols={5} />
+            <TableSkeleton rows={4} cols={5} variant="card" />
           ) : paginatedTableData.length === 0 ? (
             <div className="text-center py-16 text-sm font-semibold text-[var(--color-text-muted)]">
               No records found.

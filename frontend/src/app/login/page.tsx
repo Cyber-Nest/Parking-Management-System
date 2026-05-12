@@ -45,8 +45,15 @@ export default function LoginPage() {
 
       const accessToken = data?.data?.accessToken;
       const refreshToken = data?.data?.refreshToken;
-      if (accessToken) document.cookie = `token=${encodeURIComponent(accessToken)}; path=/`;
-      if (refreshToken) document.cookie = `refreshToken=${encodeURIComponent(refreshToken)}; path=/`;
+
+      if (accessToken) {
+        document.cookie = `token=${encodeURIComponent(accessToken)}; path=/; samesite=lax`;
+        window.localStorage.setItem("token", accessToken);
+      }
+      if (refreshToken) {
+        document.cookie = `refreshToken=${encodeURIComponent(refreshToken)}; path=/; samesite=lax`;
+        window.localStorage.setItem("refreshToken", refreshToken);
+      }
 
       router.push("/dashboard");
     } catch (error: any) {
