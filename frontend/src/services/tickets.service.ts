@@ -1,5 +1,6 @@
 import axiosInstance from "@/lib/axios";
 import { API_ENDPOINTS } from "./api";
+import { getResponseData } from "./response.helper";
 
 export type TicketStatus = "unpaid" | "paid" | "cancelled" | "disputed" | "resolved";
 
@@ -15,11 +16,11 @@ export interface TicketListParams {
 
 export const getTicketSummary = async () => {
   const response = await axiosInstance.get(API_ENDPOINTS.TICKETS.SUMMARY);
-  return response.data;
+  return getResponseData(response);
 };
 
 export const listTickets = async (params: TicketListParams = {}) => {
   const response = await axiosInstance.get(API_ENDPOINTS.TICKETS.LIST, { params });
-  return response.data;
+  return getResponseData(response);
 };
 

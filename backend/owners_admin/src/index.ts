@@ -9,6 +9,9 @@ import paymentRoutes from './routes/payment.routes';
 import parkingPlanRoutes from './routes/parkingPlan.routes';
 import officerRoutes from './routes/officer.routes';
 import sessionRoutes from './routes/session.routes';
+import settingsRoutes from './routes/settings.routes';
+import reportsRoutes from './routes/reports.routes';
+import penaltyRuleRoutes from './routes/penaltyRule.routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.middleware';
 
 dotenv.config();
@@ -39,6 +42,9 @@ app.use('/api/admin/payments', paymentRoutes);
 app.use('/api/admin/parking-plans', parkingPlanRoutes);
 app.use('/api/admin/officers', officerRoutes);
 app.use('/api/admin/sessions', sessionRoutes);
+app.use('/api/admin/settings', settingsRoutes);
+app.use('/api/admin/reports', reportsRoutes);
+app.use('/api/admin/penalty-rules', penaltyRuleRoutes);
 app.use(notFoundHandler);
 app.use(errorHandler);
 

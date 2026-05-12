@@ -25,6 +25,10 @@ export const API_ENDPOINTS = {
     LIST: "/admin/parking-plans",
   },
 
+  REPORTS: {
+    GET: (type: string) => `/admin/reports/${type}`,
+  },
+
   SESSIONS: {
     LIST: "/admin/sessions",
     SUMMARY: "/admin/sessions/summary",

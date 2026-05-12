@@ -1,5 +1,6 @@
 import axiosInstance from "@/lib/axios";
 import { API_ENDPOINTS } from "./api";
+import { getResponseData } from "./response.helper";
 
 export type OfficerStatusUi = "ACTIVE" | "DISABLED";
 export type OfficerRoleUi = "OFFICER" | "SUPERVISOR";
@@ -14,11 +15,11 @@ export interface OfficerListParams {
 
 export const getOfficerSummary = async () => {
   const response = await axiosInstance.get(API_ENDPOINTS.OFFICERS.SUMMARY);
-  return response.data;
+  return getResponseData(response);
 };
 
 export const listOfficers = async (params: OfficerListParams = {}) => {
   const response = await axiosInstance.get(API_ENDPOINTS.OFFICERS.LIST, { params });
-  return response.data;
+  return getResponseData(response);
 };
 

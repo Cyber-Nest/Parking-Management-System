@@ -172,6 +172,72 @@ const run = async () => {
       error_message TEXT NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS penalty_rules (
+      id CHAR(36) PRIMARY KEY,
+      violation VARCHAR(150) NOT NULL,
+      code VARCHAR(50) NOT NULL UNIQUE,
+      amount DECIMAL(10,2) NOT NULL,
+      grace_minutes INT DEFAULT 0,
+      description TEXT NULL,
+      status ENUM('Active', 'Inactive') NOT NULL DEFAULT 'Active',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS system_settings (
+      id CHAR(36) PRIMARY KEY,
+      timezone VARCHAR(100) DEFAULT 'UTC',
+      language VARCHAR(50) DEFAULT 'en',
+      date_format VARCHAR(50) DEFAULT 'MM/DD/YYYY',
+      time_format VARCHAR(10) DEFAULT '12h',
+      week_starts_on VARCHAR(10) DEFAULT 'sunday',
+      currency VARCHAR(10) DEFAULT 'USD',
+      session_expiry_display INT DEFAULT 30,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS branding_settings (
+      id CHAR(36) PRIMARY KEY,
+      system_name VARCHAR(150) DEFAULT 'ParkSmart',
+      theme_color VARCHAR(20) DEFAULT '#0F766E',
+      dark_mode VARCHAR(20) DEFAULT 'system',
+      logo_url TEXT NULL,
+      favicon_url TEXT NULL,
+      sidebar_collapsed TINYINT(1) DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS admin_roles_permissions (
+      id CHAR(36) PRIMARY KEY,
+      role_id CHAR(36) NOT NULL,
+      permissions JSON NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      CONSTRAINT fk_permissions_role FOREIGN KEY (role_id) REFERENCES roles(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS audit_logs (
+      id CHAR(36) PRIMARY KEY,
+      user_id CHAR(36) NOT NULL,
+      user_name VARCHAR(191) NOT NULL,
+      action VARCHAR(100) NOT NULL,
+      module VARCHAR(100) NOT NULL,
+      resource_id CHAR(36) NULL,
+      resource_name VARCHAR(255) NULL,
+      details TEXT NULL,
+      old_value JSON NULL,
+      new_value JSON NULL,
+      ip_address VARCHAR(50) NULL,
+      user_agent TEXT NULL,
+      status ENUM('success', 'failure') NOT NULL DEFAULT 'success',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_audit_user (user_id),
+      INDEX idx_audit_created_at (created_at),
+      INDEX idx_audit_module (module)
+    );
   `;
 
   try {

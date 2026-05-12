@@ -99,9 +99,11 @@ export class PaymentRepository {
   async summary(): Promise<{
     todayPayments: number;
     todayAmount: number;
+    todayRevenue: number;
     parkingRevenue: number;
     penaltyRevenue: number;
-    pendingFailedAmount: number;
+    pendingAmount: number;
+    failedAmount: number;
   }> {
     const todayCountRows = await queryRows<CountRow>(
       `SELECT COUNT(*) AS total
@@ -123,18 +125,28 @@ export class PaymentRepository {
        FROM payments
        WHERE payment_type = 'penalty' AND status = 'success'`
     );
-    const pendingFailedRows = await queryRows<AmountRow>(
+    const pendingRows = await queryRows<AmountRow>(
       `SELECT COALESCE(SUM(amount), 0) AS total_amount
        FROM payments
-       WHERE status IN ('pending', 'failed')`
+       WHERE status = 'pending'`
     );
 
+    const failedRows = await queryRows<AmountRow>(
+      `SELECT COALESCE(SUM(amount), 0) AS total_amount
+       FROM payments
+       WHERE status = 'failed'`
+    );
+
+    const todayAmount = Number(todayAmountRows[0]?.total_amount ?? 0);
     return {
       todayPayments: todayCountRows[0]?.total ?? 0,
-      todayAmount: Number(todayAmountRows[0]?.total_amount ?? 0),
+      todayAmount,
+      // UI commonly expects `todayRevenue`, so keep an alias.
+      todayRevenue: todayAmount,
       parkingRevenue: Number(parkingRevenueRows[0]?.total_amount ?? 0),
       penaltyRevenue: Number(penaltyRevenueRows[0]?.total_amount ?? 0),
-      pendingFailedAmount: Number(pendingFailedRows[0]?.total_amount ?? 0),
+      pendingAmount: Number(pendingRows[0]?.total_amount ?? 0),
+      failedAmount: Number(failedRows[0]?.total_amount ?? 0),
     };
   }
 

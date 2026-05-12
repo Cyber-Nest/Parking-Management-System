@@ -95,14 +95,20 @@ export class TicketRepository {
 
   async summary(): Promise<{
     totalToday: number;
+    totalTickets: number;
     unpaidCount: number;
     paidCount: number;
+    disputedCount: number;
     totalPenaltyAmount: number;
   }> {
     const totalTodayRows = await queryRows<CountRow>(
       `SELECT COUNT(*) AS total
        FROM penalty_tickets
        WHERE DATE(date_issued) = CURDATE()`
+    );
+    const totalTicketsRows = await queryRows<CountRow>(
+      `SELECT COUNT(*) AS total
+       FROM penalty_tickets`
     );
     const unpaidRows = await queryRows<CountRow>(
       `SELECT COUNT(*) AS total
@@ -114,6 +120,11 @@ export class TicketRepository {
        FROM penalty_tickets
        WHERE status = 'paid'`
     );
+    const disputedRows = await queryRows<CountRow>(
+      `SELECT COUNT(*) AS total
+       FROM penalty_tickets
+       WHERE status = 'disputed'`
+    );
     const amountRows = await queryRows<AmountRow>(
       `SELECT COALESCE(SUM(amount), 0) AS total_amount
        FROM penalty_tickets`
@@ -121,8 +132,11 @@ export class TicketRepository {
 
     return {
       totalToday: totalTodayRows[0]?.total ?? 0,
+      // UI commonly expects `totalTickets`/`unpaidTickets`/etc.
+      totalTickets: totalTicketsRows[0]?.total ?? 0,
       unpaidCount: unpaidRows[0]?.total ?? 0,
       paidCount: paidRows[0]?.total ?? 0,
+      disputedCount: disputedRows[0]?.total ?? 0,
       totalPenaltyAmount: Number(amountRows[0]?.total_amount ?? 0),
     };
   }

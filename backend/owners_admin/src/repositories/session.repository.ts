@@ -31,10 +31,6 @@ interface CountRow {
   total: number;
 }
 
-interface AmountRow {
-  total_amount: number | null;
-}
-
 export class SessionRepository {
   private buildWhere(filters: SessionListFilters): { clause: string; values: any[] } {
     const conditions: string[] = [];

@@ -1,0 +1,561 @@
+import axiosInstance from "@/lib/axios";
+import { getResponseData } from "./response.helper";
+
+export type DarkModePreference = "light" | "dark" | "system";
+
+export const USER_MODULES = [
+  { id: "dashboard", name: "Dashboard", hasSettings: true },
+  { id: "active_parking", name: "Active Parking", hasSettings: false },
+  { id: "penalty_tickets", name: "Penalty Tickets", hasSettings: false },
+  { id: "payments", name: "Payments", hasSettings: false },
+  { id: "officer_management", name: "Officer Management", hasSettings: false },
+  { id: "parking_plans", name: "Parking Plans", hasSettings: false },
+  { id: "reports", name: "Reports", hasSettings: false },
+  { id: "settings", name: "Settings", hasSettings: true },
+] as const;
+
+export const USER_PERMISSION_ACTIONS = [
+  { id: "view", label: "View", width: "w-16" },
+  { id: "create", label: "Create", width: "w-16" },
+  { id: "edit", label: "Edit", width: "w-16" },
+  { id: "delete", label: "Delete", width: "w-16" },
+  { id: "export", label: "Export", width: "w-16" },
+  { id: "settings", label: "Settings", width: "w-20" },
+] as const;
+
+export type PermissionModule = (typeof USER_MODULES)[number]["id"];
+export type PermissionAction = (typeof USER_PERMISSION_ACTIONS)[number]["id"];
+
+export type Permissions = Record<PermissionModule, Record<PermissionAction, boolean>>;
+
+export interface Role {
+  id: string;
+  name: string;
+  description?: string;
+  permissions: Permissions;
+  createdAt?: string;
+  isDefault?: boolean;
+}
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  status: "active" | "inactive";
+  lastLogin?: string;
+  createdAt?: string;
+}
+
+export interface SystemSettings {
+  timezone: string;
+  language: string;
+  dateFormat: string;
+  timeFormat: "12h" | "24h";
+  weekStartsOn: "monday" | "sunday";
+  currency: string;
+  sessionExpiryDisplay: string;
+  updatedAt?: string;
+}
+
+export interface BrandingSettings {
+  systemName: string;
+  themeColor: string;
+  darkMode: DarkModePreference;
+  logoUrl: string | null;
+  faviconUrl: string | null;
+  sidebarCollapsed?: boolean;
+  updatedAt?: string;
+}
+
+export interface AuditLog {
+  id: string;
+  userId: string;
+  userName: string;
+  user?: string;
+  role?: string;
+  action: string;
+  module: string;
+  resourceId?: string;
+  resourceName?: string;
+  details?: string;
+  oldValue?: string;
+  newValue?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  timestamp: string;
+  dateTime?: string;
+  status: "success" | "failure";
+}
+
+export interface AuditLogFilters {
+  userId?: string;
+  user?: string;
+  module?: string;
+  action?: string;
+  status?: "success" | "failure";
+  from?: string;
+  to?: string;
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface AuditLogSummary {
+  totalLogs: number;
+  successCount: number;
+  failureCount: number;
+  recentActivity: AuditLog[];
+}
+
+export interface IntegrationStatus {
+  enabled: boolean;
+  status: "connected" | "disconnected" | "error";
+}
+
+export interface StripeIntegration extends IntegrationStatus {
+  apiKey: string;
+  webhookSecret: string;
+}
+
+export interface CameraIntegration extends IntegrationStatus {
+  cameraType: "hikvision" | "dahua";
+  ipAddress: string;
+  port: number | string;
+  password?: string;
+}
+
+export interface SmsIntegration extends IntegrationStatus {
+  provider: "twilio" | "vonage";
+  apiKey: string;
+  phoneNumber: string;
+}
+
+export interface PosIntegration extends IntegrationStatus {
+  integrationType: "square" | "clover" | "custom";
+  apiEndpoint: string;
+}
+
+export interface IntegrationSettings {
+  stripe: StripeIntegration;
+  camera: CameraIntegration;
+  sms: SmsIntegration;
+  pos: PosIntegration;
+}
+
+export interface NotificationSettings {
+  paymentSuccessEmail: boolean;
+  penaltyIssuedAlert: boolean;
+  penaltyPaidEmail: boolean;
+  expiredParkingAlert: boolean;
+  smsNotifications: boolean;
+  adminAlertEmail: boolean;
+  adminAlertRecipient: string;
+}
+
+export interface TaxSettings {
+  taxRate: string;
+  currency: string;
+  roundingRule: "nearest_cent" | "nearest_dollar";
+  pricesIncludeTax: "yes" | "no";
+  refundAllowed: "yes" | "no";
+  refundApprovalRequired: "yes" | "no";
+}
+
+export interface SecuritySettings {
+  minPasswordLength: number;
+  maxLoginAttempts: number;
+  requireUppercase: "yes" | "no";
+  requireNumber: "yes" | "no";
+  requireSpecialChar: "yes" | "no";
+  twoFactorAuth: "disabled" | "optional" | "required";
+  sessionTimeout: number;
+}
+
+const SYSTEM_BASE = "/admin/settings/system";
+const BRANDING_BASE = "/admin/settings/branding";
+
+const LS_USERS_KEY = "parksmart_admin_users";
+const LS_ROLES_KEY = "parksmart_admin_roles";
+const LS_INTEGRATIONS_KEY = "parksmart_integration_settings";
+const LS_NOTIFICATION_SETTINGS_KEY = "parksmart_notification_settings";
+const LS_SECURITY_SETTINGS_KEY = "parksmart_security_settings";
+const LS_TAX_SETTINGS_KEY = "parksmart_tax_settings";
+
+const getDefaultIntegrationSettings = (): IntegrationSettings => ({
+  stripe: {
+    enabled: false,
+    status: "disconnected",
+    apiKey: "",
+    webhookSecret: "",
+  },
+  camera: {
+    enabled: false,
+    status: "disconnected",
+    cameraType: "hikvision",
+    ipAddress: "",
+    port: "",
+    password: "",
+  },
+  sms: {
+    enabled: false,
+    status: "disconnected",
+    provider: "twilio",
+    apiKey: "",
+    phoneNumber: "",
+  },
+  pos: {
+    enabled: false,
+    status: "disconnected",
+    integrationType: "square",
+    apiEndpoint: "",
+  },
+});
+
+const getDefaultNotificationSettings = (): NotificationSettings => ({
+  paymentSuccessEmail: true,
+  penaltyIssuedAlert: true,
+  penaltyPaidEmail: true,
+  expiredParkingAlert: true,
+  smsNotifications: false,
+  adminAlertEmail: true,
+  adminAlertRecipient: "alerts@parksmart.com",
+});
+
+const getDefaultTaxSettings = (): TaxSettings => ({
+  taxRate: "5",
+  currency: "CAD",
+  roundingRule: "nearest_cent",
+  pricesIncludeTax: "yes",
+  refundAllowed: "yes",
+  refundApprovalRequired: "yes",
+});
+
+const getDefaultSecuritySettings = (): SecuritySettings => ({
+  minPasswordLength: 8,
+  maxLoginAttempts: 5,
+  requireUppercase: "yes",
+  requireNumber: "yes",
+  requireSpecialChar: "yes",
+  twoFactorAuth: "disabled",
+  sessionTimeout: 30,
+});
+
+const uuid = () =>
+(typeof crypto !== "undefined" && "randomUUID" in crypto
+  ? crypto.randomUUID()
+  : `id_${Math.random().toString(16).slice(2)}_${Date.now()}`);
+
+const defaultPermissions = (): Permissions => {
+  const perms = {} as Permissions;
+  for (const mod of USER_MODULES) {
+    perms[mod.id] = {
+      view: true,
+      create: false,
+      edit: false,
+      delete: false,
+      export: false,
+      settings: false,
+    } as Record<PermissionAction, boolean>;
+  }
+  return perms;
+};
+
+const readLS = <T,>(key: string, fallback: T): T => {
+  if (typeof window === "undefined") return fallback;
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const writeLS = (key: string, value: unknown) => {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(key, JSON.stringify(value));
+};
+
+export const settingsService = {
+  async getSystemSettings(): Promise<SystemSettings> {
+    const res = await axiosInstance.get(SYSTEM_BASE);
+    return getResponseData<SystemSettings>(res);
+  },
+
+  async updateSystemSettings(settings: SystemSettings): Promise<SystemSettings> {
+    const res = await axiosInstance.put(SYSTEM_BASE, settings);
+    return getResponseData<SystemSettings>(res);
+  },
+
+  async getBrandingSettings(): Promise<BrandingSettings> {
+    const res = await axiosInstance.get(BRANDING_BASE);
+    return getResponseData<BrandingSettings>(res);
+  },
+
+  async updateBrandingSettings(settings: BrandingSettings): Promise<BrandingSettings> {
+    const res = await axiosInstance.put(BRANDING_BASE, settings);
+    return getResponseData<BrandingSettings>(res);
+  },
+
+  async getIntegrationSettings(): Promise<IntegrationSettings> {
+    const settings = readLS<IntegrationSettings | null>(LS_INTEGRATIONS_KEY, null);
+    if (settings) return settings;
+    const defaultSettings = getDefaultIntegrationSettings();
+    writeLS(LS_INTEGRATIONS_KEY, defaultSettings);
+    return defaultSettings;
+  },
+
+  async updateIntegrationSettings(settings: IntegrationSettings): Promise<IntegrationSettings> {
+    writeLS(LS_INTEGRATIONS_KEY, settings);
+    return settings;
+  },
+
+  async testIntegrationConnection(
+    type: string,
+    config: Partial<IntegrationSettings[keyof IntegrationSettings]>,
+  ): Promise<{ success: boolean; message: string }> {
+    const success = Boolean(config && Object.values(config).some((value) => value));
+    return {
+      success,
+      message: success
+        ? `${type} connection is active`
+        : `Unable to connect to ${type}. Please check your configuration.`,
+    };
+  },
+
+  async getNotificationSettings(): Promise<NotificationSettings> {
+    const settings = readLS<NotificationSettings | null>(LS_NOTIFICATION_SETTINGS_KEY, null);
+    if (settings) return settings;
+    const defaultSettings = getDefaultNotificationSettings();
+    writeLS(LS_NOTIFICATION_SETTINGS_KEY, defaultSettings);
+    return defaultSettings;
+  },
+
+  async updateNotificationSettings(settings: NotificationSettings) {
+    writeLS(LS_NOTIFICATION_SETTINGS_KEY, settings);
+    return { message: "Notification settings updated", settings };
+  },
+
+  async getTaxSettings(): Promise<TaxSettings> {
+    const settings = readLS<TaxSettings | null>(LS_TAX_SETTINGS_KEY, null);
+    if (settings) return settings;
+    const defaultSettings = getDefaultTaxSettings();
+    writeLS(LS_TAX_SETTINGS_KEY, defaultSettings);
+    return defaultSettings;
+  },
+
+  async updateTaxSettings(settings: TaxSettings) {
+    writeLS(LS_TAX_SETTINGS_KEY, settings);
+    return { message: "Tax settings updated", settings };
+  },
+
+  async getSecuritySettings(): Promise<SecuritySettings> {
+    const settings = readLS<SecuritySettings | null>(LS_SECURITY_SETTINGS_KEY, null);
+    if (settings) return settings;
+    const defaultSettings = getDefaultSecuritySettings();
+    writeLS(LS_SECURITY_SETTINGS_KEY, defaultSettings);
+    return defaultSettings;
+  },
+
+  async updateSecuritySettings(settings: SecuritySettings) {
+    writeLS(LS_SECURITY_SETTINGS_KEY, settings);
+    return { message: "Security settings updated", settings };
+  },
+
+  async getAuditLogs(filters: AuditLogFilters = {}): Promise<AuditLog[]> {
+    const logs = readLS<AuditLog[]>("parksmart_audit_logs", []);
+    const normalized = logs.map((log) => ({
+      ...log,
+      dateTime: log.timestamp || new Date().toISOString(),
+    }));
+
+    const filtered = normalized.filter((log) => {
+      if (filters.user && filters.user !== "All Users" && log.user !== filters.user) {
+        return false;
+      }
+      if (filters.module && filters.module !== "All Modules" && log.module !== filters.module) {
+        return false;
+      }
+      if (filters.action && filters.action !== "All Actions" && log.action !== filters.action) {
+        return false;
+      }
+      if (filters.status && log.status !== filters.status) {
+        return false;
+      }
+      if (filters.startDate) {
+        const start = new Date(filters.startDate).setHours(0, 0, 0, 0);
+        const timestamp = new Date(log.timestamp).getTime();
+        if (timestamp < start) return false;
+      }
+      if (filters.endDate) {
+        const end = new Date(filters.endDate).setHours(23, 59, 59, 999);
+        const timestamp = new Date(log.timestamp).getTime();
+        if (timestamp > end) return false;
+      }
+      return true;
+    });
+
+    return filtered;
+  },
+
+  async getAuditLogUsers(): Promise<string[]> {
+    const logs = readLS<AuditLog[]>("parksmart_audit_logs", []);
+    const users = Array.from(
+      new Set(logs.map((log) => log.user).filter((u): u is string => Boolean(u))),
+    );
+    return users.length ? users : ["Admin"];
+  },
+
+  async getAuditLogModules(): Promise<string[]> {
+    const logs = readLS<AuditLog[]>("parksmart_audit_logs", []);
+    const modules = Array.from(
+      new Set(logs.map((log) => log.module).filter((m): m is string => Boolean(m))),
+    );
+    return modules.length ? modules : ["Dashboard", "Settings", "Payments"];
+  },
+
+  async seedAuditLogs(): Promise<void> {
+    const existing = readLS<AuditLog[]>("parksmart_audit_logs", []);
+    if (existing.length) return;
+    const sample: AuditLog[] = [
+      {
+        id: uuid(),
+        userId: "admin-1",
+        userName: "Admin",
+        user: "Admin",
+        action: "Logged In",
+        module: "Authentication",
+        timestamp: new Date().toISOString(),
+        status: "success",
+        details: "User logged in successfully",
+      },
+      {
+        id: uuid(),
+        userId: "admin-1",
+        userName: "Admin",
+        user: "Admin",
+        action: "Updated Settings",
+        module: "Settings",
+        timestamp: new Date().toISOString(),
+        status: "success",
+        details: "System settings updated",
+      },
+    ];
+    writeLS("parksmart_audit_logs", sample);
+  },
+
+  // Users & Roles (UI-only for now; persisted in localStorage)
+  async getUsers(): Promise<User[]> {
+    const users = readLS<User[]>(LS_USERS_KEY, []);
+    if (users.length) return users;
+
+    const seed: User[] = [
+      {
+        id: uuid(),
+        name: "Admin",
+        email: "admin@parksmart.com",
+        role: "Admin",
+        status: "active",
+        lastLogin: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+      },
+    ];
+    writeLS(LS_USERS_KEY, seed);
+    return seed;
+  },
+
+  async createUser(payload: { name: string; email: string; role: string; password?: string }) {
+    const users = await this.getUsers();
+    const user: User = {
+      id: uuid(),
+      name: payload.name,
+      email: payload.email,
+      role: payload.role,
+      status: "active",
+      createdAt: new Date().toISOString(),
+    };
+    const next = [user, ...users];
+    writeLS(LS_USERS_KEY, next);
+    return { message: "User created", user };
+  },
+
+  async updateUser(id: string, payload: Partial<User>) {
+    const users = await this.getUsers();
+    const next = users.map((u) => (u.id === id ? { ...u, ...payload } : u));
+    writeLS(LS_USERS_KEY, next);
+    return { message: "User updated", user: next.find((u) => u.id === id) };
+  },
+
+  async deleteUser(id: string) {
+    const users = await this.getUsers();
+    const next = users.filter((u) => u.id !== id);
+    writeLS(LS_USERS_KEY, next);
+    return { message: "User deleted" };
+  },
+
+  async toggleUserStatus(id: string, current: "active" | "inactive") {
+    const status = current === "active" ? "inactive" : "active";
+    return await this.updateUser(id, { status });
+  },
+
+  async getRoles(): Promise<Role[]> {
+    const roles = readLS<Role[]>(LS_ROLES_KEY, []);
+    if (roles.length) return roles;
+
+    const seed: Role[] = [
+      {
+        id: uuid(),
+        name: "Admin",
+        description: "Full access",
+        permissions: Object.fromEntries(
+          USER_MODULES.map((m) => [m.id, { view: true, create: true, edit: true, delete: true, export: true, settings: true }]),
+        ) as Permissions,
+        createdAt: new Date().toISOString(),
+        isDefault: true,
+      },
+      {
+        id: uuid(),
+        name: "Viewer / Auditor",
+        description: "Read-only access",
+        permissions: defaultPermissions(),
+        createdAt: new Date().toISOString(),
+      },
+    ];
+    writeLS(LS_ROLES_KEY, seed);
+    return seed;
+  },
+
+  async createRole(payload: { name: string; description?: string; permissions?: Permissions }) {
+    const roles = await this.getRoles();
+    const role: Role = {
+      id: uuid(),
+      name: payload.name,
+      description: payload.description,
+      permissions: payload.permissions ?? defaultPermissions(),
+      createdAt: new Date().toISOString(),
+    };
+    const next = [...roles, role];
+    writeLS(LS_ROLES_KEY, next);
+    return { message: "Role created", role };
+  },
+
+  async updateRole(id: string, payload: Partial<Pick<Role, "name" | "description" | "permissions">>) {
+    const roles = await this.getRoles();
+    const next = roles.map((r) => (r.id === id ? { ...r, ...payload } : r));
+    writeLS(LS_ROLES_KEY, next);
+    return { message: "Role updated", role: next.find((r) => r.id === id) };
+  },
+
+  async updateRolePermissions(id: string, permissions: Permissions) {
+    return await this.updateRole(id, { permissions });
+  },
+
+  async deleteRole(id: string) {
+    const roles = await this.getRoles();
+    const next = roles.filter((r) => r.id !== id);
+    writeLS(LS_ROLES_KEY, next);
+    return { message: "Role deleted" };
+  },
+};
+

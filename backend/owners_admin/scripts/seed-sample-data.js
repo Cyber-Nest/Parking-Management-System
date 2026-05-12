@@ -104,6 +104,116 @@ const run = async () => {
     ticketIds.push({ id, status, amount });
   }
 
+  const [sessionPlans] = await conn.query(
+    `SELECT id, name, price, duration FROM parking_plans ORDER BY created_at ASC LIMIT 4`
+  );
+  const [sessionOfficers] = await conn.query(
+    `SELECT id, full_name FROM officers ORDER BY created_at ASC LIMIT 3`
+  );
+
+  const sessionRows = [];
+  for (let i = 0; i < 8; i += 1) {
+    const plan = sessionPlans[i % sessionPlans.length];
+    const officer = sessionOfficers[i % sessionOfficers.length];
+    const id = uuid();
+    const license = plate();
+    const startTime = new Date(Date.now() - (i + 1) * 2 * 60 * 60 * 1000);
+    const endTime = new Date(startTime.getTime() + plan.duration * 60 * 1000);
+    const statuses = ['active', 'expired', 'extended', 'cancelled'];
+    const status = statuses[i % statuses.length];
+
+    await conn.query(
+      `INSERT IGNORE INTO parking_sessions
+      (id, user_id, vehicle_id, license_plate, plan_id, plan_name, start_time, end_time, duration_minutes, status, notes, created_by_officer)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        null,
+        null,
+        license,
+        plan.id,
+        plan.name,
+        startTime,
+        endTime,
+        plan.duration,
+        status,
+        'Sample session data',
+        officer.id,
+      ]
+    );
+    sessionRows.push({ id, license, amount: plan.price });
+  }
+
+  for (let i = 0; i < 6; i += 1) {
+    const session = sessionRows[i];
+    if (!session) continue;
+    const id = uuid();
+    await conn.query(
+      `INSERT IGNORE INTO payments
+      (id, session_id, ticket_id, license_plate, amount, payment_method, payment_type, status, transaction_ref, paid_at, receipt_email_sent)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        session.id,
+        null,
+        session.license,
+        session.amount,
+        'visa',
+        'parking',
+        'success',
+        `TXN-${Date.now()}-${i}`,
+        new Date(),
+        1,
+      ]
+    );
+  }
+
+  await conn.query(
+    `INSERT IGNORE INTO system_settings
+     (id, timezone, language, date_format, time_format, week_starts_on, currency, session_expiry_display)
+     VALUES
+     ('00000000-0000-0000-0000-000000000001', 'UTC', 'en', 'MM/DD/YYYY', '12h', 'sunday', 'USD', 30)`
+  );
+
+  await conn.query(
+    `INSERT IGNORE INTO branding_settings
+     (id, system_name, theme_color, dark_mode, logo_url, favicon_url, sidebar_collapsed)
+     VALUES
+     ('00000000-0000-0000-0000-000000000001', 'ParkSmart', '#0F766E', 'system', null, null, 0)`
+  );
+
+  await conn.query(
+    `INSERT IGNORE INTO audit_logs
+     (id, user_id, user_name, action, module, details, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [
+      uuid(),
+      owner.id,
+      owner.full_name,
+      'Seed data generated',
+      'System',
+      'Inserted sample sessions, payments, settings, and audit logs for report generation',
+      'success',
+    ]
+  );
+
+  // Penalty rules (used by Parking Plans & Rules UI)
+  const rules = [
+    { id: uuid(), violation: 'Expired Parking', code: 'EXP-PARK', amount: 50, grace_minutes: 10, description: 'Vehicle stayed beyond purchased time', status: 'Active' },
+    { id: uuid(), violation: 'No Parking Zone', code: 'NO-ZONE', amount: 75, grace_minutes: 0, description: 'Parked in a restricted area', status: 'Active' },
+    { id: uuid(), violation: 'Blocking Fire Lane', code: 'FIRE-LANE', amount: 120, grace_minutes: 0, description: 'Blocking emergency access', status: 'Active' },
+    { id: uuid(), violation: 'Invalid Permit', code: 'INV-PERMIT', amount: 60, grace_minutes: 5, description: 'Permit missing/invalid for zone', status: 'Inactive' },
+  ];
+
+  for (const r of rules) {
+    await conn.query(
+      `INSERT IGNORE INTO penalty_rules
+      (id, violation, code, amount, grace_minutes, description, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [r.id, r.violation, r.code, r.amount, r.grace_minutes, r.description, r.status]
+    );
+  }
+
   for (let i = 0; i < 14; i += 1) {
     const id = uuid();
     const statuses = ['success', 'success', 'pending', 'failed'];
@@ -144,6 +254,7 @@ const run = async () => {
     officers: officerCount.total,
     penalty_tickets: ticketCount.total,
     payments: paymentCount.total,
+    penalty_rules: rules.length,
     sample_officer_password: 'Officer@123',
   });
 
