@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Download,
   Ticket,
@@ -13,6 +13,8 @@ import {
   RotateCcw,
   ChevronLeft,
   ChevronRight,
+  SquaresExclude,
+  File,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -68,6 +70,8 @@ export default function PenaltyReport() {
     "all" | "paid" | "unpaid" | "cancelled"
   >("all");
   const [chartPeriod, setChartPeriod] = useState("daily");
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const exportDropdownRef = useRef<HTMLDivElement>(null);
   const itemsPerPage = 10;
 
   const [summary, setSummary] = useState<PenaltyReportSummary | null>(null);
@@ -85,7 +89,72 @@ export default function PenaltyReport() {
     paymentStatus: "All Payments",
     minAmount: "",
     maxAmount: "",
+    startDate: "",
+    endDate: "",
   });
+
+  // Close export dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target as Node)) {
+        setShowExportDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Auto-set dates based on dateRange selection
+  useEffect(() => {
+    const today = new Date();
+    const formatDate = (date: Date) => date.toISOString().split('T')[0];
+    
+    if (filters.dateRange === "Custom Range") return;
+    
+    let start = "";
+    let end = "";
+    
+    switch(filters.dateRange) {
+      case "Today":
+        start = formatDate(today);
+        end = formatDate(today);
+        break;
+      case "Yesterday":
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        start = formatDate(yesterday);
+        end = formatDate(yesterday);
+        break;
+      case "Last 7 Days":
+        const last7 = new Date(today);
+        last7.setDate(last7.getDate() - 7);
+        start = formatDate(last7);
+        end = formatDate(today);
+        break;
+      case "Last 30 Days":
+        const last30 = new Date(today);
+        last30.setDate(last30.getDate() - 30);
+        start = formatDate(last30);
+        end = formatDate(today);
+        break;
+      case "This Month":
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        start = formatDate(firstDay);
+        end = formatDate(lastDay);
+        break;
+      case "Last Month":
+        const firstDayLast = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const lastDayLast = new Date(today.getFullYear(), today.getMonth(), 0);
+        start = formatDate(firstDayLast);
+        end = formatDate(lastDayLast);
+        break;
+      default:
+        return;
+    }
+    
+    setFilters(prev => ({ ...prev, startDate: start, endDate: end }));
+  }, [filters.dateRange]);
 
   // Filter data based on active tab
   const filteredByTab = useMemo(() => {
@@ -173,24 +242,43 @@ export default function PenaltyReport() {
       paymentStatus: "All Payments",
       minAmount: "",
       maxAmount: "",
+      startDate: "",
+      endDate: "",
     });
     setSearchQuery("");
     setCurrentPage(1);
     setShowFilters(false);
-    toast.info("Filters reset");
+    toast("Filters reset");
   };
 
-  // Export
-  const handleExport = async () => {
+  // Export with format
+  const handleExport = async (format: "pdf" | "excel") => {
     try {
       setExporting(true);
+      setShowExportDropdown(false);
       const response = await penaltyReportService.exportReport({
         ...filters,
         tab: activeTab,
+        format: format,
       });
-      toast.success(response.message);
+      
+      // Handle blob download
+      if (response.blob) {
+        const url = window.URL.createObjectURL(response.blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", `penalty_report_${new Date().toISOString().split('T')[0]}.${format === "pdf" ? "pdf" : "xlsx"}`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        toast.success(`Report exported as ${format.toUpperCase()}`);
+      } else {
+        toast.success(response.message || `Report exported as ${format.toUpperCase()}`);
+      }
     } catch (error) {
-      toast.error("Failed to export report");
+      console.error("Export error:", error);
+      toast.error(`Failed to export ${format.toUpperCase()} report`);
     } finally {
       setExporting(false);
     }
@@ -274,18 +362,39 @@ export default function PenaltyReport() {
             <Filter size={16} />
             Filters
           </button>
-          <button
-            onClick={handleExport}
-            disabled={exporting}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-dark)] transition-all disabled:opacity-50"
-          >
-            {exporting ? (
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            ) : (
-              <Download size={16} />
+          
+          {/* Export Dropdown */}
+          <div className="relative" ref={exportDropdownRef}>
+            <button
+              onClick={() => setShowExportDropdown(!showExportDropdown)}
+              disabled={exporting}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-dark)] transition-all disabled:opacity-50"
+            >
+              {exporting ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <Download size={16} />
+              )}
+              Export
+            </button>
+            
+            {showExportDropdown && (
+              <div className="absolute right-0 mt-2 w-36 bg-[var(--color-surface)] rounded-xl shadow-lg border border-[var(--color-border)] overflow-hidden z-10">
+                <button
+                  onClick={() => handleExport("pdf")}
+                  className="w-full px-4 py-2 text-left text-sm font-semibold hover:bg-[var(--color-surface-soft)] transition-colors flex items-center gap-2"
+                >
+                  <File size={16} className="text-red-500" /> PDF
+                </button>
+                <button
+                  onClick={() => handleExport("excel")}
+                  className="w-full px-4 py-2 text-left text-sm font-semibold hover:bg-[var(--color-surface-soft)] transition-colors flex items-center gap-2 border-t border-[var(--color-border)]"
+                >
+                 <SquaresExclude size={16} className="text-green-500" /> Excel
+                </button>
+              </div>
             )}
-            Export
-          </button>
+          </div>
         </div>
       </header>
 
@@ -293,7 +402,7 @@ export default function PenaltyReport() {
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <StatCard key={i} loading={true} />
+            <StatCard key={i} loading={true} icon={undefined} title={""} value={""} />
           ))}
         </div>
       ) : (
@@ -350,6 +459,39 @@ export default function PenaltyReport() {
                     ))}
                   </select>
                 </div>
+                
+                {/* Custom Date Range Inputs  */}
+                {filters.dateRange === "Custom Range" && (
+                  <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
+                        Start Date
+                      </label>
+                      <input
+                        type="date"
+                        value={filters.startDate}
+                        onChange={(e) =>
+                          setFilters({ ...filters, startDate: e.target.value })
+                        }
+                        className="w-full bg-[var(--color-surface-soft)] border border-[var(--color-border)] rounded-xl p-2.5 text-sm font-semibold outline-none focus:border-[var(--color-primary)] transition-all"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
+                        End Date
+                      </label>
+                      <input
+                        type="date"
+                        value={filters.endDate}
+                        onChange={(e) =>
+                          setFilters({ ...filters, endDate: e.target.value })
+                        }
+                        className="w-full bg-[var(--color-surface-soft)] border border-[var(--color-border)] rounded-xl p-2.5 text-sm font-semibold outline-none focus:border-[var(--color-primary)] transition-all"
+                      />
+                    </div>
+                  </div>
+                )}
+                
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
                     Location

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
 import { Eye, EyeOff, Lock, Mail, Loader2 } from "lucide-react";
-import { loginUser } from "@/services/auth.service";
+// import { loginUser } from "@/services/auth.service";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -30,6 +30,7 @@ export default function LoginPage() {
     }, 1000);
   };
 
+  // uncomment the line no 8
   // const handleLogin = async (e: React.FormEvent) => {
   //   e.preventDefault();
 

@@ -12,6 +12,8 @@ import {
   Undo2,
   Eye,
   RotateCcw,
+  File,
+  SquaresExclude,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -46,8 +48,7 @@ export default function RevenueReportsPage() {
     RevenueByPaymentMethod[]
   >([]);
   const [timeData, setTimeData] = useState<RevenueTimeData[]>([]);
-
-  // Filters
+  const [selectedDateOption, setSelectedDateOption] = useState(""); // Filters
   const [filters, setFilters] = useState<RevenueFilters>({
     paymentMethod: "All Methods",
     revenueType: "All Types",
@@ -56,7 +57,6 @@ export default function RevenueReportsPage() {
     endDate: "",
   });
 
-  // Chart period filter (daily/weekly/monthly)
   const [chartPeriod, setChartPeriod] = useState("daily");
 
   // Fetch all data
@@ -107,24 +107,72 @@ export default function RevenueReportsPage() {
       startDate: "",
       endDate: "",
     });
+    setSelectedDateOption("");
     setChartPeriod("daily");
     setCurrentPage(1);
     setShowFilters(false);
-    toast.info("Filters reset");
+    toast("Filters reset");
   };
 
-  // Export
-  const handleExport = async () => {
+  const handleExport = async (format: "pdf" | "excel") => {
     try {
       setExporting(true);
-      const response = await reportsService.exportRevenueReport(filters);
-      toast.success(response.message);
+
+      // Close dropdown
+      const dropdown = document.getElementById("exportDropdown");
+      if (dropdown) dropdown.classList.add("hidden");
+
+      // Call API with format parameter
+      const response = await reportsService.exportRevenueReport({
+        ...filters,
+        format: format,
+      });
+
+      // Handle file download
+      if (response.blob) {
+        const url = window.URL.createObjectURL(response.blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute(
+          "download",
+          `revenue_report_${new Date().toISOString().split("T")[0]}.${format === "pdf" ? "pdf" : "xlsx"}`,
+        );
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+
+        toast.success(`Report exported as ${format.toUpperCase()}`);
+      } else {
+        toast.success(
+          response.message || `Report exported as ${format.toUpperCase()}`,
+        );
+      }
     } catch (error) {
-      toast.error("Failed to export report");
+      console.error("Export error:", error);
+      toast.error(`Failed to export ${format.toUpperCase()} report`);
     } finally {
       setExporting(false);
     }
   };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const dropdown = document.getElementById("exportDropdown");
+      const target = event.target as HTMLElement;
+      if (
+        dropdown &&
+        !dropdown.contains(target) &&
+        !target.closest(".relative")
+      ) {
+        dropdown.classList.add("hidden");
+      }
+    };
+
+    document.addEventListener("click", handleClickOutside);
+    return () => document.removeEventListener("click", handleClickOutside);
+  }, []);
 
   // Handle chart period change
   const handlePeriodChange = (period: string) => {
@@ -188,26 +236,57 @@ export default function RevenueReportsPage() {
             <Filter size={16} />
             Filters
           </button>
-          <button
-            onClick={handleExport}
-            disabled={exporting}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-dark)] transition-all disabled:opacity-50"
-          >
-            {exporting ? (
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            ) : (
-              <Download size={16} />
-            )}
-            Export
-          </button>
+
+          <div className="relative">
+            <button
+              onClick={() => {
+                // Show dropdown
+                const dropdown = document.getElementById("exportDropdown");
+                if (dropdown) dropdown.classList.toggle("hidden");
+              }}
+              disabled={exporting}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-dark)] transition-all disabled:opacity-50"
+            >
+              {exporting ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <Download size={16} />
+              )}
+              Export
+            </button>
+
+            {/* Dropdown Menu */}
+            <div
+              id="exportDropdown"
+              className="hidden absolute right-0 mt-2 w-36 bg-[var(--color-surface)] rounded-xl shadow-lg border border-[var(--color-border)] overflow-hidden z-10"
+            >
+              <button
+                onClick={() => handleExport("pdf")}
+                className="w-full px-4 py-2 text-left text-sm font-semibold hover:bg-[var(--color-surface-soft)] transition-colors flex items-center gap-2"
+              >
+                <File size={16} /> PDF
+              </button>
+              <button
+                onClick={() => handleExport("excel")}
+                className="w-full px-4 py-2 text-left text-sm font-semibold hover:bg-[var(--color-surface-soft)] transition-colors flex items-center gap-2 border-t border-[var(--color-border)]"
+              >
+                <SquaresExclude size={16} /> Excel
+              </button>
+            </div>
+          </div>
         </div>
       </header>
-
       {/* Stats Cards */}
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <StatCard key={i} loading={true} />
+            <StatCard
+              key={i}
+              loading={true}
+              title={""}
+              value={""}
+              icon={<></>}
+            />
           ))}
         </div>
       ) : (
@@ -236,7 +315,6 @@ export default function RevenueReportsPage() {
           </div>
         )
       )}
-
       {/* Filters Panel */}
       <AnimatePresence>
         {showFilters && (
@@ -265,6 +343,7 @@ export default function RevenueReportsPage() {
                     <option>Other</option>
                   </select>
                 </div>
+
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
                     Revenue Type
@@ -282,6 +361,7 @@ export default function RevenueReportsPage() {
                     <option>Refund</option>
                   </select>
                 </div>
+
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
                     Plan Type
@@ -299,15 +379,91 @@ export default function RevenueReportsPage() {
                     <option>Monthly</option>
                   </select>
                 </div>
-                <div className="flex items-end">
-                  <button
-                    onClick={handleResetFilters}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold border border-[var(--color-border)] hover:bg-red-50 hover:text-red-500 transition-all"
+
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
+                    Date Range
+                  </label>
+                  <select
+                    value={selectedDateOption}
+                    onChange={(e) => {
+                      setSelectedDateOption(e.target.value);
+                      if (e.target.value !== "custom") {
+                        // Reset custom dates if not custom
+                        setFilters({ ...filters, startDate: "", endDate: "" });
+                      }
+                    }}
+                    className="w-full bg-[var(--color-surface-soft)] border border-[var(--color-border)] rounded-xl p-2.5 text-sm font-semibold outline-none focus:border-[var(--color-primary)] transition-all"
                   >
-                    <RotateCcw size={16} />
-                    Reset Filters
-                  </button>
+                    <option value="">Select Date Range</option>
+                    <option value="today">Today</option>
+                    <option value="yesterday">Yesterday</option>
+                    <option value="last7">Last 7 Days</option>
+                    <option value="last30">Last 30 Days</option>
+                    <option value="thisMonth">This Month</option>
+                    <option value="lastMonth">Last Month</option>
+                    <option value="custom">📅 Custom Range</option>
+                  </select>
                 </div>
+              </div>
+
+              {/* Custom Date Range Inputs  Show only when custom is selected */}
+              {selectedDateOption === "custom" && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="mt-5 pt-4 border-t border-[var(--color-border)]"
+                >
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
+                        Start Date
+                      </label>
+                      <input
+                        type="date"
+                        value={filters.startDate}
+                        onChange={(e) =>
+                          setFilters({ ...filters, startDate: e.target.value })
+                        }
+                        className="w-full bg-[var(--color-surface-soft)] border border-[var(--color-border)] rounded-xl p-2.5 text-sm font-semibold outline-none focus:border-[var(--color-primary)] transition-all"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
+                        End Date
+                      </label>
+                      <input
+                        type="date"
+                        value={filters.endDate}
+                        onChange={(e) =>
+                          setFilters({ ...filters, endDate: e.target.value })
+                        }
+                        className="w-full bg-[var(--color-surface-soft)] border border-[var(--color-border)] rounded-xl p-2.5 text-sm font-semibold outline-none focus:border-[var(--color-primary)] transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Show selected range preview */}
+                  {filters.startDate && filters.endDate && (
+                    <div className="mt-3 text-xs text-[var(--color-text-secondary)] bg-[var(--color-primary)]/5 p-2 rounded-lg">
+                      📅 Selected:{" "}
+                      {new Date(filters.startDate).toLocaleDateString()} -{" "}
+                      {new Date(filters.endDate).toLocaleDateString()}
+                    </div>
+                  )}
+                </motion.div>
+              )}
+
+              {/* Reset Button Row */}
+              <div className="mt-4 flex justify-end">
+                <button
+                  onClick={handleResetFilters}
+                  className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold border border-[var(--color-border)] hover:bg-red-50 hover:text-red-500 transition-all"
+                >
+                  <RotateCcw size={16} />
+                  Reset Filters
+                </button>
               </div>
             </div>
           </motion.div>
@@ -322,7 +478,6 @@ export default function RevenueReportsPage() {
         loading={loading}
         onPeriodChange={handlePeriodChange}
       />
-
       {/* Table Section */}
       <div className="bg-[var(--color-surface)] rounded-2xl shadow-sm overflow-hidden border border-[var(--color-border)]">
         <div className="overflow-x-auto">
@@ -453,7 +608,6 @@ export default function RevenueReportsPage() {
           </div>
         )}
       </div>
-
       {/* View Details Drawer */}
       <ViewDetailsDrawer
         isOpen={isDrawerOpen}

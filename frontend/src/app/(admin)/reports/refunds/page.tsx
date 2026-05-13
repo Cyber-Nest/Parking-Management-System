@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Download,
   Calendar,
@@ -17,6 +17,8 @@ import {
   ChevronLeft,
   ChevronRight,
   FilterIcon,
+  File,
+  SquaresExclude,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -44,6 +46,8 @@ export default function RefundsAdjustmentsReport() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const exportDropdownRef = useRef<HTMLDivElement>(null);
   const itemsPerPage = 10;
 
   // Data states
@@ -61,7 +65,72 @@ export default function RefundsAdjustmentsReport() {
     location: "All Locations",
     processedBy: "All Users",
     status: "All Statuses",
+    startDate: "",
+    endDate: "",
   });
+
+  // Close export dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target as Node)) {
+        setShowExportDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Auto-set dates based on dateRange selection
+  useEffect(() => {
+    const today = new Date();
+    const formatDate = (date: Date) => date.toISOString().split('T')[0];
+    
+    if (filters.dateRange === "Custom Range") return;
+    
+    let start = "";
+    let end = "";
+    
+    switch(filters.dateRange) {
+      case "Today":
+        start = formatDate(today);
+        end = formatDate(today);
+        break;
+      case "Yesterday":
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        start = formatDate(yesterday);
+        end = formatDate(yesterday);
+        break;
+      case "Last 7 Days":
+        const last7 = new Date(today);
+        last7.setDate(last7.getDate() - 7);
+        start = formatDate(last7);
+        end = formatDate(today);
+        break;
+      case "Last 30 Days":
+        const last30 = new Date(today);
+        last30.setDate(last30.getDate() - 30);
+        start = formatDate(last30);
+        end = formatDate(today);
+        break;
+      case "This Month":
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        start = formatDate(firstDay);
+        end = formatDate(lastDay);
+        break;
+      case "Last Month":
+        const firstDayLast = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const lastDayLast = new Date(today.getFullYear(), today.getMonth(), 0);
+        start = formatDate(firstDayLast);
+        end = formatDate(lastDayLast);
+        break;
+      default:
+        return;
+    }
+    
+    setFilters(prev => ({ ...prev, startDate: start, endDate: end }));
+  }, [filters.dateRange]);
 
   // Filtered data based on search
   const filteredData = useMemo(() => {
@@ -118,6 +187,8 @@ export default function RefundsAdjustmentsReport() {
       location: "All Locations",
       processedBy: "All Users",
       status: "All Statuses",
+      startDate: "",
+      endDate: "",
     });
     setChartDays(30);
     setSearchQuery("");
@@ -130,14 +201,33 @@ export default function RefundsAdjustmentsReport() {
     });
   };
 
-  // Export
-  const handleExport = async () => {
+  // Export with format
+  const handleExport = async (format: "pdf" | "excel") => {
     try {
       setExporting(true);
-      const response = await refundsAdjustmentsService.exportReport(filters);
-      toast.success(response.message);
+      setShowExportDropdown(false);
+      const response = await refundsAdjustmentsService.exportReport({
+        ...filters,
+        format: format,
+      });
+      
+      // Handle blob download
+      if (response.blob) {
+        const url = window.URL.createObjectURL(response.blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", `refunds_adjustments_${new Date().toISOString().split('T')[0]}.${format === "pdf" ? "pdf" : "xlsx"}`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        toast.success(`Report exported as ${format.toUpperCase()}`);
+      } else {
+        toast.success(response.message || `Report exported as ${format.toUpperCase()}`);
+      }
     } catch (error) {
-      toast.error("Failed to export report");
+      console.error("Export error:", error);
+      toast.error(`Failed to export ${format.toUpperCase()} report`);
     } finally {
       setExporting(false);
     }
@@ -154,6 +244,15 @@ export default function RefundsAdjustmentsReport() {
     setIsDrawerOpen(true);
   };
 
+  const dateRangeOptions = [
+    "Today",
+    "Yesterday",
+    "Last 7 Days",
+    "Last 30 Days",
+    "This Month",
+    "Last Month",
+    "Custom Range",
+  ];
   const typeOptions = ["All Types", "Refund", "Adjustment"];
   const reasonOptions = [
     "All Reasons",
@@ -183,7 +282,7 @@ export default function RefundsAdjustmentsReport() {
   const totalAmount = reasonData.reduce((sum, r) => sum + r.value, 0);
 
   return (
-    <div className="min-h-screen px-4 md:px-4  space-y-8 bg-[var(--color-bg)]">
+    <div className="min-h-screen px-4 md:px-4 space-y-8 bg-[var(--color-bg)]">
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
@@ -209,18 +308,39 @@ export default function RefundsAdjustmentsReport() {
             <Filter size={16} />
             Filters
           </button>
-          <button
-            onClick={handleExport}
-            disabled={exporting}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-dark)] transition-all disabled:opacity-50"
-          >
-            {exporting ? (
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            ) : (
-              <Download size={16} />
+          
+          {/* Export Dropdown */}
+          <div className="relative" ref={exportDropdownRef}>
+            <button
+              onClick={() => setShowExportDropdown(!showExportDropdown)}
+              disabled={exporting}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-dark)] transition-all disabled:opacity-50"
+            >
+              {exporting ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <Download size={16} />
+              )}
+              Export
+            </button>
+            
+            {showExportDropdown && (
+              <div className="absolute right-0 mt-2 w-36 bg-[var(--color-surface)] rounded-xl shadow-lg border border-[var(--color-border)] overflow-hidden z-10">
+                <button
+                  onClick={() => handleExport("pdf")}
+                  className="w-full px-4 py-2 text-left text-sm font-semibold hover:bg-[var(--color-surface-soft)] transition-colors flex items-center gap-2"
+                >
+                  <File size={16} className="text-red-500" /> PDF
+                </button>
+                <button
+                  onClick={() => handleExport("excel")}
+                  className="w-full px-4 py-2 text-left text-sm font-semibold hover:bg-[var(--color-surface-soft)] transition-colors flex items-center gap-2 border-t border-[var(--color-border)]"
+                >
+                  <SquaresExclude size={16} className="text-green-500" /> Excel
+                </button>
+              </div>
             )}
-            Export
-          </button>
+          </div>
         </div>
       </header>
 
@@ -286,13 +406,44 @@ export default function RefundsAdjustmentsReport() {
                     }
                     className="w-full bg-[var(--color-surface-soft)] border border-[var(--color-border)] rounded-xl p-2.5 text-sm font-semibold outline-none focus:border-[var(--color-primary)] transition-all"
                   >
-                    <option>Today</option>
-                    <option>Yesterday</option>
-                    <option>Last 7 Days</option>
-                    <option>Last 30 Days</option>
-                    <option>This Month</option>
+                    {dateRangeOptions.map((opt) => (
+                      <option key={opt}>{opt}</option>
+                    ))}
                   </select>
                 </div>
+                
+                {/* Custom Date Range Inputs */}
+                {filters.dateRange === "Custom Range" && (
+                  <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
+                        Start Date
+                      </label>
+                      <input
+                        type="date"
+                        value={filters.startDate}
+                        onChange={(e) =>
+                          setFilters({ ...filters, startDate: e.target.value })
+                        }
+                        className="w-full bg-[var(--color-surface-soft)] border border-[var(--color-border)] rounded-xl p-2.5 text-sm font-semibold outline-none focus:border-[var(--color-primary)] transition-all"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
+                        End Date
+                      </label>
+                      <input
+                        type="date"
+                        value={filters.endDate}
+                        onChange={(e) =>
+                          setFilters({ ...filters, endDate: e.target.value })
+                        }
+                        className="w-full bg-[var(--color-surface-soft)] border border-[var(--color-border)] rounded-xl p-2.5 text-sm font-semibold outline-none focus:border-[var(--color-primary)] transition-all"
+                      />
+                    </div>
+                  </div>
+                )}
+                
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
                     Type
@@ -429,20 +580,18 @@ export default function RefundsAdjustmentsReport() {
                 <th className="px-4 sm:px-6 py-4">Reference ID</th>
                 <th className="px-4 sm:px-6 py-4">Related To</th>
                 <th className="px-4 sm:px-6 py-4">Plate / User</th>
-                {/* <th className="px-4 sm:px-6 py-4">Reason</th> */}
                 <th className="px-4 sm:px-6 py-4 text-right">Amount</th>
-                {/* <th className="px-4 sm:px-6 py-4">Processed By</th> */}
                 <th className="px-4 sm:px-6 py-4">Status</th>
                 <th className="px-4 sm:px-6 py-4 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-border)] text-[13px]">
               {loading ? (
-                <TableSkeleton rows={5} cols={10} />
+                <TableSkeleton rows={5} cols={8} />
               ) : paginatedData.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={10}
+                    colSpan={8}
                     className="text-center py-12 text-[var(--color-text-muted)]"
                   >
                     No data available
@@ -473,7 +622,6 @@ export default function RefundsAdjustmentsReport() {
                     <td className="px-4 sm:px-6 py-4 font-bold text-[11px]">
                       {row.plateUser}
                     </td>
-                    {/* <td className="px-4 sm:px-6 py-4 text-[11px]">{row.reason}</td> */}
                     <td
                       className={`px-4 sm:px-6 py-4 text-right font-black text-[12px] ${row.amount < 0 ? "text-rose-500" : "text-emerald-600"}`}
                     >
@@ -481,7 +629,6 @@ export default function RefundsAdjustmentsReport() {
                         ? `-$${Math.abs(row.amount).toFixed(2)}`
                         : `+$${row.amount.toFixed(2)}`}
                     </td>
-                    {/* <td className="px-4 sm:px-6 py-4 text-[11px]">{row.processedBy}</td> */}
                     <td className="px-4 sm:px-6 py-4">
                       <span className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-emerald-100 text-emerald-600">
                         {row.status}

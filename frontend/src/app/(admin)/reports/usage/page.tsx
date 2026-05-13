@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import {
   Download,
   Filter,
@@ -14,6 +14,8 @@ import {
   ChevronLeft,
   ChevronRight,
   RefreshCcw,
+  File,
+  SquaresExclude,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -41,6 +43,9 @@ export default function ParkingUsageReport() {
   const [showFilters, setShowFilters] = useState(false);
   const [selectedRow, setSelectedRow] = useState<any>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const [selectedDateOption, setSelectedDateOption] = useState("");
+  const exportDropdownRef = useRef<HTMLDivElement>(null);
   const itemsPerPage = 10;
 
   const [summary, setSummary] = useState<ParkingUsageSummary | null>(null);
@@ -58,10 +63,75 @@ export default function ParkingUsageReport() {
     planType: "All Plans",
     paymentMethod: "All Methods",
     status: "All Status",
+    startDate: "",
+    endDate: "",
   });
 
   // Chart days filter
   const [chartDays, setChartDays] = useState(30);
+
+  // Close export dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target as Node)) {
+        setShowExportDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Auto-set dates based on selected date option
+  useEffect(() => {
+    const today = new Date();
+    const formatDate = (date: Date) => date.toISOString().split('T')[0];
+    
+    let start = "";
+    let end = "";
+    
+    switch(selectedDateOption) {
+      case "Today":
+        start = formatDate(today);
+        end = formatDate(today);
+        break;
+      case "Yesterday":
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        start = formatDate(yesterday);
+        end = formatDate(yesterday);
+        break;
+      case "Last 7 Days":
+        const last7 = new Date(today);
+        last7.setDate(last7.getDate() - 7);
+        start = formatDate(last7);
+        end = formatDate(today);
+        break;
+      case "Last 30 Days":
+        const last30 = new Date(today);
+        last30.setDate(last30.getDate() - 30);
+        start = formatDate(last30);
+        end = formatDate(today);
+        break;
+      case "This Month":
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        start = formatDate(firstDay);
+        end = formatDate(lastDay);
+        break;
+      case "Last Month":
+        const firstDayLast = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const lastDayLast = new Date(today.getFullYear(), today.getMonth(), 0);
+        start = formatDate(firstDayLast);
+        end = formatDate(lastDayLast);
+        break;
+      default:
+        return;
+    }
+    
+    if (selectedDateOption && selectedDateOption !== "Custom Range") {
+      setFilters(prev => ({ ...prev, startDate: start, endDate: end, dateRange: selectedDateOption }));
+    }
+  }, [selectedDateOption]);
 
   // Fetch all data
   const fetchAllData = useCallback(async () => {
@@ -110,21 +180,43 @@ export default function ParkingUsageReport() {
       planType: "All Plans",
       paymentMethod: "All Methods",
       status: "All Status",
+      startDate: "",
+      endDate: "",
     });
+    setSelectedDateOption("");
     setChartDays(30);
     setCurrentPage(1);
     setShowFilters(false);
-    toast.info("Filters reset");
+    toast("Filters reset");
   };
 
-  // Export
-  const handleExport = async () => {
+  // Export with format
+  const handleExport = async (format: "pdf" | "excel") => {
     try {
       setExporting(true);
-      const response = await parkingUsageService.exportReport(filters);
-      toast.success(response.message);
+      setShowExportDropdown(false);
+      const response = await parkingUsageService.exportReport({
+        ...filters,
+        format: format,
+      });
+      
+      // Handle blob download
+      if (response.blob) {
+        const url = window.URL.createObjectURL(response.blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.setAttribute("download", `parking_usage_report_${new Date().toISOString().split('T')[0]}.${format === "pdf" ? "pdf" : "xlsx"}`);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.URL.revokeObjectURL(url);
+        toast.success(`Report exported as ${format.toUpperCase()}`);
+      } else {
+        toast.success(response.message || `Report exported as ${format.toUpperCase()}`);
+      }
     } catch (error) {
-      toast.error("Failed to export report");
+      console.error("Export error:", error);
+      toast.error(`Failed to export ${format.toUpperCase()} report`);
     } finally {
       setExporting(false);
     }
@@ -192,18 +284,39 @@ export default function ParkingUsageReport() {
             <Filter size={16} />
             Filters
           </button>
-          <button
-            onClick={handleExport}
-            disabled={exporting}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-dark)] transition-all disabled:opacity-50"
-          >
-            {exporting ? (
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-            ) : (
-              <Download size={16} />
+          
+          {/* Export Dropdown */}
+          <div className="relative" ref={exportDropdownRef}>
+            <button
+              onClick={() => setShowExportDropdown(!showExportDropdown)}
+              disabled={exporting}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold bg-[var(--color-primary)] text-white hover:bg-[var(--color-primary-dark)] transition-all disabled:opacity-50"
+            >
+              {exporting ? (
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <Download size={16} />
+              )}
+              Export
+            </button>
+            
+            {showExportDropdown && (
+              <div className="absolute right-0 mt-2 w-36 bg-[var(--color-surface)] rounded-xl shadow-lg border border-[var(--color-border)] overflow-hidden z-10">
+                <button
+                  onClick={() => handleExport("pdf")}
+                  className="w-full px-4 py-2 text-left text-sm font-semibold hover:bg-[var(--color-surface-soft)] transition-colors flex items-center gap-2"
+                >
+                  <File size={16} /> PDF
+                </button>
+                <button
+                  onClick={() => handleExport("excel")}
+                  className="w-full px-4 py-2 text-left text-sm font-semibold hover:bg-[var(--color-surface-soft)] transition-colors flex items-center gap-2 border-t border-[var(--color-border)]"
+                >
+                  <SquaresExclude size={16} /> Excel
+                </button>
+              </div>
             )}
-            Export
-          </button>
+          </div>
         </div>
       </header>
 
@@ -211,7 +324,7 @@ export default function ParkingUsageReport() {
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <StatCard key={i} loading={true} />
+            <StatCard key={i} loading={true} icon={undefined} title={""} value={""} />
           ))}
         </div>
       ) : (
@@ -257,10 +370,8 @@ export default function ParkingUsageReport() {
                     Date Range
                   </label>
                   <select
-                    value={filters.dateRange}
-                    onChange={(e) =>
-                      setFilters({ ...filters, dateRange: e.target.value })
-                    }
+                    value={selectedDateOption || filters.dateRange}
+                    onChange={(e) => setSelectedDateOption(e.target.value)}
                     className="w-full bg-[var(--color-surface-soft)] border border-[var(--color-border)] rounded-xl p-2.5 text-sm font-semibold outline-none focus:border-[var(--color-primary)] transition-all"
                   >
                     {dateRangeOptions.map((opt) => (
@@ -268,6 +379,41 @@ export default function ParkingUsageReport() {
                     ))}
                   </select>
                 </div>
+                
+                {/* Custom Date Range Inputs */}
+                {selectedDateOption === "Custom Range" && (
+                  <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
+                        Start Date
+                      </label>
+                      <input
+                        type="date"
+                        value={filters.startDate}
+                        onChange={(e) => {
+                          setFilters({ ...filters, startDate: e.target.value, dateRange: "Custom Range" });
+                          setSelectedDateOption("Custom Range");
+                        }}
+                        className="w-full bg-[var(--color-surface-soft)] border border-[var(--color-border)] rounded-xl p-2.5 text-sm font-semibold outline-none focus:border-[var(--color-primary)] transition-all"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
+                        End Date
+                      </label>
+                      <input
+                        type="date"
+                        value={filters.endDate}
+                        onChange={(e) => {
+                          setFilters({ ...filters, endDate: e.target.value, dateRange: "Custom Range" });
+                          setSelectedDateOption("Custom Range");
+                        }}
+                        className="w-full bg-[var(--color-surface-soft)] border border-[var(--color-border)] rounded-xl p-2.5 text-sm font-semibold outline-none focus:border-[var(--color-primary)] transition-all"
+                      />
+                    </div>
+                  </div>
+                )}
+                
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
                     Location
