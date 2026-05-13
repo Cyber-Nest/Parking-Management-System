@@ -1,5 +1,3 @@
-// services/officer-performance.service.ts
-
 export interface OfficerPerformanceFilters {
   dateRange: string;
   location: string;
@@ -37,7 +35,6 @@ export interface TopOfficerData {
   count: number;
 }
 
-// Add these interfaces and methods to existing service file
 
 export interface OfficerTicketData {
   id: string;
@@ -72,7 +69,6 @@ export interface OfficerTicketBreakdown {
   cancelledAmount: number;
 }
 
-// Add to officerPerformanceService object
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 

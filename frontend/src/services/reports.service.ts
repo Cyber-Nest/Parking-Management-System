@@ -1,5 +1,3 @@
-// services/reports.service.ts
-
 export interface RevenueFilters {
   paymentMethod: string;
   revenueType: string;
@@ -168,12 +166,10 @@ export const reportsService = {
     await delay(500);
     console.log("Revenue time data params:", params);
     
-    // Handle days filter (7D, 15D, 30D) - Priority 1
     if (params?.days) {
       return getMockRevenueTimeDataByDays(params.days);
     }
     
-    // Handle period filter (daily/weekly/monthly) - Priority 2
     if (params?.period === "weekly") {
       return getMockRevenueTimeDataWeekly();
     }
@@ -181,7 +177,6 @@ export const reportsService = {
       return getMockRevenueTimeDataMonthly();
     }
     
-    // Default: daily data
     return getMockRevenueTimeDataDaily();
   },
 

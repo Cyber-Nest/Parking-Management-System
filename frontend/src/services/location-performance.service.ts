@@ -1,5 +1,3 @@
-// services/location-performance.service.ts
-
 export interface LocationPerformanceFilters {
   dateRange: string;
   location: string;
@@ -36,7 +34,7 @@ export interface LocationTableData {
   penaltyRevenue: number;
 }
 
-// ========== DETAILS DRAWER TYPES ==========
+//DETAILS DRAWER TYPES 
 
 export interface LocationDetails {
   id: string;
@@ -157,7 +155,7 @@ export const locationPerformanceService = {
     return filtered;
   },
 
-  // ========== DETAILS DRAWER METHODS ==========
+  // DETAILS DRAWER METHODS
 
   getLocationDetails: async (locationId: string): Promise<LocationDetails> => {
     await delay(400);

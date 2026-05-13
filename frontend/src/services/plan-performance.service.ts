@@ -1,5 +1,3 @@
-// services/plan-performance.service.ts
-
 export interface PlanPerformanceFilters {
   dateRange: string;
   location: string;
@@ -48,7 +46,6 @@ export interface RevenueTrendData {
   evening: number;
 }
 
-// Plan Details for Drawer
 export interface PlanDetails {
   id: string;
   name: string;

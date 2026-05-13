@@ -1,5 +1,3 @@
-// services/peak-hours.service.ts
-
 export interface PeakHoursFilters {
   dateRange: string;
   location: string;
@@ -89,7 +87,6 @@ export const peakHoursService = {
     return days.map((day, dayIdx) => ({
       day,
       hours: Array.from({ length: 24 }, (_, hourIdx) => {
-        // Generate realistic occupancy patterns
         let baseRate = 30;
         if (hourIdx >= 8 && hourIdx <= 18) baseRate = 65; // Daytime
         if (hourIdx >= 18 && hourIdx <= 22) baseRate = 85; // Evening peak

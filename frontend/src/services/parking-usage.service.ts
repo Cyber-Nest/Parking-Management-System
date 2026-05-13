@@ -1,5 +1,3 @@
-// services/parking-usage.service.ts
-
 export interface ParkingUsageFilters {
   dateRange: string;
   location: string;

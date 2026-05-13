@@ -1,94 +1,3 @@
-// // services/penalty-report.service.ts
-
-// export interface PenaltyReportFilters {
-//   dateRange: string;
-//   officer: string;
-//   violationType: string;
-//   location: string;
-//   paymentMethod: string;
-// }
-
-// export interface PenaltyReportSummary {
-//   totalTickets: number;
-//   paidPenalties: number;
-//   totalAmount: number;
-// }
-
-// export interface PenaltyDailyData {
-//   date: string;
-//   totalTickets: number;
-//   paid: number;
-//   unpaid: number;
-//   cancelled: number;
-//   revenue: number;
-// }
-
-// export interface PenaltyTrendData {
-//   name: string;
-//   count: number;
-// }
-
-// export interface ViolationTypeData {
-//   name: string;
-//   value: number;
-//   color: string;
-// }
-
-// const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-// export const penaltyReportService = {
-//   getSummary: async (filters?: PenaltyReportFilters): Promise<PenaltyReportSummary> => {
-//     await delay(500);
-//     console.log("Summary filters:", filters);
-//     return {
-//       totalTickets: 1842,
-//       paidPenalties: 1240,
-//       totalAmount: 74250,
-//     };
-//   },
-
-//   getDailyData: async (filters?: PenaltyReportFilters): Promise<PenaltyDailyData[]> => {
-//     await delay(600);
-//     return [
-//       { date: "May 21, 2025", totalTickets: 124, paid: 85, unpaid: 32, cancelled: 7, revenue: 4850.0 },
-//       { date: "May 20, 2025", totalTickets: 142, paid: 98, unpaid: 35, cancelled: 9, revenue: 5680.0 },
-//       { date: "May 19, 2025", totalTickets: 115, paid: 72, unpaid: 38, cancelled: 5, revenue: 4200.0 },
-//       { date: "May 18, 2025", totalTickets: 98, paid: 60, unpaid: 28, cancelled: 10, revenue: 3950.0 },
-//       { date: "May 17, 2025", totalTickets: 156, paid: 110, unpaid: 38, cancelled: 8, revenue: 6200.0 },
-//       { date: "May 16, 2025", totalTickets: 138, paid: 95, unpaid: 36, cancelled: 7, revenue: 5450.0 },
-//     ];
-//   },
-
-//   getPenaltyTrend: async (filters?: PenaltyReportFilters): Promise<PenaltyTrendData[]> => {
-//     await delay(400);
-//     return [
-//       { name: "May 01", count: 45 },
-//       { name: "May 06", count: 52 },
-//       { name: "May 11", count: 38 },
-//       { name: "May 16", count: 65 },
-//       { name: "May 21", count: 70 },
-//     ];
-//   },
-
-//   getViolationTypes: async (filters?: PenaltyReportFilters): Promise<ViolationTypeData[]> => {
-//     await delay(400);
-//     return [
-//       { name: "Overstay", value: 450, color: "var(--color-primary)" },
-//       { name: "No Permit", value: 300, color: "#F43F5E" },
-//       { name: "Wrong Zone", value: 150, color: "#F59E0B" },
-//       { name: "Expired Parking", value: 120, color: "#8B5CF6" },
-//     ];
-//   },
-
-//   exportReport: async (filters?: PenaltyReportFilters): Promise<{ success: boolean; message: string }> => {
-//     await delay(1500);
-//     console.log("Exporting penalty report with filters:", filters);
-//     return { success: true, message: "Penalty report exported successfully!" };
-//   },
-// };
-
-// services/penalty-report.service.ts
-
 export interface PenaltyReportFilters {
   dateRange: string;
   location: string;
@@ -132,7 +41,6 @@ export interface ViolationTypeData {
   color: string;
 }
 
-// Add these interfaces and methods
 
 export interface PenaltyTicketDetails {
   ticketId: string;

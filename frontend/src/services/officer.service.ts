@@ -1,147 +1,3 @@
-// export interface ActivityLog {
-//   id: string;
-//   action: string;
-//   createdAt: string;
-// }
-
-// export interface Officer {
-//   id: string;
-//   name: string;
-//   email: string;
-//   phone: string;
-//   role: string;
-//   loginStatus: "Active" | "Inactive";
-//   accessStatus: "Enabled" | "Disabled";
-//   tickets: number;
-//   date: string;
-//   time: string;
-//   disabledBy?: string;
-//   disabledAt?: string;
-//   disableReason?: string;
-//   activityLogs: ActivityLog[];
-// }
-
-// const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-// export const officerService = {
-//   getOfficers: async (): Promise<Officer[]> => {
-//     await delay(500); // Simulate API call
-
-//     // Dummy data return
-//     return [
-//       {
-//         id: "OF-1001",
-//         name: "John Smith",
-//         email: "john.smith@parking.com",
-//         phone: "+1234567890",
-//         role: "Officer",
-//         loginStatus: "Active",
-//         accessStatus: "Enabled",
-//         tickets: 156,
-//         date: "May 21, 2025",
-//         time: "09:15 AM",
-//         activityLogs: [
-//           {
-//             id: "LOG-1",
-//             action: "Issued ticket TKT-1001",
-//             createdAt: "May 21, 2025 - 09:10 AM",
-//           },
-//           {
-//             id: "LOG-2",
-//             action: "Logged into dashboard",
-//             createdAt: "May 21, 2025 - 08:55 AM",
-//           },
-//         ],
-//       },
-//       {
-//         id: "OF-1002",
-//         name: "Sarah Wright",
-//         email: "sarah.w@parking.com",
-//         phone: "+1987654321",
-//         role: "Supervisor",
-//         loginStatus: "Inactive",
-//         accessStatus: "Enabled",
-//         tickets: 92,
-//         date: "May 21, 2025",
-//         time: "10:30 AM",
-//         activityLogs: [
-//           {
-//             id: "LOG-3",
-//             action: "Approved penalty cancellation",
-//             createdAt: "May 20, 2025 - 07:30 PM",
-//           },
-//         ],
-//       },
-//       {
-//         id: "OF-1003",
-//         name: "Adam Milner",
-//         email: "adam.m@parking.com",
-//         phone: "+1555012345",
-//         role: "Officer",
-//         loginStatus: "Inactive",
-//         accessStatus: "Disabled",
-//         tickets: 210,
-//         date: "May 20, 2025",
-//         time: "11:45 AM",
-//         disabledBy: "Admin",
-//         disabledAt: "May 21, 2025 - 11:00 AM",
-//         disableReason: "Violation misuse detected.",
-//         activityLogs: [
-//           {
-//             id: "LOG-4",
-//             action: "Officer account disabled",
-//             createdAt: "May 21, 2025 - 11:00 AM",
-//           },
-//         ],
-//       },
-//     ];
-//   },
-
-
-//   // Login activity tracking
-//   recordLoginActivity: async (
-//     officerId: string,
-//     action: string,
-//   ): Promise<void> => {
-//     await delay(300);
-//     console.log(`Login activity recorded: ${action} for officer ${officerId}`);
-//     // In real app, this would send data to backend
-//   },
-
-//   recordTicketActivity: async (
-//     ticketId: string,
-//     officerId: string,
-//     action: string,
-//     details: string,
-//   ): Promise<void> => {
-//     await delay(300);
-//     console.log(`Ticket activity: ${action} on ${ticketId} by ${officerId}`);
-//   },
-
-//   recordParkingActivity: async (
-//     sessionId: string,
-//     officerId: string,
-//     action: string,
-//     details: string,
-//   ): Promise<void> => {
-//     await delay(300);
-//     console.log(`Parking activity: ${action} on ${sessionId} by ${officerId}`);
-//   },
-
-//   recordPaymentActivity: async (
-//     paymentId: string,
-//     officerId: string,
-//     action: string,
-//     amount: string,
-//   ): Promise<void> => {
-//     await delay(300);
-//     console.log(`Payment activity: ${action} on ${paymentId} for ${amount}`);
-//   },
-// };
-
-
-// services/officer.service.ts
-
 export interface ActivityLog {
   id: string;
   action: string;
@@ -217,7 +73,7 @@ export interface EvidenceActivityData {
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-// Mock data store (in real app, this would be in database)
+// Mock data store 
 let mockOfficers: Officer[] = [
   {
     id: "OF-1001",
@@ -400,7 +256,6 @@ export const officerService = {
     return mockOfficers[index];
   },
 
-  // ==================== ACTIVITY LOGGING METHODS ====================
 
   // Add general activity log to officer
   addActivityLog: async (officerId: string, action: string, type: ActivityLog["type"], details?: string): Promise<void> => {

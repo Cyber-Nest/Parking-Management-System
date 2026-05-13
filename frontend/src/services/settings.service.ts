@@ -1,5 +1,3 @@
-// services/settings.service.ts
-
 export interface GeneralSettings {
   companyName: string;
   phone: string;
@@ -36,7 +34,6 @@ export interface SecuritySettings {
   sessionTimeout: number;
 }
 
-// services/settings.service.ts (Add to existing file)
 
 export interface NotificationSettings {
   // Email Notifications
@@ -53,7 +50,6 @@ export interface NotificationSettings {
   adminAlertRecipient: string;
 }
 
-// services/settings.service.ts (Add to existing file)
 
 export interface IntegrationSettings {
   // Payment Gateways
@@ -96,7 +92,6 @@ export interface IntegrationSettings {
   };
 }
 
-// services/settings.service.ts (Add to existing file)
 
 export interface AuditLog {
   id: string;
@@ -119,7 +114,6 @@ export interface AuditLogFilters {
   action?: string;
 }
 
-// services/settings.service.ts (Add to existing file)
 
 export interface BrandingSettings {
   systemName: string;
@@ -130,7 +124,6 @@ export interface BrandingSettings {
   sidebarCollapsed: boolean;
 }
 
-// services/settings.service.ts (Add to existing file)
 
 export interface BrandingSettings {
   systemName: string;
@@ -141,7 +134,6 @@ export interface BrandingSettings {
   sidebarCollapsed: boolean;
 }
 
-// ==================== USERS & ROLES TYPES ====================
 
 export interface User {
   id: string;

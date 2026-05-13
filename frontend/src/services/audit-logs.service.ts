@@ -1,5 +1,3 @@
-// services/audit-logs.service.ts
-
 export interface AuditLogFilters {
   search: string;
   dateRange: string;
