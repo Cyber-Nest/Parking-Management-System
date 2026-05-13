@@ -163,6 +163,7 @@ export default function PaymentsPage() {
       }
       return item;
     });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setPayments(updated as any);
     showToast(`Payment ${payment.id} has been refunded`, "success");
   };
