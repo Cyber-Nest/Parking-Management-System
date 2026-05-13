@@ -1,8 +1,6 @@
 import {
   listOfficers,
   getOfficerSummary,
-  createOfficer as createOfficerApi,
-  updateOfficer as updateOfficerApi,
   type OfficerListParams,
   type OfficerRoleUi,
   type OfficerStatusUi,
@@ -75,31 +73,6 @@ export const officerService = {
         created_at: o.created_at,
       } as Officer;
     });
-  },
-
-  async createOfficer(payload: {
-    full_name: string;
-    email: string;
-    phone?: string;
-    role: OfficerRoleUi;
-    badge_number?: string;
-    password?: string;
-  }) {
-    const normalizedRole = payload.role.toUpperCase() as OfficerRoleUi;
-    return await createOfficerApi({ ...payload, role: normalizedRole });
-  },
-
-  async updateOfficer(id: string, payload: {
-    full_name?: string;
-    phone?: string;
-    role?: OfficerRoleUi;
-    badge_number?: string;
-  }) {
-    const normalizedPayload = {
-      ...payload,
-      role: payload.role ? payload.role.toUpperCase() as OfficerRoleUi : undefined,
-    };
-    return await updateOfficerApi(id, normalizedPayload);
   },
 
   async getSummary() {

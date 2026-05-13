@@ -17,7 +17,6 @@ import {
   MoreVertical,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { toast } from "react-hot-toast";
 
 import { StatCard } from "@/components/common/StatCard";
 import { TableSkeleton } from "@/components/common/TableSkeleton";
@@ -62,22 +61,20 @@ export default function OfficerManagementPage() {
 
   const itemsPerPage = 10;
 
-  const fetchOfficers = async () => {
-    try {
-      setLoading(true);
-      const items = await officerService.getOfficers({});
-      setOfficers(items);
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to load officers");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Fetch Data
   useEffect(() => {
-    void fetchOfficers();
+    const fetchOfficers = async () => {
+      try {
+        setLoading(true);
+        const items = await officerService.getOfficers({});
+        setOfficers(items);
+      } catch (error) {
+        console.error(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchOfficers();
   }, []);
 
   // Stats
@@ -160,13 +157,13 @@ export default function OfficerManagementPage() {
       prev.map((officer) =>
         officer.id === officerId
           ? {
-            ...officer,
-            accessStatus:
-              officer.accessStatus === "Disabled" ? "Enabled" : "Disabled",
-            disabledBy: "Admin",
-            disabledAt: new Date().toLocaleString(),
-            disableReason: "Access disabled by admin.",
-          }
+              ...officer,
+              accessStatus:
+                officer.accessStatus === "Disabled" ? "Enabled" : "Disabled",
+              disabledBy: "Admin",
+              disabledAt: new Date().toLocaleString(),
+              disableReason: "Access disabled by admin.",
+            }
           : officer,
       ),
     );
@@ -179,43 +176,51 @@ export default function OfficerManagementPage() {
     setCurrentPage(1);
   };
 
-  const handleSubmitOfficer = async (data: OfficerFormData) => {
+  const handleSubmitOfficer = (data: OfficerFormData) => {
     if (!data.name || !data.email || !data.phone || !data.role) {
-      toast.error("Please fill all required fields.");
+      alert("Please fill all fields");
       return;
     }
 
-    const normalizedRole = data.role.toUpperCase() === "SUPERVISOR" ? "SUPERVISOR" : "OFFICER";
-
-    try {
-      setLoading(true);
-
-      if (editingOfficer) {
-        await officerService.updateOfficer(editingOfficer.id, {
-          full_name: data.name,
-          phone: data.phone,
-          role: normalizedRole,
-        });
-        toast.success("Officer updated successfully.");
-      } else {
-        await officerService.createOfficer({
-          full_name: data.name,
-          email: data.email,
-          phone: data.phone,
-          role: normalizedRole,
-        });
-        toast.success("Officer registered successfully. Invite email attempted.");
-      }
-
-      await fetchOfficers();
-      setIsFormOpen(false);
-      resetForm();
-    } catch (error: any) {
-      console.error(error);
-      toast.error(error?.response?.data?.message ?? error.message ?? "Unable to save officer.");
-    } finally {
-      setLoading(false);
+    if (editingOfficer) {
+      setOfficers((prev) =>
+        prev.map((officer) =>
+          officer.id === editingOfficer.id
+            ? {
+                ...officer,
+                name: data.name,
+                phone: data.phone,
+                role: data.role,
+              }
+            : officer,
+        ),
+      );
+    } else {
+      const newOfficer: Officer = {
+        id: `OF-${1000 + officers.length + 1}`,
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        role: data.role,
+        loginStatus: "Inactive",
+        accessStatus: "Enabled",
+        tickets: 0,
+        date: new Date().toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        }),
+        time: new Date().toLocaleTimeString("en-US", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        activityLogs: [],
+      };
+      setOfficers((prev) => [newOfficer, ...prev]);
     }
+
+    setIsFormOpen(false);
+    resetForm();
   };
 
   return (
@@ -436,10 +441,11 @@ export default function OfficerManagementPage() {
                   <button
                     key={page}
                     onClick={() => setCurrentPage(page)}
-                    className={`w-9 h-9 rounded-xl text-xs font-black transition-all ${currentPage === page
+                    className={`w-9 h-9 rounded-xl text-xs font-black transition-all ${
+                      currentPage === page
                         ? "bg-[var(--color-primary)] text-white shadow-lg shadow-[var(--color-primary)]/20"
                         : "hover:bg-white"
-                      }`}
+                    }`}
                   >
                     {page}
                   </button>

@@ -7,10 +7,7 @@
 .buildlog/
 .history
 .env
-backend/owners_admin/.env
-backend/owners_admin/node_modules/
-backend/owners_admin/dist/
-backend/owners_admin/postman
+.node_modules
 
 
 

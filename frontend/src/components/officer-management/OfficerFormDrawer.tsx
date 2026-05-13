@@ -285,10 +285,11 @@ export const OfficerFormDrawer = ({
                       <input
                         type="email"
                         placeholder="j.doe@cityenforce.gov"
-                        className={`input pl-10 ${editingOfficer
+                        className={`input pl-10 ${
+                          editingOfficer
                             ? "bg-[var(--color-surface-soft)] cursor-not-allowed opacity-70 border-dashed"
                             : ""
-                          }`}
+                        }`}
                         disabled={!!editingOfficer}
                         value={formData.email}
                         onChange={(e) => onFormChange("email", e.target.value)}
@@ -308,8 +309,9 @@ export const OfficerFormDrawer = ({
                       <option value="" disabled>
                         Select assigned role
                       </option>
-                      <option value="OFFICER">Field Officer</option>
-                      <option value="SUPERVISOR">Supervisor</option>
+                      <option value="Officer">Field Officer</option>
+                      <option value="Supervisor">Supervisor</option>
+                      <option value="Admin">Administrator</option>
                     </select>
                   </FieldWrapper>
                 </div>
@@ -482,10 +484,11 @@ export const OfficerFormDrawer = ({
                       </p>
                     </div>
                     <select
-                      className={`w-40 px-4 py-2.5 rounded-xl text-sm font-bold border-2 transition-colors ${editingOfficer.accessStatus === "Enabled"
+                      className={`w-40 px-4 py-2.5 rounded-xl text-sm font-bold border-2 transition-colors ${
+                        editingOfficer.accessStatus === "Enabled"
                           ? "bg-emerald-50 text-emerald-700 border-emerald-200 focus:ring-emerald-200"
                           : "bg-red-50 text-red-700 border-red-200 focus:ring-red-200"
-                        }`}
+                      }`}
                       value={editingOfficer.accessStatus}
                       onChange={(e) => {
                         // This functionality not implemented in original, preserved

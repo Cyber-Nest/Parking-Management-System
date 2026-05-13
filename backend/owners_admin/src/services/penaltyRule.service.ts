@@ -1,6 +1,5 @@
 import { PenaltyRuleRepository, PenaltyRulePublic, PenaltyRuleQuery } from '../repositories/penaltyRule.repository';
 import { PaginatedResponse } from '../types';
-import { NotFoundError } from './commonErrors';
 import { randomUUID } from 'crypto';
 
 const repository = new PenaltyRuleRepository();
@@ -30,18 +29,9 @@ export class PenaltyRuleService {
         return repository.create(rule);
     }
 
-    async update(id: string, data: Partial<Omit<PenaltyRulePublic, 'id' | 'created_at'>>): Promise<PenaltyRulePublic> {
-        const affected = await repository.update(id, data);
-        if (affected === 0) {
-            throw new NotFoundError('Penalty rule not found');
-        }
-
-        const rule = await repository.getById(id);
-        if (!rule) {
-            throw new NotFoundError('Penalty rule not found');
-        }
-
-        return rule;
+    async update(id: string, data: Partial<Omit<PenaltyRulePublic, 'id' | 'created_at'>>): Promise<PenaltyRulePublic | null> {
+        await repository.update(id, data);
+        return repository.getById(id);
     }
 
     async delete(id: string): Promise<boolean> {

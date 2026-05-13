@@ -18,48 +18,6 @@ const summarizeReportData = (data: any) => {
     return keys.map((key) => ({ key, value: data[key] }));
 };
 
-const renderTable = (rows: any[], columns: { key: string; label: string }[]) => (
-    <div className="p-4 bg-white rounded-3xl border border-slate-200 shadow-sm overflow-x-auto">
-        <table className="min-w-full text-left text-sm">
-            <thead>
-                <tr className="border-b border-slate-200">
-                    {columns.map((column) => (
-                        <th key={column.key} className="py-2 pr-4">
-                            {column.label}
-                        </th>
-                    ))}
-                </tr>
-            </thead>
-            <tbody>
-                {rows.map((row, index) => (
-                    <tr key={row.id ?? index} className="border-b border-slate-100">
-                        {columns.map((column) => (
-                            <td key={column.key} className="py-2 pr-4">
-                                {column.key.includes("date") || column.key.includes("at")
-                                    ? row[column.key]
-                                        ? new Date(row[column.key]).toLocaleDateString()
-                                        : "-"
-                                    : String(row[column.key] ?? "-")}
-                            </td>
-                        ))}
-                    </tr>
-                ))}
-            </tbody>
-        </table>
-    </div>
-);
-
-const renderCards = (values: Record<string, any>) => (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {Object.entries(values).map(([key, value]) => (
-            <div key={key} className="p-4 bg-white rounded-3xl border border-slate-200 shadow-sm">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{key.replace(/_/g, " ")}</p>
-                <p className="mt-2 text-lg font-semibold text-slate-900">{String(value)}</p>
-            </div>
-        ))}
-    </div>
-);
-
 const renderDetails = (data: any) => {
     if (!data) return <p className="text-sm text-gray-500">No report data available.</p>;
 
@@ -71,236 +29,166 @@ const renderDetails = (data: any) => {
         );
     }
 
-    const sections: React.ReactNode[] = [];
-
-    if (data.totals) {
-        sections.push(
-            <div key="totals">{renderCards(data.totals)}</div>
-        );
-    }
-
-    if (data.summary) {
-        sections.push(
-            <div key="summary" className="p-4 bg-white rounded-3xl border border-slate-200 shadow-sm">
-                <p className="text-sm font-semibold text-slate-900">Summary</p>
-                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {Object.entries(data.summary).map(([key, value]) => (
-                        <div key={key} className="p-3 rounded-2xl bg-slate-50">
-                            <p className="text-xs uppercase tracking-[0.16em] text-slate-500">{key.replace(/_/g, " ")}</p>
-                            <p className="mt-1 text-base font-medium text-slate-900">{String(value)}</p>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        );
-    }
-
-    if (data.statusSummary) {
-        sections.push(
-            <div key="statusSummary" className="p-4 bg-white rounded-3xl border border-slate-200 shadow-sm">
-                <p className="text-sm font-semibold text-slate-900">Status Summary</p>
-                <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {data.statusSummary.map((item: any, index: number) => (
-                        <div key={index} className="p-3 rounded-2xl bg-slate-50">
-                            <p className="text-xs uppercase tracking-[0.16em] text-slate-500">{item.status}</p>
-                            <p className="mt-1 text-base font-medium text-slate-900">{item.count}</p>
-                            <p className="text-xs text-slate-500">Total: {item.total_amount ?? item.totalAmount ?? "-"}</p>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        );
-    }
-
-    if (data.daily) {
-        sections.push(
-            <div key="daily" className="space-y-4">
-                <p className="text-sm font-semibold text-slate-900">Daily Revenue</p>
-                {renderTable(data.daily, [
-                    { key: 'report_date', label: 'Date' },
-                    { key: 'total_amount', label: 'Total Amount' },
-                    { key: 'transaction_count', label: 'Tx Count' },
-                ])}
-            </div>
-        );
-    }
-
-    if (data.sessionTotals) {
-        sections.push(
-            <div key="sessionTotals" className="p-4 bg-white rounded-3xl border border-slate-200 shadow-sm">
-                <p className="text-sm font-semibold text-slate-900">Session Totals</p>
-                <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {data.sessionTotals.map((item: any, index: number) => (
-                        <div key={index} className="p-3 rounded-2xl bg-slate-50">
-                            <p className="text-xs uppercase tracking-[0.16em] text-slate-500">{item.status}</p>
-                            <p className="mt-1 text-base font-medium text-slate-900">{item.count}</p>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        );
-    }
-
-    if (data.planBreakdown) {
-        sections.push(
-            <div key="planBreakdown" className="space-y-4">
-                <p className="text-sm font-semibold text-slate-900">Plan Breakdown</p>
-                {renderTable(data.planBreakdown, [
-                    { key: 'plan_name', label: 'Plan' },
-                    { key: 'sessions', label: 'Sessions' },
-                    { key: 'total_duration', label: 'Total Duration' },
-                ])}
-            </div>
-        );
-    }
-
-    if (data.officerBreakdown) {
-        sections.push(
-            <div key="officerBreakdown" className="space-y-4">
-                <p className="text-sm font-semibold text-slate-900">Officer Breakdown</p>
-                {renderTable(data.officerBreakdown, [
-                    { key: 'officer_name', label: 'Officer' },
-                    { key: 'count', label: 'Count' },
-                    { key: 'total_amount', label: 'Amount' },
-                ])}
-            </div>
-        );
-    }
-
-    if (data.officerPerformance) {
-        sections.push(
-            <div key="officerPerformance" className="space-y-4">
-                <p className="text-sm font-semibold text-slate-900">Officer Performance</p>
-                {renderTable(data.officerPerformance, [
-                    { key: 'officer_name', label: 'Officer' },
-                    { key: 'tickets_issued', label: 'Tickets Issued' },
-                    { key: 'total_penalty_amount', label: 'Penalty Amount' },
-                ])}
-            </div>
-        );
-    }
-
-    if (data.dueTickets) {
-        sections.push(
-            <div key="dueTickets" className="space-y-4">
-                <p className="text-sm font-semibold text-slate-900">Due Tickets</p>
-                {renderTable(data.dueTickets, [
-                    { key: 'ticket_number', label: 'Ticket #' },
-                    { key: 'license_plate', label: 'License' },
-                    { key: 'amount', label: 'Amount' },
-                    { key: 'officer_name', label: 'Officer' },
-                    { key: 'due_date', label: 'Due Date' },
-                    { key: 'status', label: 'Status' },
-                ])}
-            </div>
-        );
-    }
-
-    if (data.occupancy) {
-        sections.push(
-            <div key="occupancy" className="space-y-4">
-                <p className="text-sm font-semibold text-slate-900">Occupancy</p>
-                <div className="grid gap-4 md:grid-cols-2">
-                    {renderTable(data.occupancy, [
-                        { key: 'status', label: 'Status' },
-                        { key: 'count', label: 'Count' },
-                    ])}
-                    <div className="p-4 bg-white rounded-3xl border border-slate-200 shadow-sm">
-                        <p className="text-sm font-semibold text-slate-900">Average Duration</p>
-                        <p className="mt-3 text-2xl font-semibold text-slate-900">{String(data.averageDuration ?? 0)}</p>
+    if (data.summary || data.totals || data.statusSummary || data.reconciliation || data.history || data.records || data.locationData) {
+        return (
+            <div className="space-y-6 mt-4">
+                {data.totals && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {Object.entries(data.totals).map(([key, value]) => (
+                            <div key={key} className="p-4 bg-white rounded-3xl border border-slate-200 shadow-sm">
+                                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{key.replace(/_/g, " ")}</p>
+                                <p className="mt-2 text-lg font-semibold text-slate-900">{String(value)}</p>
+                            </div>
+                        ))}
                     </div>
-                </div>
+                )}
+
+                {data.summary && (
+                    <div className="p-4 bg-white rounded-3xl border border-slate-200 shadow-sm">
+                        <p className="text-sm font-semibold text-slate-900">Summary</p>
+                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {Object.entries(data.summary).map(([key, value]) => (
+                                <div key={key} className="p-3 rounded-2xl bg-slate-50">
+                                    <p className="text-xs uppercase tracking-[0.16em] text-slate-500">{key.replace(/_/g, " ")}</p>
+                                    <p className="mt-1 text-base font-medium text-slate-900">{String(value)}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {data.statusSummary && (
+                    <div className="p-4 bg-white rounded-3xl border border-slate-200 shadow-sm">
+                        <p className="text-sm font-semibold text-slate-900">Status Summary</p>
+                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            {data.statusSummary.map((item: any, index: number) => (
+                                <div key={index} className="p-3 rounded-2xl bg-slate-50">
+                                    <p className="text-xs uppercase tracking-[0.16em] text-slate-500">{item.status}</p>
+                                    <p className="mt-1 text-base font-medium text-slate-900">{item.count}</p>
+                                    <p className="text-xs text-slate-500">Total: {item.total_amount ?? item.totalAmount ?? "-"}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {data.reconciliation && (
+                    <div className="p-4 bg-white rounded-3xl border border-slate-200 shadow-sm">
+                        <p className="text-sm font-semibold text-slate-900">Reconciliation</p>
+                        <div className="mt-3 overflow-x-auto">
+                            <table className="min-w-full text-left text-sm">
+                                <thead>
+                                    <tr className="border-b border-slate-200">
+                                        <th className="py-2 pr-4">Type</th>
+                                        <th className="py-2 pr-4">Status</th>
+                                        <th className="py-2 pr-4">Count</th>
+                                        <th className="py-2 pr-4">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {data.reconciliation.map((item: any, index: number) => (
+                                        <tr key={index} className="border-b border-slate-100">
+                                            <td className="py-2 pr-4">{item.payment_type}</td>
+                                            <td className="py-2 pr-4">{item.status}</td>
+                                            <td className="py-2 pr-4">{item.count}</td>
+                                            <td className="py-2 pr-4">{item.total_amount}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {data.history && (
+                    <div className="p-4 bg-white rounded-3xl border border-slate-200 shadow-sm">
+                        <p className="text-sm font-semibold text-slate-900">Vehicle History</p>
+                        <div className="mt-3 overflow-x-auto">
+                            <table className="min-w-full text-left text-sm">
+                                <thead>
+                                    <tr className="border-b border-slate-200">
+                                        <th className="py-2 pr-4">Ticket #</th>
+                                        <th className="py-2 pr-4">Officer</th>
+                                        <th className="py-2 pr-4">Amount</th>
+                                        <th className="py-2 pr-4">Status</th>
+                                        <th className="py-2 pr-4">Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {data.history.map((item: any) => (
+                                        <tr key={item.id} className="border-b border-slate-100">
+                                            <td className="py-2 pr-4">{item.ticket_number}</td>
+                                            <td className="py-2 pr-4">{item.officer_name}</td>
+                                            <td className="py-2 pr-4">{item.amount}</td>
+                                            <td className="py-2 pr-4">{item.status}</td>
+                                            <td className="py-2 pr-4">{item.date_issued ? new Date(item.date_issued).toLocaleDateString() : "-"}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {data.records && (
+                    <div className="p-4 bg-white rounded-3xl border border-slate-200 shadow-sm">
+                        <p className="text-sm font-semibold text-slate-900">Refund Records</p>
+                        <div className="mt-3 overflow-x-auto">
+                            <table className="min-w-full text-left text-sm">
+                                <thead>
+                                    <tr className="border-b border-slate-200">
+                                        <th className="py-2 pr-4">License</th>
+                                        <th className="py-2 pr-4">Amount</th>
+                                        <th className="py-2 pr-4">Method</th>
+                                        <th className="py-2 pr-4">Status</th>
+                                        <th className="py-2 pr-4">Paid At</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {data.records.map((item: any) => (
+                                        <tr key={item.id} className="border-b border-slate-100">
+                                            <td className="py-2 pr-4">{item.license_plate}</td>
+                                            <td className="py-2 pr-4">{item.amount}</td>
+                                            <td className="py-2 pr-4">{item.payment_method}</td>
+                                            <td className="py-2 pr-4">{item.status}</td>
+                                            <td className="py-2 pr-4">{item.paid_at ? new Date(item.paid_at).toLocaleDateString() : "-"}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {data.locationData && (
+                    <div className="p-4 bg-white rounded-3xl border border-slate-200 shadow-sm">
+                        <p className="text-sm font-semibold text-slate-900">Location Performance</p>
+                        <div className="mt-3 overflow-x-auto">
+                            <table className="min-w-full text-left text-sm">
+                                <thead>
+                                    <tr className="border-b border-slate-200">
+                                        <th className="py-2 pr-4">Location</th>
+                                        <th className="py-2 pr-4">Sessions</th>
+                                        <th className="py-2 pr-4">Total Duration</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {data.locationData.map((item: any) => (
+                                        <tr key={item.plan_name} className="border-b border-slate-100">
+                                            <td className="py-2 pr-4">{item.plan_name}</td>
+                                            <td className="py-2 pr-4">{item.sessions}</td>
+                                            <td className="py-2 pr-4">{item.total_duration}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+
+                {renderDefaultObject(data)}
             </div>
         );
-    }
-
-    if (data.planData) {
-        sections.push(
-            <div key="planData" className="space-y-4">
-                <p className="text-sm font-semibold text-slate-900">Plan Performance</p>
-                {renderTable(data.planData, [
-                    { key: 'plan_name', label: 'Plan' },
-                    { key: 'sessions_count', label: 'Sessions' },
-                    { key: 'average_duration', label: 'Avg Duration' },
-                ])}
-            </div>
-        );
-    }
-
-    if (data.recentActivity) {
-        sections.push(
-            <div key="recentActivity" className="space-y-4">
-                <p className="text-sm font-semibold text-slate-900">Recent Activity</p>
-                {renderTable(data.recentActivity, [
-                    { key: 'user_name', label: 'User' },
-                    { key: 'action', label: 'Action' },
-                    { key: 'module', label: 'Module' },
-                    { key: 'status', label: 'Status' },
-                    { key: 'created_at', label: 'Created At' },
-                ])}
-            </div>
-        );
-    }
-
-    if (data.locationData) {
-        sections.push(
-            <div key="locationData" className="space-y-4">
-                <p className="text-sm font-semibold text-slate-900">Location Performance</p>
-                {renderTable(data.locationData, [
-                    { key: 'plan_name', label: 'Location' },
-                    { key: 'sessions', label: 'Sessions' },
-                    { key: 'total_duration', label: 'Total Duration' },
-                ])}
-            </div>
-        );
-    }
-
-    if (data.history) {
-        sections.push(
-            <div key="history" className="space-y-4">
-                <p className="text-sm font-semibold text-slate-900">Vehicle History</p>
-                {renderTable(data.history, [
-                    { key: 'ticket_number', label: 'Ticket #' },
-                    { key: 'officer_name', label: 'Officer' },
-                    { key: 'amount', label: 'Amount' },
-                    { key: 'status', label: 'Status' },
-                    { key: 'date_issued', label: 'Date Issued' },
-                ])}
-            </div>
-        );
-    }
-
-    if (data.records) {
-        sections.push(
-            <div key="records" className="space-y-4">
-                <p className="text-sm font-semibold text-slate-900">Refund Records</p>
-                {renderTable(data.records, [
-                    { key: 'license_plate', label: 'License' },
-                    { key: 'amount', label: 'Amount' },
-                    { key: 'payment_method', label: 'Method' },
-                    { key: 'status', label: 'Status' },
-                    { key: 'paid_at', label: 'Paid At' },
-                ])}
-            </div>
-        );
-    }
-
-    if (data.reconciliation) {
-        sections.push(
-            <div key="reconciliation" className="space-y-4">
-                <p className="text-sm font-semibold text-slate-900">Reconciliation</p>
-                {renderTable(data.reconciliation, [
-                    { key: 'payment_type', label: 'Type' },
-                    { key: 'status', label: 'Status' },
-                    { key: 'count', label: 'Count' },
-                    { key: 'total_amount', label: 'Amount' },
-                ])}
-            </div>
-        );
-    }
-
-    if (data.statusSummary || data.summary || data.totals || data.history || data.records || data.locationData || data.daily || data.sessionTotals || data.planBreakdown || data.officerBreakdown || data.officerPerformance || data.dueTickets || data.occupancy || data.planData || data.recentActivity || data.reconciliation) {
-        return <div className="space-y-6 mt-4">{sections}</div>;
     }
 
     return (
