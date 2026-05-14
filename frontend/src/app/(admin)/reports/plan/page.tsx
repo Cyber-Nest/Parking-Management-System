@@ -1,14 +1,3 @@
-<<<<<<< HEAD
-import ReportViewer from "@/components/reports/ReportViewer";
-
-export default function PlanReport() {
-  return (
-    <ReportViewer
-      reportType="plan"
-      title="Plan Performance"
-      description="Analyzing the effectiveness of various parking plans."
-    />
-=======
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -642,6 +631,5 @@ export default function PlanPerformanceReport() {
         planName={selectedPlanName}
       />
     </div>
->>>>>>> ac535eff8f405c2084fb705a0bb4fd443b3bb2e1
   );
 }

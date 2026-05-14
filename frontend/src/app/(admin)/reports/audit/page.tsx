@@ -1,14 +1,3 @@
-<<<<<<< HEAD
-import ReportViewer from "@/components/reports/ReportViewer";
-
-export default function AuditLogs() {
-  return (
-    <ReportViewer
-      reportType="audit"
-      title="Audit Logs"
-      description="System activity and administrative change history."
-    />
-=======
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -701,6 +690,5 @@ export default function AuditLogsReport() {
         )}
       </div>
     </div>
->>>>>>> ac535eff8f405c2084fb705a0bb4fd443b3bb2e1
   );
 }

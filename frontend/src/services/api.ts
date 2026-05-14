@@ -27,6 +27,7 @@ export const API_ENDPOINTS = {
 
   REPORTS: {
     GET: (type: string) => `/admin/reports/${type}`,
+    EXPORT: (type: string) => `/admin/reports/${type}/export`,
   },
 
   SESSIONS: {

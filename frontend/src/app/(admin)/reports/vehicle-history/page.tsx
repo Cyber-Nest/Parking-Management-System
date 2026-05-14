@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-import ReportViewer from "@/components/reports/ReportViewer";
-=======
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -76,16 +73,8 @@ const NoteActionDropdown = ({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
->>>>>>> ac535eff8f405c2084fb705a0bb4fd443b3bb2e1
 
   return (
-<<<<<<< HEAD
-    <ReportViewer
-      reportType="vehicle-history"
-      title="Vehicle History"
-      description="Historical data and violation records for specific vehicles."
-    />
-=======
     <div className="relative" ref={menuRef}>
       <button
         onClick={() => setOpen(!open)}
@@ -123,7 +112,6 @@ const NoteActionDropdown = ({
         )}
       </AnimatePresence>
     </div>
->>>>>>> ac535eff8f405c2084fb705a0bb4fd443b3bb2e1
   );
 };
 
@@ -131,20 +119,18 @@ const NoteActionDropdown = ({
 const TabButton = ({ active, onClick, label, count }: any) => (
   <button
     onClick={onClick}
-    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-      active
+    className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${active
         ? "bg-[var(--color-primary)] text-white shadow-sm"
         : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)] hover:bg-[var(--color-surface-soft)]"
-    }`}
+      }`}
   >
     {label}
     {count !== undefined && count > 0 && (
       <span
-        className={`ml-2 px-1.5 py-0.5 rounded-full text-[10px] ${
-          active
+        className={`ml-2 px-1.5 py-0.5 rounded-full text-[10px] ${active
             ? "bg-white/20 text-white"
             : "bg-[var(--color-surface-soft)] text-[var(--color-text-muted)]"
-        }`}
+          }`}
       >
         {count}
       </span>
@@ -236,13 +222,13 @@ export default function VehicleHistoryReport() {
   useEffect(() => {
     const today = new Date();
     const formatDate = (date: Date) => date.toISOString().split('T')[0];
-    
+
     if (filters.dateRange === "Custom Range") return;
-    
+
     let start = "";
     let end = "";
-    
-    switch(filters.dateRange) {
+
+    switch (filters.dateRange) {
       case "Today":
         start = formatDate(today);
         end = formatDate(today);
@@ -280,7 +266,7 @@ export default function VehicleHistoryReport() {
       default:
         return;
     }
-    
+
     setFilters(prev => ({ ...prev, startDate: start, endDate: end }));
   }, [filters.dateRange]);
 
@@ -414,7 +400,7 @@ export default function VehicleHistoryReport() {
         tab: activeTab,
         format: format,
       });
-      
+
       // Handle blob download
       if (response.blob) {
         const url = window.URL.createObjectURL(response.blob);
@@ -527,7 +513,7 @@ export default function VehicleHistoryReport() {
                 )}
                 Export
               </button>
-              
+
               {showExportDropdown && (
                 <div className="absolute right-0 mt-2 w-36 bg-[var(--color-surface)] rounded-xl shadow-lg border border-[var(--color-border)] overflow-hidden z-10">
                   <button
@@ -1002,13 +988,12 @@ export default function VehicleHistoryReport() {
                             </td>
                             <td className="px-4 py-3">
                               <span
-                                className={`px-2 py-0.5 rounded-md text-[9px] font-bold ${
-                                  row.visibility === "internal"
+                                className={`px-2 py-0.5 rounded-md text-[9px] font-bold ${row.visibility === "internal"
                                     ? "bg-gray-100 text-gray-600"
                                     : row.visibility === "manager_only"
                                       ? "bg-orange-100 text-orange-600"
                                       : "bg-blue-100 text-blue-600"
-                                }`}
+                                  }`}
                               >
                                 {row.visibility === "internal"
                                   ? "Internal"

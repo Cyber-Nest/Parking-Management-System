@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-import ReportViewer from "@/components/reports/ReportViewer";
-=======
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -89,13 +86,13 @@ export default function LocationPerformanceReport() {
   useEffect(() => {
     const today = new Date();
     const formatDate = (date: Date) => date.toISOString().split('T')[0];
-    
+
     if (filters.dateRange === "Custom Range") return;
-    
+
     let start = "";
     let end = "";
-    
-    switch(filters.dateRange) {
+
+    switch (filters.dateRange) {
       case "Today":
         start = formatDate(today);
         end = formatDate(today);
@@ -133,7 +130,7 @@ export default function LocationPerformanceReport() {
       default:
         return;
     }
-    
+
     setFilters(prev => ({ ...prev, startDate: start, endDate: end }));
   }, [filters.dateRange]);
 
@@ -195,7 +192,7 @@ export default function LocationPerformanceReport() {
     setSearchQuery("");
     setCurrentPage(1);
     setShowFilters(false);
-    toast.info("Filters reset");
+    toast("Filters reset");
   };
 
   // Export with format
@@ -207,7 +204,7 @@ export default function LocationPerformanceReport() {
         ...filters,
         format: format,
       });
-      
+
       // Handle blob download
       if (response.blob) {
         const url = window.URL.createObjectURL(response.blob);
@@ -255,16 +252,8 @@ export default function LocationPerformanceReport() {
   const paymentMethodOptions = ["All Methods", "Card", "Cash", "Wallet"];
   const planTypeOptions = ["All Plans", "Hourly", "Daily", "Monthly"];
   const statusOptions = ["All Status", "Active", "Completed", "Cancelled"];
->>>>>>> ac535eff8f405c2084fb705a0bb4fd443b3bb2e1
 
   return (
-<<<<<<< HEAD
-    <ReportViewer
-      reportType="location"
-      title="Location Performance"
-      description="Comparing efficiency and revenue across different zones."
-    />
-=======
     <div className="min-h-screen px-4 md:px-6 py-6 space-y-8 bg-[var(--color-bg)]">
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -291,7 +280,7 @@ export default function LocationPerformanceReport() {
             <Filter size={16} />
             Filters
           </button>
-          
+
           {/* Export Dropdown */}
           <div className="relative" ref={exportDropdownRef}>
             <button
@@ -306,7 +295,7 @@ export default function LocationPerformanceReport() {
               )}
               Export
             </button>
-            
+
             {showExportDropdown && (
               <div className="absolute right-0 mt-2 w-36 bg-[var(--color-surface)] rounded-xl shadow-lg border border-[var(--color-border)] overflow-hidden z-10">
                 <button
@@ -389,7 +378,7 @@ export default function LocationPerformanceReport() {
                     ))}
                   </select>
                 </div>
-                
+
                 {/* Custom Date Range Inputs */}
                 {filters.dateRange === "Custom Range" && (
                   <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -421,7 +410,7 @@ export default function LocationPerformanceReport() {
                     </div>
                   </div>
                 )}
-                
+
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
                     Location
@@ -664,6 +653,5 @@ export default function LocationPerformanceReport() {
         locationName={selectedLocationName}
       />
     </div>
->>>>>>> ac535eff8f405c2084fb705a0bb4fd443b3bb2e1
   );
 }

@@ -1,14 +1,3 @@
-<<<<<<< HEAD
-import ReportViewer from "@/components/reports/ReportViewer";
-
-export default function OccupancyReport() {
-  return (
-    <ReportViewer
-      reportType="occupancy"
-      title="Peak Hours & Occupancy"
-      description="Heatmaps and trends for parking space availability."
-    />
-=======
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -191,7 +180,7 @@ export default function PeakHoursOccupancyReport() {
     setSearchQuery("");
     setCurrentPage(1);
     setShowFilters(false);
-    toast.info("Filters reset");
+    toast("Filters reset");
   };
 
   // Export with format
@@ -618,6 +607,5 @@ export default function PeakHoursOccupancyReport() {
         )}
       </div>
     </div>
->>>>>>> ac535eff8f405c2084fb705a0bb4fd443b3bb2e1
   );
 }

@@ -1,14 +1,3 @@
-<<<<<<< HEAD
-import ReportViewer from "@/components/reports/ReportViewer";
-
-export default function PenaltyReport() {
-  return (
-    <ReportViewer
-      reportType="penalty"
-      title="Penalty Reports"
-      description="Insights into issued penalties and collection status."
-    />
-=======
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -820,6 +809,5 @@ export default function PenaltyReport() {
         ticketId={selectedTicketId}
       />
     </div>
->>>>>>> ac535eff8f405c2084fb705a0bb4fd443b3bb2e1
   );
 }

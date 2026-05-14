@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-import ReportViewer from "@/components/reports/ReportViewer";
-=======
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -88,11 +85,11 @@ export default function ParkingUsageReport() {
   useEffect(() => {
     const today = new Date();
     const formatDate = (date: Date) => date.toISOString().split('T')[0];
-    
+
     let start = "";
     let end = "";
-    
-    switch(selectedDateOption) {
+
+    switch (selectedDateOption) {
       case "Today":
         start = formatDate(today);
         end = formatDate(today);
@@ -127,12 +124,19 @@ export default function ParkingUsageReport() {
         start = formatDate(firstDayLast);
         end = formatDate(lastDayLast);
         break;
+      case "Custom Range":
+        return;
       default:
         return;
     }
-    
-    if (selectedDateOption && selectedDateOption !== "Custom Range") {
-      setFilters(prev => ({ ...prev, startDate: start, endDate: end, dateRange: selectedDateOption }));
+
+    if (selectedDateOption && (selectedDateOption as string) !== "Custom Range") {
+      setFilters((prev: ParkingUsageFilters) => ({
+        ...prev,
+        startDate: start,
+        endDate: end,
+        dateRange: selectedDateOption,
+      }));
     }
   }, [selectedDateOption]);
 
@@ -202,7 +206,7 @@ export default function ParkingUsageReport() {
         ...filters,
         format: format,
       });
-      
+
       // Handle blob download
       if (response.blob) {
         const url = window.URL.createObjectURL(response.blob);
@@ -261,16 +265,8 @@ export default function ParkingUsageReport() {
     "Expired",
     "Cancelled",
   ];
->>>>>>> ac535eff8f405c2084fb705a0bb4fd443b3bb2e1
 
   return (
-<<<<<<< HEAD
-    <ReportViewer
-      reportType="usage"
-      title="Parking Usage"
-      description="Analytics on parking space utilization and turnover."
-    />
-=======
     <div className="min-h-screen px-4 md:px-6 py-6 space-y-8 bg-[var(--color-bg)]">
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -295,7 +291,7 @@ export default function ParkingUsageReport() {
             <Filter size={16} />
             Filters
           </button>
-          
+
           {/* Export Dropdown */}
           <div className="relative" ref={exportDropdownRef}>
             <button
@@ -310,7 +306,7 @@ export default function ParkingUsageReport() {
               )}
               Export
             </button>
-            
+
             {showExportDropdown && (
               <div className="absolute right-0 mt-2 w-36 bg-[var(--color-surface)] rounded-xl shadow-lg border border-[var(--color-border)] overflow-hidden z-10">
                 <button
@@ -390,7 +386,7 @@ export default function ParkingUsageReport() {
                     ))}
                   </select>
                 </div>
-                
+
                 {/* Custom Date Range Inputs */}
                 {selectedDateOption === "Custom Range" && (
                   <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -424,7 +420,7 @@ export default function ParkingUsageReport() {
                     </div>
                   </div>
                 )}
-                
+
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
                     Location
@@ -644,6 +640,5 @@ export default function ParkingUsageReport() {
         data={selectedRow}
       />
     </div>
->>>>>>> ac535eff8f405c2084fb705a0bb4fd443b3bb2e1
   );
 }

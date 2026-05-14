@@ -1,14 +1,3 @@
-<<<<<<< HEAD
-import ReportViewer from "@/components/reports/ReportViewer";
-
-export default function DueReport() {
-  return (
-    <ReportViewer
-      reportType="due"
-      title="Outstanding / Due"
-      description="Tracking unpaid penalties and pending payments."
-    />
-=======
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -100,13 +89,13 @@ export default function OutstandingDueReport() {
   useEffect(() => {
     const today = new Date();
     const formatDate = (date: Date) => date.toISOString().split('T')[0];
-    
+
     if (filters.dateRange === "Custom Range") return;
-    
+
     let start = "";
     let end = "";
-    
-    switch(filters.dateRange) {
+
+    switch (filters.dateRange) {
       case "Today":
         start = formatDate(today);
         end = formatDate(today);
@@ -144,8 +133,8 @@ export default function OutstandingDueReport() {
       default:
         return;
     }
-    
-    setFilters(prev => ({ ...prev, startDate: start, endDate: end }));
+
+    setFilters((prev: OutstandingFilters) => ({ ...prev, startDate: start, endDate: end }));
   }, [filters.dateRange]);
 
   const filteredData = useMemo(() => {
@@ -205,7 +194,7 @@ export default function OutstandingDueReport() {
     setCurrentPage(1);
     setShowFilters(false);
     toast("Filters reset", {
-      icon: <FilterIcon/>,
+      icon: <FilterIcon />,
     });
   };
 
@@ -218,7 +207,7 @@ export default function OutstandingDueReport() {
         ...filters,
         format: format,
       });
-      
+
       // Handle blob download
       if (response.blob) {
         const url = window.URL.createObjectURL(response.blob);
@@ -296,16 +285,15 @@ export default function OutstandingDueReport() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${
-              showFilters
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${showFilters
                 ? "bg-[var(--color-primary)] text-white border-[var(--color-primary)]"
                 : "bg-[var(--color-surface)] text-[var(--color-text-secondary)] border-[var(--color-border)] hover:border-[var(--color-primary)]"
-            }`}
+              }`}
           >
             <Filter size={16} />
             Filters
           </button>
-          
+
           {/* Export Dropdown */}
           <div className="relative" ref={exportDropdownRef}>
             <button
@@ -320,7 +308,7 @@ export default function OutstandingDueReport() {
               )}
               Export
             </button>
-            
+
             {showExportDropdown && (
               <div className="absolute right-0 mt-2 w-36 bg-[var(--color-surface)] rounded-xl shadow-lg border border-[var(--color-border)] overflow-hidden z-10">
                 <button
@@ -408,7 +396,7 @@ export default function OutstandingDueReport() {
                     ))}
                   </select>
                 </div>
-                
+
                 {/* Custom Date Range Inputs */}
                 {filters.dateRange === "Custom Range" && (
                   <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -440,7 +428,7 @@ export default function OutstandingDueReport() {
                     </div>
                   </div>
                 )}
-                
+
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
                     Due Age
@@ -646,7 +634,7 @@ export default function OutstandingDueReport() {
                 ))
               )}
             </tbody>
-           </table>
+          </table>
         </div>
 
         {/* Pagination */}
@@ -707,6 +695,5 @@ export default function OutstandingDueReport() {
         ticketId={selectedTicketId}
       />
     </div>
->>>>>>> ac535eff8f405c2084fb705a0bb4fd443b3bb2e1
   );
 }

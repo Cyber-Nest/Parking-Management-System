@@ -1,14 +1,3 @@
-<<<<<<< HEAD
-import ReportViewer from "@/components/reports/ReportViewer";
-
-export default function PaymentRecoReport() {
-  return (
-    <ReportViewer
-      reportType="payment-reconciliation"
-      title="Payment Reconciliation"
-      description="Cross-referencing payments with transaction logs."
-    />
-=======
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -138,7 +127,7 @@ export default function PaymentReconciliationReport() {
         return;
     }
     
-    setFilters(prev => ({ ...prev, startDate: start, endDate: end }));
+    setFilters((prev: ReconciliationFilters) => ({ ...prev, startDate: start, endDate: end }));
   }, [filters.dateRange]);
 
   // Filtered data based on search
@@ -637,6 +626,5 @@ export default function PaymentReconciliationReport() {
         itemId={selectedItemId}
       />
     </div>
->>>>>>> ac535eff8f405c2084fb705a0bb4fd443b3bb2e1
   );
 }

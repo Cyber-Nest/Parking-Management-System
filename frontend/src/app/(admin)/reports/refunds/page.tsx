@@ -1,14 +1,3 @@
-<<<<<<< HEAD
-import ReportViewer from "@/components/reports/ReportViewer";
-
-export default function RefundsReport() {
-  return (
-    <ReportViewer
-      reportType="refunds"
-      title="Refunds & Adjustments"
-      description="Summary of all processed refunds and manual credit adjustments."
-    />
-=======
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -140,7 +129,7 @@ export default function RefundsAdjustmentsReport() {
         return;
     }
     
-    setFilters(prev => ({ ...prev, startDate: start, endDate: end }));
+    setFilters((prev: RefundAdjustmentFilters) => ({ ...prev, startDate: start, endDate: end }));
   }, [filters.dateRange]);
 
   // Filtered data based on search
@@ -718,6 +707,5 @@ export default function RefundsAdjustmentsReport() {
         itemId={selectedItemId}
       />
     </div>
->>>>>>> ac535eff8f405c2084fb705a0bb4fd443b3bb2e1
   );
 }

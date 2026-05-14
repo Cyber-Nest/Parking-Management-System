@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-import ReportViewer from "@/components/reports/ReportViewer";
-=======
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo } from "react";
@@ -199,7 +196,7 @@ export default function RevenueReportsPage() {
 
   // Prepare chart data from API
   const lineChartData = timeData.map((item) => ({
-    name: item.date,
+    date: item.date,
     revenue: item.revenue,
   }));
 
@@ -214,16 +211,8 @@ export default function RevenueReportsPage() {
     value: item.value,
     color: item.color,
   }));
->>>>>>> ac535eff8f405c2084fb705a0bb4fd443b3bb2e1
 
   return (
-<<<<<<< HEAD
-    <ReportViewer
-      reportType="revenue"
-      title="Revenue Reports"
-      description="Detailed breakdown of all revenue streams."
-    />
-=======
     <div className="min-h-screen px-4 md:px-6 py-6 space-y-8 bg-[var(--color-bg)]">
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -482,12 +471,11 @@ export default function RevenueReportsPage() {
       </AnimatePresence>
 
       {/* Charts Section */}
-      <RevenueCharts
+        <RevenueCharts
         lineData={lineChartData}
         typeData={typeChartData}
         paymentData={paymentChartData}
         loading={loading}
-        onPeriodChange={handlePeriodChange}
       />
       {/* Table Section */}
       <div className="bg-[var(--color-surface)] rounded-2xl shadow-sm overflow-hidden border border-[var(--color-border)]">
@@ -626,6 +614,5 @@ export default function RevenueReportsPage() {
         data={selectedRow}
       />
     </div>
->>>>>>> ac535eff8f405c2084fb705a0bb4fd443b3bb2e1
   );
 }

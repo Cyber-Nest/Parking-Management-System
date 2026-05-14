@@ -1,14 +1,3 @@
-<<<<<<< HEAD
-import ReportViewer from "@/components/reports/ReportViewer";
-
-export default function PerformanceReport() {
-  return (
-    <ReportViewer
-      reportType="performance"
-      title="Officer Performance"
-      description="Tracking officer activity and efficiency metrics."
-    />
-=======
 "use client";
 
 import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
@@ -671,6 +660,5 @@ export default function OfficerPerformanceReport() {
         officer={selectedOfficer}
       />
     </div>
->>>>>>> ac535eff8f405c2084fb705a0bb4fd443b3bb2e1
   );
 }

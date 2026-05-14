@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import type { LucideProps } from "lucide-react";
 import {
   X,
   Ticket,
@@ -40,12 +41,12 @@ const SectionTitle = ({
   icon,
   title,
 }: {
-  icon: React.ReactNode;
+  icon: React.ReactElement<LucideProps>;
   title: string;
 }) => (
   <div className="flex items-center gap-2 mt-8 mb-4">
     <div className="p-1.5 bg-[var(--color-primary)]/10 rounded-lg text-[var(--color-primary)]">
-      {React.cloneElement(icon as React.ReactElement, { size: 14 })}
+      {React.cloneElement(icon, { size: 14 })}
     </div>
     <h3 className="text-[11px] font-black uppercase tracking-[0.15em] text-[var(--color-text-secondary)]">
       {title}
@@ -53,12 +54,22 @@ const SectionTitle = ({
   </div>
 );
 
-const InfoRow = ({ label, value, icon, fullWidth = false }: any) => (
+const InfoRow = ({
+  label,
+  value,
+  icon,
+  fullWidth = false,
+}: {
+  label: string;
+  value: React.ReactNode;
+  icon: React.ReactElement<LucideProps>;
+  fullWidth?: boolean;
+}) => (
   <div
     className={`flex flex-col gap-1 py-3 px-4 rounded-xl border border-[var(--color-border)] hover:bg-[var(--color-surface-soft)]/50 transition-all ${fullWidth ? "col-span-2" : ""}`}
   >
     <div className="flex items-center gap-2 text-[var(--color-text-tertiary)]">
-      {React.cloneElement(icon as React.ReactElement, { size: 12 })}
+      {React.cloneElement(icon, { size: 12 })}
       <span className="text-[10px] font-bold uppercase tracking-tight">
         {label}
       </span>
