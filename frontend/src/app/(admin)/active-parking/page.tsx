@@ -284,6 +284,7 @@ export default function ActiveParkingSessionsPage() {
             <div className="hidden lg:block w-[1px] h-8 bg-[var(--color-border)] mx-1" />
 
             <div className="flex flex-wrap items-center gap-2">
+              {/* Plan Filter */}
               <select
                 value={planFilter}
                 onChange={(e) => {
@@ -293,10 +294,10 @@ export default function ActiveParkingSessionsPage() {
                 className="input w-auto min-w-[130px] text-xs font-bold bg-[var(--color-surface-soft)] cursor-pointer"
               >
                 <option>All Plans</option>
-                <option>1 Hour</option>
-                <option>2 Hours</option>
-                <option>3 Hours</option>
-                <option>1 Day</option>
+                <option>Hourly Basic</option>
+                <option>Half Day</option>
+                <option>Weekly Pass</option>
+                <option>Full Day</option>
               </select>
 
               <select
@@ -313,6 +314,7 @@ export default function ActiveParkingSessionsPage() {
                 <option>Failed</option>
               </select>
 
+              {/* Reset Filters Button */}
               <button
                 onClick={handleResetFilters}
                 className="p-2.5 border border-[var(--color-border)] rounded-[var(--radius-md)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] transition-colors"

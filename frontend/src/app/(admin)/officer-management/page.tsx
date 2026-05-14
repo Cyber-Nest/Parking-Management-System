@@ -303,8 +303,8 @@ export default function OfficerManagementPage() {
             onChange={(e) => setRoleFilter(e.target.value)}
           >
             <option>All Roles</option>
-            <option>Officer</option>
-            <option>Supervisor</option>
+            <option>OFFICER</option>
+            <option>SUPERVISOR</option>
           </select>
           <button
             onClick={handleResetFilters}
