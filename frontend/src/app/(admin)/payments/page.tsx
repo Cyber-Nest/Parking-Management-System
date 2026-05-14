@@ -34,7 +34,6 @@ const PAYMENT_METHODS = [
   "Mastercard",
   "Debit Card",
   "Credit Card",
-  "Cash",
   "Stripe",
 ];
 
@@ -133,7 +132,7 @@ export default function PaymentsPage() {
     pendingFailed: "$0",
   });
   const [loading, setLoading] = useState(true);
-  const [activePeriod, setActivePeriod] = useState("Today");
+  const [activePeriod, setActivePeriod] = useState("Yesterday");
   const [activeType, setActiveType] = useState("All Types");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All Status");

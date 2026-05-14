@@ -89,7 +89,7 @@ export default function PenaltyTicketsPage() {
     totalPenaltyAmount: "$0",
   });
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("Today");
+  const [activeTab, setActiveTab] = useState("Yesterday");
   const [showCustomDate, setShowCustomDate] = useState(false);
   
   const [customStartDate, setCustomStartDate] = useState("");
