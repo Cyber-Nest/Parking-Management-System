@@ -136,7 +136,7 @@ export const TicketActionDropdown = ({
                 }}
               />
             )}
-            {ticket.status !== "Paid" && (
+            {ticket.status !== "Paid" && ticket.status !== "Cancelled" && (
               <DropdownItem
                 icon={<Pencil size={14} className="sm:w-[15px] sm:h-[15px]" />}
                 label="Edit Ticket"

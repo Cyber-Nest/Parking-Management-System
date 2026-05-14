@@ -97,13 +97,14 @@ const range = (f: LocationPerformanceFilters) => ({
 export const locationPerformanceService = {
     async getSummary(filters: LocationPerformanceFilters): Promise<LocationPerformanceSummary> {
         const data = (await getReport("location", range(filters))) as {
-            locationData: { plan_name: string; sessions: number; total_duration: number }[];
+            locationData: { plan_name?: string; sessions: number; total_duration: number; revenue?: number; location_key?: string }[];
         };
         const rows = data.locationData ?? [];
         const totalSessions = rows.reduce((s, r) => s + (Number(r.sessions) || 0), 0);
         const totalDuration = rows.reduce((s, r) => s + (Number(r.total_duration) || 0), 0);
+        const totalRev = rows.reduce((s, r) => s + (Number(r.revenue) || 0), 0);
         return {
-            totalRevenue: totalDuration * 0.05,
+            totalRevenue: totalRev || totalDuration * 0.05,
             totalSessions,
             totalTickets: Math.round(totalSessions * 0.1),
             totalLocations: rows.length,
@@ -112,15 +113,23 @@ export const locationPerformanceService = {
 
     async getLocationsData(filters: LocationPerformanceFilters): Promise<LocationTableData[]> {
         const data = (await getReport("location", range(filters))) as {
-            locationData: { plan_name: string; sessions: number; total_duration: number }[];
+            locationData: {
+                location_key?: string;
+                plan_name?: string;
+                sessions: number;
+                total_duration: number;
+                revenue?: number;
+            }[];
         };
         return (data.locationData ?? []).map((r, i) => {
             const sessions = Number(r.sessions) || 0;
             const dur = Number(r.total_duration) || 0;
+            const loc = r.location_key || r.plan_name || "Location";
+            const revenue = Number(r.revenue) || dur * 0.05;
             return {
                 id: String(i),
-                location: r.plan_name || "Location",
-                revenue: dur * 0.05,
+                location: loc,
+                revenue,
                 sessions,
                 avgDuration: sessions ? Math.round(dur / sessions) : 0,
                 occupancyRate: Math.min(100, sessions * 3),

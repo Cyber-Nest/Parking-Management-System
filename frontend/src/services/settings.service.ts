@@ -1,5 +1,8 @@
 import axiosInstance from "@/lib/axios";
 import { getResponseData } from "./response.helper";
+import { API_ENDPOINTS } from "./api";
+import { userService } from "./user.service";
+import { roleService } from "./role.service";
 
 export type DarkModePreference = "light" | "dark" | "system";
 
@@ -175,9 +178,8 @@ export interface SecuritySettings {
 
 const SYSTEM_BASE = "/admin/settings/system";
 const BRANDING_BASE = "/admin/settings/branding";
-
-const LS_USERS_KEY = "parksmart_admin_users";
 const LS_ROLES_KEY = "parksmart_admin_roles";
+const LS_USERS_KEY = "parksmart_admin_users";
 const LS_INTEGRATIONS_KEY = "parksmart_integration_settings";
 const LS_NOTIFICATION_SETTINGS_KEY = "parksmart_notification_settings";
 const LS_SECURITY_SETTINGS_KEY = "parksmart_security_settings";
@@ -262,6 +264,40 @@ const defaultPermissions = (): Permissions => {
   return perms;
 };
 
+const normalizeRolePermissions = (raw: unknown): Permissions => {
+  let v = raw;
+  if (typeof v === "string") {
+    try {
+      v = JSON.parse(v);
+    } catch {
+      v = null;
+    }
+  }
+  if (v && typeof v === "object" && !Array.isArray(v) && "dashboard" in (v as object)) {
+    return v as Permissions;
+  }
+  return defaultPermissions();
+};
+
+const mapApiUser = (u: import("./user.service").PortalUserRow): User => ({
+  id: u.id,
+  name: u.username ?? "",
+  email: u.email ?? "",
+  role: u.role_name ?? "user",
+  status: u.is_active ? "active" : "inactive",
+  lastLogin: u.last_login_at ?? undefined,
+  createdAt: u.created_at,
+});
+
+const mapApiRole = (r: import("./role.service").RoleRow): Role => ({
+  id: r.id,
+  name: r.name,
+  description: r.description ?? "",
+  permissions: normalizeRolePermissions(r.permissions),
+  createdAt: r.created_at,
+  isDefault: r.name === "owner",
+});
+
 const readLS = <T,>(key: string, fallback: T): T => {
   if (typeof window === "undefined") return fallback;
   try {
@@ -338,16 +374,21 @@ export const settingsService = {
   },
 
   async getTaxSettings(): Promise<TaxSettings> {
-    const settings = readLS<TaxSettings | null>(LS_TAX_SETTINGS_KEY, null);
-    if (settings) return settings;
-    const defaultSettings = getDefaultTaxSettings();
-    writeLS(LS_TAX_SETTINGS_KEY, defaultSettings);
-    return defaultSettings;
+    try {
+      const res = await axiosInstance.get(API_ENDPOINTS.SETTINGS.TAX_PRICING);
+      return getResponseData<TaxSettings>(res);
+    } catch {
+      const settings = readLS<TaxSettings | null>(LS_TAX_SETTINGS_KEY, null);
+      if (settings) return settings;
+      const defaultSettings = getDefaultTaxSettings();
+      writeLS(LS_TAX_SETTINGS_KEY, defaultSettings);
+      return defaultSettings;
+    }
   },
 
   async updateTaxSettings(settings: TaxSettings) {
-    writeLS(LS_TAX_SETTINGS_KEY, settings);
-    return { message: "Tax settings updated", settings };
+    const res = await axiosInstance.put(API_ENDPOINTS.SETTINGS.TAX_PRICING, settings);
+    return { message: (res.data as any)?.message ?? "Tax settings updated", settings: getResponseData<TaxSettings>(res) };
   },
 
   async getSecuritySettings(): Promise<SecuritySettings> {
@@ -445,52 +486,54 @@ export const settingsService = {
     writeLS("parksmart_audit_logs", sample);
   },
 
-  // Users & Roles (UI-only for now; persisted in localStorage)
   async getUsers(): Promise<User[]> {
-    const users = readLS<User[]>(LS_USERS_KEY, []);
-    if (users.length) return users;
-
-    const seed: User[] = [
-      {
-        id: uuid(),
-        name: "Admin",
-        email: "admin@parksmart.com",
-        role: "Admin",
-        status: "active",
-        lastLogin: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
-      },
-    ];
-    writeLS(LS_USERS_KEY, seed);
-    return seed;
+    const { items } = await userService.list();
+    return (items ?? []).map(mapApiUser);
   },
 
-  async createUser(payload: { name: string; email: string; role: string; password?: string }) {
+  async createUser(payload: {
+    name: string;
+    email: string;
+    role: string;
+    password?: string;
+    status?: "active" | "inactive";
+  }) {
+    const { items: roles } = await roleService.list();
+    const roleRow = roles.find((r) => r.name === payload.role);
+    if (!roleRow) throw new Error("Selected role not found");
+    const username =
+      payload.name
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, "_")
+        .replace(/[^a-z0-9_]/g, "") || `user_${Date.now()}`;
+    await userService.createUser({
+      username,
+      email: payload.email.trim(),
+      password: payload.password?.trim() || "User@123",
+      role_id: roleRow.id,
+      is_active: payload.status !== "inactive",
+    });
     const users = await this.getUsers();
-    const user: User = {
-      id: uuid(),
-      name: payload.name,
-      email: payload.email,
-      role: payload.role,
-      status: "active",
-      createdAt: new Date().toISOString(),
-    };
-    const next = [user, ...users];
-    writeLS(LS_USERS_KEY, next);
-    return { message: "User created", user };
+    const user = users.find((u) => u.email === payload.email.trim());
+    return { message: "User created", user: user ?? users[0] };
   },
 
   async updateUser(id: string, payload: Partial<User>) {
+    const { items: roles } = await roleService.list();
+    const roleRow = payload.role ? roles.find((r) => r.name === payload.role) : undefined;
+    await userService.updateUser(id, {
+      username: payload.name,
+      email: payload.email,
+      role_id: roleRow?.id,
+      is_active: payload.status === undefined ? undefined : payload.status === "active",
+    });
     const users = await this.getUsers();
-    const next = users.map((u) => (u.id === id ? { ...u, ...payload } : u));
-    writeLS(LS_USERS_KEY, next);
-    return { message: "User updated", user: next.find((u) => u.id === id) };
+    return { message: "User updated", user: users.find((u) => u.id === id) };
   },
 
   async deleteUser(id: string) {
-    const users = await this.getUsers();
-    const next = users.filter((u) => u.id !== id);
-    writeLS(LS_USERS_KEY, next);
+    await userService.deleteUser(id);
     return { message: "User deleted" };
   },
 
@@ -500,51 +543,31 @@ export const settingsService = {
   },
 
   async getRoles(): Promise<Role[]> {
-    const roles = readLS<Role[]>(LS_ROLES_KEY, []);
-    if (roles.length) return roles;
-
-    const seed: Role[] = [
-      {
-        id: uuid(),
-        name: "Admin",
-        description: "Full access",
-        permissions: Object.fromEntries(
-          USER_MODULES.map((m) => [m.id, { view: true, create: true, edit: true, delete: true, export: true, settings: true }]),
-        ) as Permissions,
-        createdAt: new Date().toISOString(),
-        isDefault: true,
-      },
-      {
-        id: uuid(),
-        name: "Viewer / Auditor",
-        description: "Read-only access",
-        permissions: defaultPermissions(),
-        createdAt: new Date().toISOString(),
-      },
-    ];
-    writeLS(LS_ROLES_KEY, seed);
-    return seed;
+    const { items } = await roleService.list();
+    return (items ?? []).map(mapApiRole);
   },
 
   async createRole(payload: { name: string; description?: string; permissions?: Permissions }) {
-    const roles = await this.getRoles();
-    const role: Role = {
-      id: uuid(),
+    await roleService.createRole({
       name: payload.name,
       description: payload.description,
       permissions: payload.permissions ?? defaultPermissions(),
-      createdAt: new Date().toISOString(),
+    });
+    const roles = await this.getRoles();
+    return {
+      message: "Role created",
+      role: roles.find((r) => r.name === payload.name) ?? roles[roles.length - 1],
     };
-    const next = [...roles, role];
-    writeLS(LS_ROLES_KEY, next);
-    return { message: "Role created", role };
   },
 
   async updateRole(id: string, payload: Partial<Pick<Role, "name" | "description" | "permissions">>) {
+    await roleService.updateRole(id, {
+      name: payload.name,
+      description: payload.description,
+      permissions: payload.permissions ?? undefined,
+    });
     const roles = await this.getRoles();
-    const next = roles.map((r) => (r.id === id ? { ...r, ...payload } : r));
-    writeLS(LS_ROLES_KEY, next);
-    return { message: "Role updated", role: next.find((r) => r.id === id) };
+    return { message: "Role updated", role: roles.find((r) => r.id === id) };
   },
 
   async updateRolePermissions(id: string, permissions: Permissions) {
@@ -552,9 +575,7 @@ export const settingsService = {
   },
 
   async deleteRole(id: string) {
-    const roles = await this.getRoles();
-    const next = roles.filter((r) => r.id !== id);
-    writeLS(LS_ROLES_KEY, next);
+    await roleService.deleteRole(id);
     return { message: "Role deleted" };
   },
 };

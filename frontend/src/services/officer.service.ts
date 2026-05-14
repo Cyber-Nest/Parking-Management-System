@@ -1,6 +1,7 @@
 import {
   listOfficers,
   getOfficerSummary,
+  setOfficerStatus,
   type OfficerListParams,
   type OfficerRoleUi,
   type OfficerStatusUi,
@@ -77,6 +78,10 @@ export const officerService = {
 
   async getSummary() {
     return await getOfficerSummary();
+  },
+
+  async setOfficerStatus(id: string, status: "ACTIVE" | "DISABLED") {
+    return await setOfficerStatus(id, status);
   },
 
   // Convenience re-exports for screens that need filters

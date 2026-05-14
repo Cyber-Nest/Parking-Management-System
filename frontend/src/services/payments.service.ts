@@ -33,3 +33,13 @@ export const listPayments = async (params: PaymentListParams = {}) => {
   return getResponseData(response);
 };
 
+export const getPaymentById = async (id: string) => {
+  const response = await axiosInstance.get(API_ENDPOINTS.PAYMENTS.BY_ID(id));
+  return getResponseData(response);
+};
+
+export const getPaymentReceipt = async (id: string) => {
+  const response = await axiosInstance.get(API_ENDPOINTS.PAYMENTS.RECEIPT(id));
+  return getResponseData(response);
+};
+

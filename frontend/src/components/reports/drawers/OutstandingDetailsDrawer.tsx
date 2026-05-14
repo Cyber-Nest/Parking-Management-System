@@ -24,12 +24,14 @@ import toast from "react-hot-toast";
 import {
   outstandingDueService,
   OutstandingTicket,
+  type OutstandingDueFilters,
 } from "@/services/outstanding-due.service";
 
 interface OutstandingDetailsDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   ticketId: string | null;
+  exportFilters?: OutstandingDueFilters;
 }
 
 const InfoRow = ({ label, value, icon, color, subValue }: any) => (
@@ -98,6 +100,7 @@ export const OutstandingDetailsDrawer = ({
   isOpen,
   onClose,
   ticketId,
+  exportFilters,
 }: OutstandingDetailsDrawerProps) => {
   const [loading, setLoading] = useState(true);
   const [details, setDetails] = useState<OutstandingTicket | null>(null);
@@ -138,7 +141,8 @@ export const OutstandingDetailsDrawer = ({
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed top-0 right-0 h-full w-full max-w-md bg-[var(--color-surface)] shadow-[-20px_0_50px_rgba(0,0,0,0.2)] z-50 border-l border-[var(--color-border)] flex flex-col"
+            className="fixed top-0 right-0 h-full w-full max-w-md bg-[var(--color-surface)] shadow-[-20px_0_50px_rgba(0,0,0,0.2)] z-50 border-l border-[var(--color-border)] flex flex-col print:shadow-none print:border-0"
+            id="outstanding-drawer-print"
           >
             {/* Header */}
             <div className="sticky top-0 bg-[var(--color-surface)]/80 backdrop-blur-md z-10 flex items-center justify-between px-8 py-6 border-b border-[var(--color-border)]">
@@ -301,12 +305,48 @@ export const OutstandingDetailsDrawer = ({
             </div>
 
             {/* Footer */}
-            <div className="sticky bottom-0 p-6 bg-[var(--color-surface)]/80 backdrop-blur-md border-t border-[var(--color-border)] flex gap-3">
-              <button className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest border border-[var(--color-border)] hover:bg-[var(--color-surface-soft)] transition-all active:scale-95">
+            <div className="sticky bottom-0 p-6 bg-[var(--color-surface)]/80 backdrop-blur-md border-t border-[var(--color-border)] flex gap-3 print:hidden">
+              <button
+                type="button"
+                onClick={() => window.print()}
+                className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest border border-[var(--color-border)] hover:bg-[var(--color-surface-soft)] transition-all active:scale-95"
+              >
                 <Printer size={16} />
                 Print
               </button>
-              <button className="flex-[1.5] flex items-center justify-center gap-2 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest bg-[var(--color-primary)] text-white hover:opacity-90 shadow-lg shadow-rose-500/20 transition-all active:scale-95">
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!exportFilters) {
+                    toast.error("Filters unavailable for export");
+                    return;
+                  }
+                  try {
+                    const response = await outstandingDueService.exportReport({
+                      ...exportFilters,
+                      format: "pdf",
+                    });
+                    if (response.blob) {
+                      const url = window.URL.createObjectURL(response.blob);
+                      const link = document.createElement("a");
+                      link.href = url;
+                      link.setAttribute(
+                        "download",
+                        `outstanding_due_${new Date().toISOString().split("T")[0]}.pdf`,
+                      );
+                      document.body.appendChild(link);
+                      link.click();
+                      link.remove();
+                      window.URL.revokeObjectURL(url);
+                      toast.success("PDF downloaded");
+                    }
+                  } catch (e) {
+                    console.error(e);
+                    toast.error("Export failed");
+                  }
+                }}
+                className="flex-[1.5] flex items-center justify-center gap-2 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest bg-[var(--color-primary)] text-white hover:opacity-90 shadow-lg shadow-rose-500/20 transition-all active:scale-95"
+              >
                 <Download size={16} />
                 Export PDF
               </button>

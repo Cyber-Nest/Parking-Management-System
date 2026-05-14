@@ -27,6 +27,12 @@ import {
   PenaltyTicket,
   PenaltyStats,
 } from "@/services/penalty.service";
+import {
+  markTicketPaid,
+  cancelTicket,
+  addTicketNote,
+} from "@/services/tickets.service";
+import { EditTicketDrawer } from "@/components/penalty/EditTicketDrawer";
 import toast from "react-hot-toast";
 
 const PERIOD_TABS = [
@@ -61,19 +67,26 @@ export default function PenaltyTicketsPage() {
   const [noteTicket, setNoteTicket] = useState<PenaltyTicket | null>(null);
   const [photoTicket, setPhotoTicket] = useState<PenaltyTicket | null>(null);
 
+  const [editTicket, setEditTicket] = useState<PenaltyTicket | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+
   const itemsPerPage = 10;
+
+  const refreshTickets = async () => {
+    const [statsRes, ticketsRes] = await Promise.all([
+      penaltyService.getPenaltyStats(),
+      penaltyService.getPenaltyTickets({ limit: 200, page: 1 }),
+    ]);
+    setStats(statsRes);
+    setTickets(ticketsRes);
+  };
 
   // Fetch Data
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [statsRes, ticketsRes] = await Promise.all([
-          penaltyService.getPenaltyStats(),
-          penaltyService.getPenaltyTickets(),
-        ]);
-        setStats(statsRes);
-        setTickets(ticketsRes);
+        await refreshTickets();
       } catch (error) {
         console.error(error);
         toast.error("Failed to fetch data");
@@ -128,48 +141,31 @@ export default function PenaltyTicketsPage() {
     toast.success(`Reprinting ticket: ${ticket.id}`);
   };
 
-  const handleMarkPaid = (ticket: PenaltyTicket) => {
-    const updated = tickets.map((item) => {
-      if (item.id === ticket.id) {
-        return {
-          ...item,
-          status: "Paid" as const,
-          paymentStatus: "Paid",
-          paymentMethod: "Cash",
-          paymentId: "PAY-" + Date.now(),
-          transactionReference:
-            "txn_" + Math.random().toString(36).substring(2, 8),
-          paidAt: new Date().toLocaleString(),
-        };
-      }
-      return item;
-    });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    setTickets(updated as any);
-    toast.success(`Ticket ${ticket.id} marked as paid`);
+  const handleMarkPaid = async (ticket: PenaltyTicket) => {
+    try {
+      await markTicketPaid(ticket.id, { payment_method: "visa" });
+      toast.success(`Ticket ${ticket.ticketNo || ticket.id} marked as paid`);
+      await refreshTickets();
+    } catch (e) {
+      console.error(e);
+      toast.error("Could not mark ticket paid");
+    }
   };
 
-  const handleCancel = (ticket: PenaltyTicket) => {
-    const updated = tickets.map((item) => {
-      if (item.id === ticket.id) {
-        return {
-          ...item,
-          status: "Cancelled" as const,
-          cancelledBy: "Admin",
-          cancelledAt: new Date().toLocaleString(),
-          cancelReason: "Cancelled manually by admin.",
-        };
-      }
-      return item;
-    });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    setTickets(updated as any);
-    toast.success(`Ticket ${ticket.id} has been cancelled`);
+  const handleCancel = async (ticket: PenaltyTicket) => {
+    try {
+      await cancelTicket(ticket.id);
+      toast.success(`Ticket ${ticket.ticketNo || ticket.id} cancelled`);
+      await refreshTickets();
+    } catch (e) {
+      console.error(e);
+      toast.error("Could not cancel ticket");
+    }
   };
 
   const handleEdit = (ticket: PenaltyTicket) => {
-    console.log("Edit ticket:", ticket.id);
-    toast("Edit ticket: This feature coming soon", { icon: "ℹ️" });
+    setEditTicket(ticket);
+    setIsEditOpen(true);
   };
 
   const handleAddNote = (ticket: PenaltyTicket) => {
@@ -177,27 +173,17 @@ export default function PenaltyTicketsPage() {
     setIsNoteDrawerOpen(true);
   };
 
-  const handleSaveNote = (noteText: string) => {
-    if (noteTicket) {
-      const updated = tickets.map((item) => {
-        if (item.id === noteTicket.id) {
-          return {
-            ...item,
-            notes: [
-              ...item.notes,
-              {
-                id: Date.now().toString(),
-                note: noteText,
-                createdBy: "Admin",
-                createdAt: new Date().toLocaleString(),
-              },
-            ],
-          };
-        }
-        return item;
-      });
-      setTickets(updated);
-      toast.success("Note added successfully");
+  const handleSaveNote = async (noteText: string) => {
+    if (!noteTicket) return;
+    try {
+      await addTicketNote(noteTicket.id, noteText);
+      toast.success("Note saved");
+      setIsNoteDrawerOpen(false);
+      setNoteTicket(null);
+      await refreshTickets();
+    } catch (e) {
+      console.error(e);
+      toast.error("Could not save note");
     }
   };
 
@@ -405,7 +391,7 @@ export default function PenaltyTicketsPage() {
                       className="hover:bg-[var(--color-surface-soft)]/50 transition-colors"
                     >
                       <td className="px-6 py-4 font-bold text-[var(--color-primary)]">
-                        {ticket.id}
+                        {ticket.ticketNo || ticket.id}
                       </td>
                       <td className="px-6 py-4 font-bold text-[var(--color-text-primary)]">
                         {ticket.plate}
@@ -537,6 +523,15 @@ export default function PenaltyTicketsPage() {
         onClose={() => setIsPhotoGalleryOpen(false)}
         photos={photoTicket?.evidencePhotos || []}
         ticketId={photoTicket?.id || ""}
+      />
+      <EditTicketDrawer
+        isOpen={isEditOpen}
+        onClose={() => {
+          setIsEditOpen(false);
+          setEditTicket(null);
+        }}
+        ticket={editTicket}
+        onSaved={() => void refreshTickets()}
       />
     </>
   );

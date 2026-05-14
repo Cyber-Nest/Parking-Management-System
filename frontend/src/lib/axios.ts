@@ -17,8 +17,17 @@ export const getTokenValue = (name: string): string | undefined => {
   return undefined;
 };
 
+const resolveApiBaseURL = (): string => {
+  const fromEnv = process.env.NEXT_PUBLIC_API_URL?.trim();
+  if (fromEnv) return fromEnv.replace(/\/$/, "");
+  if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
+    return "/api";
+  }
+  return "http://127.0.0.1:5000/api";
+};
+
 const axiosInstance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api",
+  baseURL: resolveApiBaseURL(),
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",

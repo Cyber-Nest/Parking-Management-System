@@ -16,6 +16,7 @@ import { TableSkeleton } from "@/components/common/TableSkeleton";
 import toast from "react-hot-toast";
 import { PaymentActionDropdown } from "@/components/payment/PaymentActionDropdown";
 import { PaymentDetailsDrawer } from "@/components/payment/PaymentDetailsDrawer";
+import { PaymentReceiptDrawer } from "@/components/payment/PaymentReceiptDrawer";
 
 import {
   paymentService,
@@ -82,6 +83,9 @@ export default function PaymentsPage() {
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [isDetailsDrawerOpen, setIsDetailsDrawerOpen] = useState(false);
 
+  const [receiptPaymentId, setReceiptPaymentId] = useState<string | null>(null);
+  const [receiptOpen, setReceiptOpen] = useState(false);
+
   const itemsPerPage = 10;
 
   const showToast = (message: string, type: "success" | "error" | "info") => {
@@ -141,8 +145,8 @@ export default function PaymentsPage() {
   };
 
   const handleReceipt = (payment: Payment) => {
-    console.log("Generate Receipt:", payment);
-    showToast(`Receipt generated for ${payment.id}`, "success");
+    setReceiptPaymentId(payment.id);
+    setReceiptOpen(true);
   };
 
   const handleRefund = (payment: Payment) => {
@@ -471,6 +475,14 @@ export default function PaymentsPage() {
         isOpen={isDetailsDrawerOpen}
         onClose={() => setIsDetailsDrawerOpen(false)}
         payment={selectedPayment}
+      />
+      <PaymentReceiptDrawer
+        isOpen={receiptOpen}
+        onClose={() => {
+          setReceiptOpen(false);
+          setReceiptPaymentId(null);
+        }}
+        paymentId={receiptPaymentId}
       />
     </>
   );

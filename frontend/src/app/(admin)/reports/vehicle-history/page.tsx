@@ -44,10 +44,10 @@ import {
   vehicleHistoryService,
   VehicleHistoryFilters,
   VehicleHistoryStats,
-  ParkingSession,
-  PenaltyTicket,
-  PaymentRecord,
-  RefundRecord,
+  type SessionTableRow,
+  type PenaltyTableRow,
+  type PaymentTableRow,
+  type RefundTableRow,
   NoteActivity,
   VehicleSummary,
   CustomerInfo,
@@ -186,10 +186,10 @@ export default function VehicleHistoryReport() {
 
   // Data states
   const [stats, setStats] = useState<VehicleHistoryStats | null>(null);
-  const [sessions, setSessions] = useState<ParkingSession[]>([]);
-  const [penalties, setPenalties] = useState<PenaltyTicket[]>([]);
-  const [payments, setPayments] = useState<PaymentRecord[]>([]);
-  const [refunds, setRefunds] = useState<RefundRecord[]>([]);
+  const [sessions, setSessions] = useState<SessionTableRow[]>([]);
+  const [penalties, setPenalties] = useState<PenaltyTableRow[]>([]);
+  const [payments, setPayments] = useState<PaymentTableRow[]>([]);
+  const [refunds, setRefunds] = useState<RefundTableRow[]>([]);
   const [notesActivities, setNotesActivities] = useState<NoteActivity[]>([]);
   const [vehicleSummary, setVehicleSummary] = useState<VehicleSummary | null>(
     null,
@@ -301,51 +301,19 @@ export default function VehicleHistoryReport() {
 
     try {
       setLoading(true);
-      const [
-        statsRes,
-        sessionsRes,
-        penaltiesRes,
-        paymentsRes,
-        refundsRes,
-        notesRes,
-        vehicleRes,
-        customerRes,
-      ] = await Promise.all([
-        vehicleHistoryService.getStats({
-          ...filters,
-          licensePlate: searchedPlate,
-        }),
-        vehicleHistoryService.getParkingSessions({
-          ...filters,
-          licensePlate: searchedPlate,
-        }),
-        vehicleHistoryService.getPenaltyTickets({
-          ...filters,
-          licensePlate: searchedPlate,
-        }),
-        vehicleHistoryService.getPayments({
-          ...filters,
-          licensePlate: searchedPlate,
-        }),
-        vehicleHistoryService.getRefunds({
-          ...filters,
-          licensePlate: searchedPlate,
-        }),
-        vehicleHistoryService.getNotesActivities({
-          ...filters,
-          licensePlate: searchedPlate,
-        }),
-        vehicleHistoryService.getVehicleSummary(searchedPlate),
-        vehicleHistoryService.getCustomerInfo(searchedPlate),
+      const filterPayload = { ...filters, licensePlate: searchedPlate };
+      const [report, notesRes] = await Promise.all([
+        vehicleHistoryService.fetchReport(filterPayload),
+        vehicleHistoryService.getNotesActivities(filterPayload),
       ]);
-      setStats(statsRes);
-      setSessions(sessionsRes);
-      setPenalties(penaltiesRes);
-      setPayments(paymentsRes);
-      setRefunds(refundsRes);
+      setStats(report.stats);
+      setSessions(report.sessions);
+      setPenalties(report.penalties);
+      setPayments(report.payments);
+      setRefunds(report.refunds);
       setNotesActivities(notesRes);
-      setVehicleSummary(vehicleRes);
-      setCustomerInfo(customerRes);
+      setVehicleSummary(report.vehicleSummary);
+      setCustomerInfo(report.customerInfo);
       setCurrentPage(1);
     } catch (error) {
       console.error(error);
@@ -425,7 +393,17 @@ export default function VehicleHistoryReport() {
 
   // Add note
   const handleAddNote = async (note: string, visibility: string) => {
-    const response = await vehicleHistoryService.addNote(note);
+    let response: { success: boolean; message: string };
+    if (editingNote) {
+      response = vehicleHistoryService.updateNote(
+        searchedPlate,
+        editingNote.id,
+        note,
+        visibility,
+      );
+    } else {
+      response = await vehicleHistoryService.addNote(note, visibility, searchedPlate);
+    }
     if (response.success) {
       const newNotes = await vehicleHistoryService.getNotesActivities({
         ...filters,
@@ -433,6 +411,7 @@ export default function VehicleHistoryReport() {
       });
       setNotesActivities(newNotes);
       toast.success(response.message);
+      setEditingNote(null);
     }
   };
 
@@ -449,12 +428,13 @@ export default function VehicleHistoryReport() {
   // Delete note
   const handleDeleteNote = async (noteId: string) => {
     if (confirm("Are you sure you want to delete this note?")) {
-      toast.success("Note deleted successfully");
+      vehicleHistoryService.deleteNote(searchedPlate, noteId);
       const newNotes = await vehicleHistoryService.getNotesActivities({
         ...filters,
         licensePlate: searchedPlate,
       });
       setNotesActivities(newNotes);
+      toast.success("Note deleted successfully");
     }
   };
 
@@ -469,10 +449,13 @@ export default function VehicleHistoryReport() {
   ];
   const locationOptions = [
     "All Locations",
-    "Downtown Park",
-    "Central Plaza",
-    "Airport Parking",
-    "City Mall",
+    "Downtown",
+    "Airport",
+    "Mall",
+    "Stadium",
+    "City Center",
+    "Market Street",
+    "Harbor",
   ];
   const searchInOptions = [
     "All Records",

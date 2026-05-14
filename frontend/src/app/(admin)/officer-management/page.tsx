@@ -17,6 +17,7 @@ import {
   MoreVertical,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import toast from "react-hot-toast";
 
 import { StatCard } from "@/components/common/StatCard";
 import { TableSkeleton } from "@/components/common/TableSkeleton";
@@ -26,6 +27,7 @@ import {
   OfficerFormData,
 } from "@/components/officer-management/OfficerFormDrawer";
 import { officerService, Officer } from "@/services/officer.service";
+import { createOfficer, updateOfficer } from "@/services/officers.service";
 
 
 const initialFormData: OfficerFormData = {
@@ -127,7 +129,14 @@ export default function OfficerManagementPage() {
       name: officer.name || "",
       email: officer.email || "",
       phone: officer.phone || "",
-      role: officer.role || "",
+      role:
+        officer.role === "SUPERVISOR"
+          ? "Supervisor"
+          : officer.role === "OFFICER"
+            ? "Officer"
+            : officer.role === "Admin" || officer.role === "ADMIN"
+              ? "Admin"
+              : "Officer",
       employeeId: officer.employeeId || officer.id || "",
       employmentType: officer.employmentType || "",
       hireDate: officer.hireDate || "",
@@ -152,21 +161,18 @@ export default function OfficerManagementPage() {
     setIsViewDrawerOpen(true);
   };
 
-  const handleDisableOfficer = (officerId: string) => {
-    setOfficers((prev) =>
-      prev.map((officer) =>
-        officer.id === officerId
-          ? {
-              ...officer,
-              accessStatus:
-                officer.accessStatus === "Disabled" ? "Enabled" : "Disabled",
-              disabledBy: "Admin",
-              disabledAt: new Date().toLocaleString(),
-              disableReason: "Access disabled by admin.",
-            }
-          : officer,
-      ),
-    );
+  const handleDisableOfficer = async (officerId: string) => {
+    try {
+      const newStatus = officers.find(o => o.id === officerId)?.accessStatus === "Disabled" ? "ACTIVE" : "DISABLED";
+      await officerService.setOfficerStatus(officerId, newStatus);
+      // Refresh the list
+      const items = await officerService.getOfficers({});
+      setOfficers(items);
+      toast.success(`Officer ${newStatus === "DISABLED" ? "disabled" : "enabled"} successfully`);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to update officer status");
+    }
   };
 
   const handleResetFilters = () => {
@@ -176,51 +182,44 @@ export default function OfficerManagementPage() {
     setCurrentPage(1);
   };
 
-  const handleSubmitOfficer = (data: OfficerFormData) => {
+  const mapRole = (r: string): "OFFICER" | "SUPERVISOR" => {
+    if (r === "Supervisor") return "SUPERVISOR";
+    return "OFFICER";
+  };
+
+  const handleSubmitOfficer = async (data: OfficerFormData) => {
     if (!data.name || !data.email || !data.phone || !data.role) {
-      alert("Please fill all fields");
+      toast.error("Please fill all required fields");
       return;
     }
 
-    if (editingOfficer) {
-      setOfficers((prev) =>
-        prev.map((officer) =>
-          officer.id === editingOfficer.id
-            ? {
-                ...officer,
-                name: data.name,
-                phone: data.phone,
-                role: data.role,
-              }
-            : officer,
-        ),
-      );
-    } else {
-      const newOfficer: Officer = {
-        id: `OF-${1000 + officers.length + 1}`,
-        name: data.name,
-        email: data.email,
-        phone: data.phone,
-        role: data.role,
-        loginStatus: "Inactive",
-        accessStatus: "Enabled",
-        tickets: 0,
-        date: new Date().toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        }),
-        time: new Date().toLocaleTimeString("en-US", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-        activityLogs: [],
-      };
-      setOfficers((prev) => [newOfficer, ...prev]);
+    try {
+      if (editingOfficer) {
+        await updateOfficer(editingOfficer.id, {
+          full_name: data.name,
+          phone: data.phone,
+          role: mapRole(data.role),
+          badge_number: data.employeeId || undefined,
+        });
+        toast.success("Officer updated");
+      } else {
+        await createOfficer({
+          full_name: data.name,
+          email: data.email,
+          phone: data.phone,
+          role: mapRole(data.role),
+          badge_number: data.employeeId || undefined,
+        });
+        toast.success("Officer created");
+      }
+      const items = await officerService.getOfficers({});
+      setOfficers(items);
+      setIsFormOpen(false);
+      resetForm();
+    } catch (e) {
+      console.error(e);
+      toast.error("Could not save officer");
     }
-
-    setIsFormOpen(false);
-    resetForm();
   };
 
   return (
@@ -362,7 +361,7 @@ export default function OfficerManagementPage() {
                           </div>
                           <div>
                             <div className="font-black text-sm">
-                              {officer.full_name}
+                              {officer.name}
                             </div>
                             <div className="text-[11px] text-[var(--color-primary)] font-semibold">
                               {officer.email}
@@ -441,11 +440,10 @@ export default function OfficerManagementPage() {
                   <button
                     key={page}
                     onClick={() => setCurrentPage(page)}
-                    className={`w-9 h-9 rounded-xl text-xs font-black transition-all ${
-                      currentPage === page
-                        ? "bg-[var(--color-primary)] text-white shadow-lg shadow-[var(--color-primary)]/20"
-                        : "hover:bg-white"
-                    }`}
+                    className={`w-9 h-9 rounded-xl text-xs font-black transition-all ${currentPage === page
+                      ? "bg-[var(--color-primary)] text-white shadow-lg shadow-[var(--color-primary)]/20"
+                      : "hover:bg-white"
+                      }`}
                   >
                     {page}
                   </button>

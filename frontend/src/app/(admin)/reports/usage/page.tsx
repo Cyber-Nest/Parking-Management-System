@@ -36,6 +36,16 @@ import {
   PlanTypeDistribution,
 } from "@/services/parking-usage.service";
 
+const defaultLast30Range = () => {
+  const today = new Date();
+  const end = today.toISOString().split("T")[0];
+  const start = new Date(today);
+  start.setDate(start.getDate() - 30);
+  return { startDate: start.toISOString().split("T")[0], endDate: end };
+};
+
+const initialUsageRange = defaultLast30Range();
+
 export default function ParkingUsageReport() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
@@ -44,7 +54,7 @@ export default function ParkingUsageReport() {
   const [selectedRow, setSelectedRow] = useState<any>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
-  const [selectedDateOption, setSelectedDateOption] = useState("");
+  const [selectedDateOption, setSelectedDateOption] = useState("Last 30 Days");
   const exportDropdownRef = useRef<HTMLDivElement>(null);
   const itemsPerPage = 10;
 
@@ -63,8 +73,8 @@ export default function ParkingUsageReport() {
     planType: "All Plans",
     paymentMethod: "All Methods",
     status: "All Status",
-    startDate: "",
-    endDate: "",
+    startDate: initialUsageRange.startDate,
+    endDate: initialUsageRange.endDate,
   });
 
   // Chart days filter
@@ -181,14 +191,15 @@ export default function ParkingUsageReport() {
 
   // Reset filters
   const handleResetFilters = () => {
+    const r = defaultLast30Range();
     setFilters({
       dateRange: "Last 30 Days",
       location: "All Locations",
       planType: "All Plans",
       paymentMethod: "All Methods",
       status: "All Status",
-      startDate: "",
-      endDate: "",
+      startDate: r.startDate,
+      endDate: r.endDate,
     });
     setSelectedDateOption("");
     setChartDays(30);
@@ -282,11 +293,10 @@ export default function ParkingUsageReport() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${
-              showFilters
-                ? "bg-[var(--color-primary)] text-white border-[var(--color-primary)]"
-                : "bg-[var(--color-surface)] text-[var(--color-text-secondary)] border-[var(--color-border)] hover:border-[var(--color-primary)]"
-            }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${showFilters
+              ? "bg-[var(--color-primary)] text-white border-[var(--color-primary)]"
+              : "bg-[var(--color-surface)] text-[var(--color-text-secondary)] border-[var(--color-border)] hover:border-[var(--color-primary)]"
+              }`}
           >
             <Filter size={16} />
             Filters
@@ -601,11 +611,10 @@ export default function ParkingUsageReport() {
                 <button
                   key={page}
                   onClick={() => setCurrentPage(page)}
-                  className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
-                    currentPage === page
-                      ? "bg-[var(--color-primary)] text-white"
-                      : "hover:bg-[var(--color-surface)] text-[var(--color-text-secondary)]"
-                  }`}
+                  className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${currentPage === page
+                    ? "bg-[var(--color-primary)] text-white"
+                    : "hover:bg-[var(--color-surface)] text-[var(--color-text-secondary)]"
+                    }`}
                 >
                   {page}
                 </button>

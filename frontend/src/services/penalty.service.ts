@@ -59,7 +59,7 @@ const usd = (value: unknown) =>
 
 export const penaltyService = {
   async getPenaltyTickets(params: TicketListParams = {}): Promise<PenaltyTicket[]> {
-    const res = await listTickets(params);
+    const res = await listTickets({ limit: 200, page: 1, ...params });
     const items = (res?.items ?? res ?? []) as any[];
     return items.map((t, idx) => {
       const issued = new Date(t.date_issued ?? t.dateIssued ?? t.created_at ?? t.createdAt ?? Date.now());
@@ -87,6 +87,16 @@ export const penaltyService = {
         minute: "2-digit",
         hour12: true,
       });
+      const remarks = String(t.remarks ?? "");
+      const noteLines = remarks
+        ? remarks.split(/\n+/).map((line: string, i: number) => ({
+            id: `r-${i}`,
+            note: line,
+            createdBy: "System",
+            createdAt: "",
+          }))
+        : [];
+
       return {
         id: String(t.id ?? `TKT-${1000 + idx}`),
         plate: String(t.license_plate ?? t.licensePlate ?? "-"),
@@ -126,7 +136,7 @@ export const penaltyService = {
           ? new Date(t.end_time).toLocaleString()
           : "",
         photos: [],
-        notes: [],
+        notes: noteLines,
         raw: t,
       };
     });

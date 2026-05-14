@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Plus,
@@ -83,33 +83,34 @@ export default function ParkingPlanAndRulesPage() {
 
   const router = useRouter();
 
+  const loadData = useCallback(async () => {
+    const token = getTokenValue("token");
+    if (!token) {
+      setLoading(false);
+      router.push("/login");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const [plansRes, rulesRes] = await Promise.all([
+        parkingPlanAndRulesService.getPlans(),
+        parkingPlanAndRulesService.getRules(),
+      ]);
+      setPlans(plansRes);
+      setRules(rulesRes);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to fetch data");
+    } finally {
+      setLoading(false);
+    }
+  }, [router]);
+
   // Fetch Data
   useEffect(() => {
-    const fetchData = async () => {
-      const token = getTokenValue("token");
-      if (!token) {
-        setLoading(false);
-        router.push("/login");
-        return;
-      }
-
-      try {
-        setLoading(true);
-        const [plansRes, rulesRes] = await Promise.all([
-          parkingPlanAndRulesService.getPlans(),
-          parkingPlanAndRulesService.getRules(),
-        ]);
-        setPlans(plansRes);
-        setRules(rulesRes);
-      } catch (error) {
-        console.error(error);
-        toast.error("Failed to fetch data");
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [router]);
+    void loadData();
+  }, [loadData]);
 
   // Stats
   const stats = useMemo(() => {
@@ -171,77 +172,66 @@ export default function ParkingPlanAndRulesPage() {
   };
 
   // Submit Handler
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (activeTab === "plans") {
-      if (!planForm.name || !planForm.price) {
-        toast.error("Please fill all fields");
+      if (!planForm.name || !planForm.price || !planForm.duration) {
+        toast.error("Please fill name, price, and duration");
         return;
       }
-
-      const newPlan: ParkingPlan = {
-        id: editingItem ? editingItem.id : `PLAN-${100 + plans.length + 1}`,
-        name: planForm.name,
-        type: planForm.type,
-        duration: Number(planForm.duration),
-        price: Number(planForm.price),
-        tax: Number(planForm.tax),
-        status: planForm.status as "Active" | "Inactive",
-        updatedDate: new Date().toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        }),
-        updatedTime: new Date().toLocaleTimeString("en-US", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      };
-
-      if (editingItem) {
-        setPlans((prev) =>
-          prev.map((item) => (item.id === editingItem.id ? newPlan : item)),
-        );
-        toast.success("Plan updated successfully");
-      } else {
-        setPlans((prev) => [newPlan, ...prev]);
-        toast.success("Plan added successfully");
+      try {
+        const payload = {
+          name: planForm.name,
+          price: Number(planForm.price),
+          duration: Number(planForm.duration),
+          plan_type: planForm.type,
+          tax_percent: Number(planForm.tax) || 0,
+          status: planForm.status,
+        };
+        if (editingItem) {
+          await parkingPlanAndRulesService.updatePlan(editingItem.id, payload);
+          toast.success("Plan updated");
+        } else {
+          await parkingPlanAndRulesService.createPlan(payload);
+          toast.success("Plan created");
+        }
+        await loadData();
+        resetForm();
+      } catch (e) {
+        console.error(e);
+        toast.error("Could not save plan");
       }
-    } else {
-      if (!ruleForm.violation || !ruleForm.amount) {
-        toast.error("Please fill all fields");
-        return;
-      }
-
-      const newRule: PenaltyRule = {
-        id: editingItem ? editingItem.id : `PEN-${400 + rules.length + 1}`,
-        violation: ruleForm.violation,
-        code: ruleForm.code,
-        amount: Number(ruleForm.amount),
-        grace: Number(ruleForm.grace),
-        description: ruleForm.description,
-        status: ruleForm.status as "Active" | "Inactive",
-        updatedDate: new Date().toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
-          year: "numeric",
-        }),
-        updatedTime: new Date().toLocaleTimeString("en-US", {
-          hour: "2-digit",
-          minute: "2-digit",
-        }),
-      };
-
-      if (editingItem) {
-        setRules((prev) =>
-          prev.map((item) => (item.id === editingItem.id ? newRule : item)),
-        );
-        toast.success("Rule updated successfully");
-      } else {
-        setRules((prev) => [newRule, ...prev]);
-        toast.success("Rule added successfully");
-      }
+      return;
     }
-    resetForm();
+
+    if (!ruleForm.violation || !ruleForm.amount) {
+      toast.error("Please fill violation and amount");
+      return;
+    }
+    const code =
+      ruleForm.code?.trim() ||
+      `RULE-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+    try {
+      const payload = {
+        violation: ruleForm.violation,
+        code,
+        amount: Number(ruleForm.amount),
+        grace: Number(ruleForm.grace) || 0,
+        description: ruleForm.description,
+        status: ruleForm.status,
+      };
+      if (editingItem) {
+        await parkingPlanAndRulesService.updateRule(editingItem.id, payload);
+        toast.success("Rule updated");
+      } else {
+        await parkingPlanAndRulesService.createRule(payload as Omit<PenaltyRule, "id" | "created_at" | "updated_at">);
+        toast.success("Rule created");
+      }
+      await loadData();
+      resetForm();
+    } catch (e) {
+      console.error(e);
+      toast.error("Could not save rule");
+    }
   };
 
   // Edit Handler
@@ -251,19 +241,19 @@ export default function ParkingPlanAndRulesPage() {
     if (activeTab === "plans") {
       setPlanForm({
         name: item.name,
-        type: item.type,
-        duration: item.duration.toString(),
-        price: item.price.toString(),
-        tax: item.tax.toString(),
-        status: item.status,
+        type: item.plan_type ?? item.type ?? "Hourly",
+        duration: String(item.duration ?? ""),
+        price: String(item.price ?? ""),
+        tax: String(item.tax_percent ?? item.tax ?? "0"),
+        status: item.status ?? "Active",
       });
     } else {
       setRuleForm({
         violation: item.violation,
         code: item.code,
-        amount: item.amount.toString(),
-        grace: item.grace.toString(),
-        description: item.description,
+        amount: item.amount?.toString() ?? "",
+        grace: (item.grace_minutes ?? item.grace ?? 0).toString(),
+        description: item.description ?? "",
         status: item.status,
       });
     }
@@ -271,38 +261,40 @@ export default function ParkingPlanAndRulesPage() {
   };
 
   // Delete Handler
-  const handleDelete = (id: string) => {
-    if (activeTab === "plans") {
-      setPlans((prev) => prev.filter((item) => item.id !== id));
-    } else {
-      setRules((prev) => prev.filter((item) => item.id !== id));
+  const handleDelete = async (id: string) => {
+    try {
+      if (activeTab === "plans") {
+        await parkingPlanAndRulesService.deletePlan(id);
+      } else {
+        await parkingPlanAndRulesService.deleteRule(id);
+      }
+      toast.success("Deleted");
+      await loadData();
+    } catch (e) {
+      console.error(e);
+      toast.error("Delete failed (may be in use)");
     }
   };
 
   // Toggle Status
-  const handleToggleStatus = (id: string) => {
-    if (activeTab === "plans") {
-      setPlans((prev) =>
-        prev.map((item) =>
-          item.id === id
-            ? {
-              ...item,
-              status: item.status === "Active" ? "Inactive" : "Active",
-            }
-            : item,
-        ),
-      );
-    } else {
-      setRules((prev) =>
-        prev.map((item) =>
-          item.id === id
-            ? {
-              ...item,
-              status: item.status === "Active" ? "Inactive" : "Active",
-            }
-            : item,
-        ),
-      );
+  const handleToggleStatus = async (id: string) => {
+    try {
+      if (activeTab === "plans") {
+        const p = plans.find((x) => x.id === id);
+        if (!p) return;
+        const next = p.status === "Active" ? "Inactive" : "Active";
+        await parkingPlanAndRulesService.updatePlan(id, { status: next });
+      } else {
+        const r = rules.find((x) => x.id === id);
+        if (!r) return;
+        const next = r.status === "Active" ? "Inactive" : "Active";
+        await parkingPlanAndRulesService.updateRule(id, { status: next });
+      }
+      toast.success("Status updated");
+      await loadData();
+    } catch (e) {
+      console.error(e);
+      toast.error("Could not update status");
     }
   };
 

@@ -37,7 +37,7 @@ export interface OfficerFormData {
 interface OfficerFormDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: OfficerFormData) => void;
+  onSubmit: (data: OfficerFormData) => void | Promise<void>;
   editingOfficer: Officer | null;
   formData: OfficerFormData;
   onFormChange: (field: keyof OfficerFormData, value: string) => void;

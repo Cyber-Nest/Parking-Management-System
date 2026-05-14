@@ -8,6 +8,7 @@ export interface ReportQueryParams {
     to?: string;
     limit?: number;
     license_plate?: string;
+    location?: string;
 }
 
 export const getReport = async (type: string, params: ReportQueryParams = {}) => {

@@ -1,6 +1,6 @@
 import { getReport } from "./reports.service";
 import { downloadReportExport, type ReportExportFormat } from "./report-export.client";
-import { listTickets } from "./tickets.service";
+import { getTicketById as fetchTicketById } from "./tickets.service";
 
 export interface OutstandingDueFilters {
     dateRange: string;
@@ -43,13 +43,15 @@ const range = (f: OutstandingDueFilters) => ({
     to: f.endDate?.trim() || undefined,
 });
 
-const daysBetween = (a: Date, b: Date) => Math.max(0, Math.ceil((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24)));
+const dayMs = 1000 * 60 * 60 * 24;
 
 const mapTicket = (t: any): OutstandingTicketRow => {
     const due = t.due_date ? new Date(t.due_date) : null;
     const issued = t.date_issued ? new Date(t.date_issued) : new Date();
     const today = new Date();
-    const pending = due ? daysBetween(issued, due) : 0;
+    const overdueDays = due
+        ? Math.max(0, Math.ceil((today.getTime() - due.getTime()) / dayMs))
+        : Math.max(0, Math.ceil((today.getTime() - issued.getTime()) / dayMs));
     const plate = t.license_plate || "—";
     return {
         id: t.id,
@@ -65,8 +67,8 @@ const mapTicket = (t: any): OutstandingTicketRow => {
         officerId: t.officer_id || "—",
         status: "Unpaid",
         violationType: t.reason || "Penalty",
-        location: "—",
-        daysPending: pending,
+        location: t.location_name || t.location || "—",
+        daysPending: overdueDays,
         notes: t.remarks || "",
     };
 };
@@ -75,17 +77,17 @@ export const outstandingDueService = {
     async getStats(filters: OutstandingDueFilters): Promise<OutstandingDueStats> {
         const tickets = await outstandingDueService.getTickets(filters);
         const total = tickets.reduce((s, t) => s + t.amount, 0);
-        const c0 = tickets.filter((t) => t.daysPending <= 7).length;
-        const c1 = tickets.filter((t) => t.daysPending > 7 && t.daysPending <= 30).length;
-        const c2 = tickets.filter((t) => t.daysPending > 30).length;
+        const b0 = tickets.filter((t) => t.daysPending <= 7).reduce((s, t) => s + t.amount, 0);
+        const b1 = tickets.filter((t) => t.daysPending > 7 && t.daysPending <= 30).reduce((s, t) => s + t.amount, 0);
+        const b2 = tickets.filter((t) => t.daysPending > 30).reduce((s, t) => s + t.amount, 0);
         return {
             totalOutstanding: total,
             overdueCount: tickets.length,
             dueThisWeek: tickets.filter((t) => t.daysPending <= 7).length,
             averageDueAmount: tickets.length ? total / tickets.length : 0,
-            days0to7: c0,
-            days7to30: c1,
-            days30plus: c2,
+            days0to7: b0,
+            days7to30: b1,
+            days30plus: b2,
         };
     },
 
@@ -101,27 +103,29 @@ export const outstandingDueService = {
     },
 
     async getTicketById(ticketId: string): Promise<OutstandingTicketRow> {
-        const { items } = await listTickets({ q: ticketId, limit: 10, page: 1 });
-        const t = items.find((x: any) => x.id === ticketId || x.ticket_number === ticketId);
-        if (t) return mapTicket(t);
-        return {
-            id: ticketId,
-            ticketNumber: ticketId,
-            ticketId,
-            ticketDate: "—",
-            plate: "—",
-            plateNumber: "—",
-            amount: 0,
-            dueDate: "—",
-            officer: "—",
-            officerName: "—",
-            officerId: "—",
-            status: "—",
-            violationType: "—",
-            location: "—",
-            daysPending: 0,
-            notes: "",
-        };
+        try {
+            const t = await fetchTicketById(ticketId);
+            return mapTicket(t);
+        } catch {
+            return {
+                id: ticketId,
+                ticketNumber: ticketId,
+                ticketId,
+                ticketDate: "—",
+                plate: "—",
+                plateNumber: "—",
+                amount: 0,
+                dueDate: "—",
+                officer: "—",
+                officerName: "—",
+                officerId: "—",
+                status: "—",
+                violationType: "—",
+                location: "—",
+                daysPending: 0,
+                notes: "",
+            };
+        }
     },
 };
 

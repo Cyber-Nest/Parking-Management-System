@@ -24,3 +24,40 @@ export const listTickets = async (params: TicketListParams = {}) => {
   return getResponseData(response);
 };
 
+export const getTicketById = async (id: string) => {
+  const response = await axiosInstance.get(API_ENDPOINTS.TICKETS.BY_ID(id));
+  return getResponseData(response);
+};
+
+export const updateTicket = async (
+  id: string,
+  payload: Partial<{
+    license_plate: string;
+    amount: number;
+    reason: string;
+    due_date: string | null;
+    location_name: string | null;
+  }>,
+) => {
+  const response = await axiosInstance.patch(API_ENDPOINTS.TICKETS.BY_ID(id), payload);
+  return getResponseData(response);
+};
+
+export const markTicketPaid = async (
+  id: string,
+  payload?: { payment_method?: string; transaction_ref?: string },
+) => {
+  const response = await axiosInstance.patch(API_ENDPOINTS.TICKETS.MARK_PAID(id), payload ?? {});
+  return getResponseData(response);
+};
+
+export const cancelTicket = async (id: string) => {
+  const response = await axiosInstance.patch(API_ENDPOINTS.TICKETS.CANCEL(id), {});
+  return getResponseData(response);
+};
+
+export const addTicketNote = async (id: string, note: string) => {
+  const response = await axiosInstance.patch(API_ENDPOINTS.TICKETS.NOTE(id), { note });
+  return getResponseData(response);
+};
+

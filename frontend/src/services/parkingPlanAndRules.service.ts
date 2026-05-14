@@ -31,12 +31,39 @@ export const parkingPlanAndRulesService = {
   // Plans
   async getPlans(): Promise<ParkingPlan[]> {
     const res = await listParkingPlans();
-    return (res?.items ?? res ?? []) as ParkingPlan[];
+    const rows = (res?.items ?? res ?? []) as Record<string, unknown>[];
+    return rows.map((p) => ({
+      ...(p as object),
+      id: String(p.id),
+      name: String(p.name ?? ""),
+      type: String(p.plan_type ?? p.type ?? "Hourly"),
+      duration: Number(p.duration) || 0,
+      price: Number(p.price) || 0,
+      tax: Number(p.tax_percent ?? p.tax ?? 0),
+      status: (p.status as string) || "Active",
+    })) as ParkingPlan[];
   },
-  async createPlan(payload: { name: string; price: number; duration: number }) {
+  async createPlan(payload: {
+    name: string;
+    price: number;
+    duration: number;
+    plan_type?: string;
+    tax_percent?: number;
+    status?: string;
+  }) {
     return await createParkingPlan(payload);
   },
-  async updatePlan(id: string, payload: { name?: string; price?: number; duration?: number }) {
+  async updatePlan(
+    id: string,
+    payload: {
+      name?: string;
+      price?: number;
+      duration?: number;
+      plan_type?: string;
+      tax_percent?: number;
+      status?: string;
+    },
+  ) {
     return await updateParkingPlan(id, payload);
   },
   async deletePlan(id: string) {

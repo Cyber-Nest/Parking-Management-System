@@ -693,6 +693,7 @@ export default function OutstandingDueReport() {
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
         ticketId={selectedTicketId}
+        exportFilters={filters}
       />
     </div>
   );

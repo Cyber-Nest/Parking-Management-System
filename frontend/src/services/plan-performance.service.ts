@@ -70,7 +70,11 @@ const range = (f: PlanPerformanceFilters) => ({
 export const planPerformanceService = {
     async getSummary(filters: PlanPerformanceFilters): Promise<PlanPerformanceSummary> {
         const data = (await getReport("plan", range(filters))) as {
-            planData: { sessions_count: number; average_duration: number }[];
+            planData: {
+                sessions_count: number;
+                average_duration: number;
+                revenue?: number;
+            }[];
         };
         const rows = data.planData ?? [];
         const sold = rows.reduce((s, r) => s + (Number(r.sessions_count) || 0), 0);
@@ -78,7 +82,7 @@ export const planPerformanceService = {
             rows.length > 0
                 ? rows.reduce((s, r) => s + (Number(r.average_duration) || 0), 0) / rows.length
                 : 0;
-        const revenue = sold * 12;
+        const revenue = rows.reduce((s, r) => s + (Number(r.revenue) || 0), 0) || sold * 12;
         return {
             totalRevenue: revenue,
             totalPlansSold: sold,
@@ -89,16 +93,24 @@ export const planPerformanceService = {
 
     async getPlanData(filters: PlanPerformanceFilters): Promise<PlanTableRow[]> {
         const data = (await getReport("plan", range(filters))) as {
-            planData: { plan_id: string; plan_name: string; sessions_count: number; average_duration: number }[];
+            planData: {
+                plan_id: string;
+                plan_name: string;
+                sessions_count: number;
+                average_duration: number;
+                revenue?: number;
+                plan_price?: number | null;
+            }[];
         };
         return (data.planData ?? []).map((p) => {
             const sessions = Number(p.sessions_count) || 0;
-            const revenue = sessions * 12;
+            const revenue = Number(p.revenue) || sessions * 12;
+            const price = Number(p.plan_price) || 12;
             return {
                 id: p.plan_id,
                 name: p.plan_name,
                 type: "Plan",
-                price: 12,
+                price,
                 sold: sessions,
                 revenue,
                 sessions,

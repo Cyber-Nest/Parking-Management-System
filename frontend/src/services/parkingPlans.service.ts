@@ -21,14 +21,28 @@ export const listParkingPlans = async () => {
   return getResponseData(response);
 };
 
-export const createParkingPlan = async (payload: { name: string; price: number; duration: number }) => {
+export const createParkingPlan = async (payload: {
+  name: string;
+  price: number;
+  duration: number;
+  plan_type?: string;
+  tax_percent?: number;
+  status?: string;
+}) => {
   const response = await axiosInstance.post(API_ENDPOINTS.PARKING_PLANS.LIST, payload);
   return getResponseData(response);
 };
 
 export const updateParkingPlan = async (
   id: string,
-  payload: { name?: string; price?: number; duration?: number }
+  payload: {
+    name?: string;
+    price?: number;
+    duration?: number;
+    plan_type?: string;
+    tax_percent?: number;
+    status?: string;
+  },
 ) => {
   const response = await axiosInstance.patch(`${API_ENDPOINTS.PARKING_PLANS.LIST}/${id}`, payload);
   return getResponseData(response);

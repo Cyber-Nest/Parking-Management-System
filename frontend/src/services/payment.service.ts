@@ -1,6 +1,7 @@
 import {
   listPayments,
   getPaymentSummary,
+  getPaymentReceipt,
   type PaymentListParams,
   type PaymentMethod,
   type PaymentStatus,
@@ -48,7 +49,7 @@ const usd = (value: unknown) =>
 
 export const paymentService = {
   async getPayments(params: PaymentListParams = {}): Promise<Payment[]> {
-    const res = await listPayments(params);
+    const res = await listPayments({ limit: 200, page: 1, ...params });
     const items = (res?.items ?? res ?? []) as any[];
     return items.map((p, idx) => {
       const dt = new Date(p.paid_at ?? p.paidAt ?? p.created_at ?? p.createdAt ?? Date.now());
@@ -102,6 +103,10 @@ export const paymentService = {
         safeNum(summary?.pendingAmount ?? 0) + safeNum(summary?.failedAmount ?? 0),
       ),
     };
+  },
+
+  async getPaymentReceiptData(id: string) {
+    return await getPaymentReceipt(id);
   },
 
   methodValues: [
