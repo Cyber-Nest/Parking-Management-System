@@ -29,6 +29,12 @@ export const getTicketById = async (id: string) => {
   return getResponseData(response);
 };
 
+/** Server-backed payload for penalty ticket reprint (GET …/print). */
+export const getTicketPrint = async (id: string) => {
+  const response = await axiosInstance.get(API_ENDPOINTS.TICKETS.PRINT(id));
+  return getResponseData(response);
+};
+
 export const updateTicket = async (
   id: string,
   payload: Partial<{

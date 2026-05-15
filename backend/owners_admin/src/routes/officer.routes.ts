@@ -4,6 +4,7 @@ import {
   createOfficer,
   deleteOfficer,
   getOfficerSummary,
+  getOfficerById,
   listOfficers,
   setOfficerStatus,
   updateOfficer,
@@ -18,10 +19,11 @@ const adminOnly = (handler: any) => [
 ];
 
 router.get('/summary', ...adminOnly(getOfficerSummary));
+router.get('/:id', ...adminOnly(getOfficerById));
 router.get('/', ...adminOnly(listOfficers));
 router.post('/', ...adminOnly(createOfficer));
-router.patch('/:id', ...adminOnly(updateOfficer));
 router.patch('/:id/status', ...adminOnly(setOfficerStatus));
+router.patch('/:id', ...adminOnly(updateOfficer));
 router.delete('/:id', ...adminOnly(deleteOfficer));
 
 export default router;

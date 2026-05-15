@@ -24,11 +24,14 @@ const listParkingPlans = async (_req, res) => {
 exports.listParkingPlans = listParkingPlans;
 const createParkingPlan = async (req, res) => {
     try {
-        const { name, price, duration } = req.body;
+        const { name, price, duration, plan_type, tax_percent, status } = req.body;
         const data = await parkingPlanService.create({
             name: name ?? '',
             price: Number(price),
             duration: Number(duration),
+            plan_type: plan_type,
+            tax_percent: tax_percent !== undefined ? Number(tax_percent) : undefined,
+            status: status,
         });
         res.status(201).json({ success: true, message: 'Parking plan created', data });
     }
@@ -40,11 +43,14 @@ exports.createParkingPlan = createParkingPlan;
 const updateParkingPlan = async (req, res) => {
     try {
         const { id } = req.params;
-        const { name, price, duration } = req.body;
+        const { name, price, duration, plan_type, tax_percent, status } = req.body;
         const data = await parkingPlanService.update(id, {
             name,
             price: price !== undefined ? Number(price) : undefined,
             duration: duration !== undefined ? Number(duration) : undefined,
+            plan_type,
+            tax_percent: tax_percent !== undefined ? Number(tax_percent) : undefined,
+            status,
         });
         res.status(200).json({ success: true, message: 'Parking plan updated', data });
     }

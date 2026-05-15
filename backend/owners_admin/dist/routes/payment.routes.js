@@ -9,8 +9,10 @@ const adminOnly = (handler) => [
     auth_middleware_1.requireAdmin,
     handler,
 ];
-router.get('/', ...adminOnly(payment_controller_1.listPayments));
 router.get('/summary', ...adminOnly(payment_controller_1.getPaymentSummary));
+router.get('/:id/receipt', ...adminOnly(payment_controller_1.getPaymentReceipt));
+router.get('/:id', ...adminOnly(payment_controller_1.getPaymentById));
+router.get('/', ...adminOnly(payment_controller_1.listPayments));
 router.post('/', ...adminOnly(payment_controller_1.createPayment));
 exports.default = router;
 //# sourceMappingURL=payment.routes.js.map

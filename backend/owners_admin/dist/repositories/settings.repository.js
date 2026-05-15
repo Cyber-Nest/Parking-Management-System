@@ -7,16 +7,57 @@ class SettingsRepository {
         this.settingsId = '00000000-0000-0000-0000-000000000001';
     }
     async getSystemSettings() {
-        const rows = await (0, database_1.queryRows)('SELECT timezone, language, date_format, time_format, week_starts_on, currency, session_expiry_display FROM system_settings WHERE id = ?', [this.settingsId]);
+        const rows = await (0, database_1.queryRows)(`SELECT timezone, language, date_format, time_format, week_starts_on, currency, session_expiry_display,
+              tax_rate_percent, service_fee, rounding_rule, prices_include_tax, refund_allowed, refund_approval_required
+              FROM system_settings WHERE id = ?`, [this.settingsId]);
         return rows[0] ?? this.getDefaultSystemSettings();
     }
     async updateSystemSettings(settings) {
         const existing = await (0, database_1.queryRows)('SELECT id FROM system_settings WHERE id = ?', [this.settingsId]);
+        const tax = settings.tax_rate_percent ?? 5;
+        const fee = settings.service_fee ?? 0;
+        const roundRule = settings.rounding_rule ?? 'nearest_cent';
+        const pit = settings.prices_include_tax ?? 1;
+        const ra = settings.refund_allowed ?? 1;
+        const rar = settings.refund_approval_required ?? 1;
         if (existing.length === 0) {
-            await (0, database_1.execute)('INSERT INTO system_settings (id, timezone, language, date_format, time_format, week_starts_on, currency, session_expiry_display) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [this.settingsId, settings.timezone, settings.language, settings.date_format, settings.time_format, settings.week_starts_on, settings.currency, settings.session_expiry_display]);
+            await (0, database_1.execute)(`INSERT INTO system_settings (id, timezone, language, date_format, time_format, week_starts_on, currency, session_expiry_display,
+                 tax_rate_percent, service_fee, rounding_rule, prices_include_tax, refund_allowed, refund_approval_required)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+                this.settingsId,
+                settings.timezone,
+                settings.language,
+                settings.date_format,
+                settings.time_format,
+                settings.week_starts_on,
+                settings.currency,
+                settings.session_expiry_display,
+                tax,
+                fee,
+                roundRule,
+                pit,
+                ra,
+                rar,
+            ]);
         }
         else {
-            await (0, database_1.execute)('UPDATE system_settings SET timezone = ?, language = ?, date_format = ?, time_format = ?, week_starts_on = ?, currency = ?, session_expiry_display = ? WHERE id = ?', [settings.timezone, settings.language, settings.date_format, settings.time_format, settings.week_starts_on, settings.currency, settings.session_expiry_display, this.settingsId]);
+            await (0, database_1.execute)(`UPDATE system_settings SET timezone = ?, language = ?, date_format = ?, time_format = ?, week_starts_on = ?, currency = ?, session_expiry_display = ?,
+                 tax_rate_percent = ?, service_fee = ?, rounding_rule = ?, prices_include_tax = ?, refund_allowed = ?, refund_approval_required = ? WHERE id = ?`, [
+                settings.timezone,
+                settings.language,
+                settings.date_format,
+                settings.time_format,
+                settings.week_starts_on,
+                settings.currency,
+                settings.session_expiry_display,
+                tax,
+                fee,
+                roundRule,
+                pit,
+                ra,
+                rar,
+                this.settingsId,
+            ]);
         }
         return settings;
     }
@@ -34,6 +75,74 @@ class SettingsRepository {
         }
         return settings;
     }
+    async getTaxPricing() {
+        const row = (await this.getSystemSettings());
+        return {
+            tax_rate_percent: Number(row.tax_rate_percent ?? 5),
+            currency: row.currency,
+            service_fee: Number(row.service_fee ?? 0),
+            rounding_rule: String(row.rounding_rule ?? 'nearest_cent'),
+            prices_include_tax: Number(row.prices_include_tax ?? 1),
+            refund_allowed: Number(row.refund_allowed ?? 1),
+            refund_approval_required: Number(row.refund_approval_required ?? 1),
+        };
+    }
+    async updateTaxPricing(patch) {
+        const current = (await this.getSystemSettings());
+        const merged = { ...current, ...patch };
+        await this.updateSystemSettings(merged);
+    }
+    async listAdmins() {
+        return (0, database_1.queryRows)(`SELECT a.id, a.email, a.full_name, r.name AS role_name, a.is_active, a.last_login_at, a.created_at
+       FROM admins a
+       JOIN roles r ON r.id = a.role_id
+       ORDER BY a.created_at DESC`);
+    }
+    async findRoleIdByName(name) {
+        const rows = await (0, database_1.queryRows)(`SELECT id FROM roles WHERE name = ? LIMIT 1`, [name]);
+        return rows[0]?.id ?? null;
+    }
+    async updateAdmin(id, patch) {
+        const updates = [];
+        const values = [];
+        if (patch.full_name !== undefined) {
+            updates.push('full_name = ?');
+            values.push(patch.full_name);
+        }
+        if (patch.role_id !== undefined) {
+            updates.push('role_id = ?');
+            values.push(patch.role_id);
+        }
+        if (patch.is_active !== undefined) {
+            updates.push('is_active = ?');
+            values.push(patch.is_active);
+        }
+        if (!updates.length)
+            return 0;
+        values.push(id);
+        const result = await (0, database_1.execute)(`UPDATE admins SET ${updates.join(', ')}, updated_at = NOW() WHERE id = ?`, values);
+        return result.affectedRows;
+    }
+    async listRolesWithPermissions() {
+        return (0, database_1.queryRows)(`SELECT r.id, r.name, p.permissions
+       FROM roles r
+       LEFT JOIN admin_roles_permissions p ON p.role_id = r.id`);
+    }
+    async upsertRolePermissions(roleId, permissionsJson) {
+        const existing = await (0, database_1.queryRows)(`SELECT id FROM admin_roles_permissions WHERE role_id = ? LIMIT 1`, [roleId]);
+        if (existing.length === 0) {
+            await (0, database_1.execute)(`INSERT INTO admin_roles_permissions (id, role_id, permissions) VALUES (UUID(), ?, ?)`, [
+                roleId,
+                permissionsJson,
+            ]);
+        }
+        else {
+            await (0, database_1.execute)(`UPDATE admin_roles_permissions SET permissions = ?, updated_at = NOW() WHERE role_id = ?`, [
+                permissionsJson,
+                roleId,
+            ]);
+        }
+    }
     getDefaultSystemSettings() {
         return {
             timezone: 'UTC',
@@ -43,6 +152,12 @@ class SettingsRepository {
             week_starts_on: 'sunday',
             currency: 'USD',
             session_expiry_display: 30,
+            tax_rate_percent: 5,
+            service_fee: 0,
+            rounding_rule: 'nearest_cent',
+            prices_include_tax: 1,
+            refund_allowed: 1,
+            refund_approval_required: 1,
         };
     }
     getDefaultBrandingSettings() {

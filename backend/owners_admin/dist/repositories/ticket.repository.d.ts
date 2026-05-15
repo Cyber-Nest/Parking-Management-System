@@ -21,8 +21,11 @@ export interface TicketRow {
     due_date: Date | null;
     paid_at: Date | null;
     remarks: string | null;
+    note: string | null;
     dispute_raised: number;
     created_at: Date;
+    session_id?: string | null;
+    location_name?: string | null;
 }
 export declare class TicketRepository {
     private buildWhere;
@@ -49,5 +52,18 @@ export declare class TicketRepository {
         sessionId?: string;
         remarks?: string;
     }): Promise<string>;
+    findById(id: string): Promise<TicketRow | null>;
+    updateTicket(id: string, params: {
+        licensePlate?: string;
+        amount?: number;
+        reason?: string;
+        dueDate?: string | null;
+        locationName?: string | null;
+    }): Promise<number>;
+    appendRemarks(id: string, note: string): Promise<number>;
+    setStatus(id: string, status: TicketStatus, extras?: {
+        paidAt?: Date | null;
+        paymentId?: string | null;
+    }): Promise<number>;
 }
 //# sourceMappingURL=ticket.repository.d.ts.map

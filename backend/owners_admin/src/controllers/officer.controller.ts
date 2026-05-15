@@ -14,6 +14,18 @@ const handleError = (err: unknown, res: Response): void => {
   res.status(500).json({ success: false, message: 'Internal server error' });
 };
 
+export const getOfficerById = async (
+  req: Request,
+  res: Response<ApiResponse<any>>
+): Promise<void> => {
+  try {
+    const data = await officerService.getById(req.params.id);
+    res.status(200).json({ success: true, message: 'Officer fetched', data });
+  } catch (err) {
+    handleError(err, res);
+  }
+};
+
 export const getOfficerSummary = async (
   _req: Request,
   res: Response<ApiResponse<any>>
@@ -39,11 +51,16 @@ export const listOfficers = async (
 };
 
 export const createOfficer = async (
-  req: AuthenticatedRequest,
+  req: Request,
   res: Response<ApiResponse<any>>
 ): Promise<void> => {
   try {
-    const data = await officerService.create(req.user.id, req.body);
+    const authReq = req as AuthenticatedRequest;
+    if (!authReq.user?.id) {
+      res.status(401).json({ success: false, message: 'Unauthorized' });
+      return;
+    }
+    const data = await officerService.create(authReq.user.id, authReq.body ?? {});
     res.status(201).json({ success: true, message: 'Officer created', data });
   } catch (err) {
     handleError(err, res);

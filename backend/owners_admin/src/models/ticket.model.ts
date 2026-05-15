@@ -7,7 +7,8 @@ export const Ticket = sequelize.define("Ticket", {
   license_plate: DataTypes.STRING,
   reason: DataTypes.STRING,
   amount: DataTypes.FLOAT,
-  status: DataTypes.ENUM("unpaid", "paid", "cancelled", "disputed", "resolved")
+  status: DataTypes.ENUM("unpaid", "paid", "cancelled", "disputed", "resolved"),
+  note: DataTypes.TEXT,
 }, {
   tableName: 'penalty_tickets',
   timestamps: false,

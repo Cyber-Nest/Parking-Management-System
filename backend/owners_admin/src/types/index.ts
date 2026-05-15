@@ -1,12 +1,12 @@
 // src/types/index.ts
 import { Request } from 'express';
 
-export type RoleName  = 'owner' | 'inspector' | 'user';
-export type UserType  = 'admin' | 'officer' | 'user';
-export type TicketStatus  = 'unpaid' | 'paid' | 'cancelled' | 'disputed' | 'resolved';
+export type RoleName = 'owner' | 'inspector' | 'user';
+export type UserType = 'admin' | 'officer' | 'user';
+export type TicketStatus = 'unpaid' | 'paid' | 'cancelled' | 'disputed' | 'resolved';
 export type PaymentStatus = 'pending' | 'success' | 'failed' | 'refunded';
 export type PaymentMethod = 'credit_card' | 'debit_card' | 'apple_pay' | 'visa' | 'mastercard' | 'amex';
-export type PaymentType   = 'parking' | 'penalty' | 'extension';
+export type PaymentType = 'parking' | 'penalty' | 'extension';
 export type SessionStatus = 'active' | 'expired' | 'extended' | 'cancelled';
 export type OfficerStatus = 'active' | 'inactive' | 'suspended';
 export type OfficerRole = 'OFFICER' | 'SUPERVISOR';
@@ -95,8 +95,10 @@ export interface TicketPublic {
   due_date: Date | null;
   paid_at: Date | null;
   remarks: string | null;
+  note: string | null;
   dispute_raised: boolean;
   photos: string[];
+  location_name?: string | null;
 }
 
 export interface CreateTicketBody {
@@ -140,9 +142,9 @@ export interface CreatePaymentBody {
 }
 
 // ─── Auth ────────────────────────────────────────────────────
-export interface LoginBody         { email: string; password: string; }
+export interface LoginBody { email: string; password: string; }
 export interface ForgotPasswordBody { email: string; }
-export interface ResetPasswordBody  { token: string; adminId: string; newPassword: string; }
+export interface ResetPasswordBody { token: string; adminId: string; newPassword: string; }
 
 export interface LoginResponse {
   accessToken: string;
@@ -179,7 +181,7 @@ export interface AuthenticatedRequest extends Request {
 // ─── Email ───────────────────────────────────────────────────
 export type EmailType =
   | 'payment_receipt' | 'penalty_notice' | 'dispute_response'
-  | 'password_reset'  | 'session_expiry_warning' | 'session_started'
+  | 'password_reset' | 'session_expiry_warning' | 'session_started'
   | 'officer_created';
 
 export interface SendEmailOptions {

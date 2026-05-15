@@ -10,6 +10,23 @@ const commonErrors_1 = require("./commonErrors");
 const env_1 = require("../config/env");
 const officerRepo = new officer_repository_1.OfficerRepository();
 class OfficerService {
+    async getById(id) {
+        const o = await officerRepo.findById(id);
+        if (!o)
+            throw new commonErrors_1.NotFoundError('Officer not found');
+        return {
+            id: o.id,
+            officer_id: o.badge_number ?? o.id,
+            full_name: o.full_name,
+            email: o.email,
+            phone: o.phone,
+            role: o.role,
+            status: o.status === 'active' ? 'ACTIVE' : 'DISABLED',
+            tickets_issued: o.tickets_issued ?? 0,
+            last_login_at: o.last_login_at,
+            created_at: o.created_at,
+        };
+    }
     async summary() {
         return officerRepo.summary();
     }

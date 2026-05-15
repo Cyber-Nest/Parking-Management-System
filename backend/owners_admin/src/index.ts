@@ -12,16 +12,31 @@ import sessionRoutes from './routes/session.routes';
 import settingsRoutes from './routes/settings.routes';
 import reportsRoutes from './routes/reports.routes';
 import penaltyRuleRoutes from './routes/penaltyRule.routes';
+import taxRoutes from './routes/tax.routes';
+import pricingRoutes from './routes/pricing.routes';
+import userRoutes from './routes/user.routes';
+import roleRoutes from './routes/role.routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.middleware';
 
 dotenv.config();
 
 const app = express();
 
+const corsAllowList = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:5173',
+  env.frontendUrl,
+  ...(process.env.CORS_ORIGINS ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean),
+].filter((v, i, a) => Boolean(v) && a.indexOf(v) === i) as string[];
+
 app.use(
   cors({
-    origin: ['http://localhost:3000', 'http://localhost:5173', env.frontendUrl].filter(Boolean),
     credentials: true,
+    origin: env.nodeEnv === 'production' ? corsAllowList : true,
   })
 );
 app.use(express.json());
@@ -45,6 +60,10 @@ app.use('/api/admin/sessions', sessionRoutes);
 app.use('/api/admin/settings', settingsRoutes);
 app.use('/api/admin/reports', reportsRoutes);
 app.use('/api/admin/penalty-rules', penaltyRuleRoutes);
+app.use('/api/admin/taxes', taxRoutes);
+app.use('/api/admin/pricings', pricingRoutes);
+app.use('/api/admin/users', userRoutes);
+app.use('/api/admin/roles', roleRoutes);
 app.use(notFoundHandler);
 app.use(errorHandler);
 

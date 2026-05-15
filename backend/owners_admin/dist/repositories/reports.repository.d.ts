@@ -1,4 +1,5 @@
 export declare class ReportsRepository {
+    private sessionOverlapWhere;
     getRevenue(from?: string, to?: string): Promise<{
         totals: {
             total_revenue: number;
@@ -22,6 +23,24 @@ export declare class ReportsRepository {
             plan_name: string;
             sessions: number;
             total_duration: number;
+        }[];
+        dailyBreakdown: {
+            report_date: string;
+            total_sessions: number;
+            completed: number;
+            active: number;
+            expired: number;
+            cancelled: number;
+            avg_duration: number;
+            revenue: number;
+        }[];
+        hourlyHistogram: {
+            hour: number;
+            session_count: number;
+        }[];
+        heatmapByWeekdayHour: {
+            weekday: number;
+            hours: number[];
         }[];
     }>;
     getPenalty(from?: string, to?: string): Promise<{
@@ -61,13 +80,16 @@ export declare class ReportsRepository {
             due_date: Date | null;
             officer_name: string;
             date_issued: Date;
+            location_name: string | null;
+            reason: string;
         }[];
     }>;
     getLocationPerformance(from?: string, to?: string): Promise<{
         locationData: {
-            plan_name: string;
+            location_key: string;
             sessions: number;
             total_duration: number;
+            revenue: number;
         }[];
     }>;
     getOccupancy(from?: string, to?: string): Promise<{
@@ -79,10 +101,12 @@ export declare class ReportsRepository {
     }>;
     getPlanPerformance(from?: string, to?: string): Promise<{
         planData: {
-            plan_id: string;
+            plan_id: string | null;
             plan_name: string;
             sessions_count: number;
             average_duration: number;
+            revenue: number;
+            plan_price: number | null;
         }[];
     }>;
     getAuditReport(limit?: number): Promise<{
@@ -108,7 +132,7 @@ export declare class ReportsRepository {
             created_at: Date;
         }[];
     }>;
-    getVehicleHistory(licensePlate: string): Promise<{
+    getVehicleHistory(licensePlate: string, from?: string, to?: string, location?: string): Promise<{
         history: {
             id: string;
             ticket_number: string;
@@ -121,7 +145,60 @@ export declare class ReportsRepository {
             due_date: Date | null;
             paid_at: Date | null;
             remarks: string | null;
+            location_name: string | null;
+            receipt_number: string | null;
         }[];
+        parking_sessions: {
+            id: string;
+            start_time: Date;
+            end_time: Date | null;
+            location_name: string | null;
+            plan_name: string | null;
+            duration_minutes: number | null;
+            status: string;
+            amount_paid: number;
+            payment_method: string | null;
+            receipt_number: string | null;
+        }[];
+        payments: {
+            id: string;
+            session_id: string | null;
+            ticket_id: string | null;
+            license_plate: string;
+            amount: number;
+            payment_method: string;
+            payment_type: string;
+            status: string;
+            transaction_ref: string | null;
+            paid_at: Date | null;
+            receipt_number: string | null;
+        }[];
+        refunds: {
+            id: string;
+            session_id: string | null;
+            ticket_id: string | null;
+            license_plate: string;
+            amount: number;
+            payment_method: string;
+            payment_type: string;
+            status: string;
+            transaction_ref: string | null;
+            paid_at: Date | null;
+            receipt_number: string | null;
+        }[];
+        summary: {
+            total_sessions: number;
+            total_payments_amount: number;
+            total_penalties: number;
+            total_penalty_amount: number;
+            refunds_amount: number;
+        };
+        vehicle: {
+            first_seen: Date | null;
+            last_seen: Date | null;
+            total_duration_minutes: number;
+            favorite_location: string | null;
+        } | null;
     }>;
     getRefunds(limit?: number): Promise<{
         summary: {

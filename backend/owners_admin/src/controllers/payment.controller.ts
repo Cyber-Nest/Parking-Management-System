@@ -1,12 +1,12 @@
 import { Request, Response } from 'express';
 import { ApiResponse } from '../types';
 import { PaymentService } from '../services/payment.service';
-import { ValidationError } from '../services/commonErrors';
+import { NotFoundError, ValidationError } from '../services/commonErrors';
 
 const paymentService = new PaymentService();
 
 const handleError = (err: unknown, res: Response): void => {
-  if (err instanceof ValidationError) {
+  if (err instanceof ValidationError || err instanceof NotFoundError) {
     res.status(err.statusCode).json({ success: false, message: err.message });
     return;
   }
@@ -45,6 +45,25 @@ export const createPayment = async (
   try {
     const data = await paymentService.create(req.body);
     res.status(201).json({ success: true, message: 'Payment created', data });
+  } catch (err) {
+    handleError(err, res);
+  }
+};
+
+export const getPaymentById = async (req: Request, res: Response<ApiResponse<any>>): Promise<void> => {
+  try {
+    const data = await paymentService.getById(req.params.id);
+    res.status(200).json({ success: true, message: 'Payment fetched', data });
+  } catch (err) {
+    handleError(err, res);
+  }
+};
+
+export const getPaymentReceipt = async (req: Request, res: Response<ApiResponse<any>>): Promise<void> => {
+  try {
+    const row = await paymentService.getById(req.params.id);
+    const data = paymentService.getReceiptPayload(row);
+    res.status(200).json({ success: true, message: 'Receipt data', data });
   } catch (err) {
     handleError(err, res);
   }

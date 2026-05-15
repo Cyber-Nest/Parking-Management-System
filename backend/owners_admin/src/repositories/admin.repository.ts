@@ -60,6 +60,22 @@ export class AdminRepository {
     return result.affectedRows > 0 ? id : null;
   }
 
+  async insertAdmin(params: {
+    email: string;
+    passwordHash: string;
+    fullName: string;
+    roleId: string;
+    isActive?: boolean;
+  }): Promise<string> {
+    const id = crypto.randomUUID();
+    const active = params.isActive === false ? 0 : 1;
+    await execute(
+      `INSERT INTO admins (id, email, password_hash, full_name, role_id, is_active) VALUES (?, ?, ?, ?, ?, ?)`,
+      [id, params.email.toLowerCase().trim(), params.passwordHash, params.fullName, params.roleId, active]
+    );
+    return id;
+  }
+
  /*  async findRoleId(roleName: string): Promise<string | null> {
     const rows = await queryRows<RoleRow>(`SELECT id FROM roles WHERE name = ? LIMIT 1`, [roleName]);
     return rows[0]?.id ?? null;

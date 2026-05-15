@@ -9,6 +9,7 @@ const adminOnly = (handler) => [
     auth_middleware_1.requireAdmin,
     handler,
 ];
+router.get('/:type/export', ...adminOnly(reports_controller_1.exportReport));
 router.get('/:type', ...adminOnly(reports_controller_1.getReport));
 exports.default = router;
 //# sourceMappingURL=reports.routes.js.map

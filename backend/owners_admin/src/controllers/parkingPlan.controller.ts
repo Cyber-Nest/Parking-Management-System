@@ -31,15 +31,21 @@ export const createParkingPlan = async (
   res: Response<ApiResponse<any>>
 ): Promise<void> => {
   try {
-    const { name, price, duration } = req.body as {
+    const { name, price, duration, plan_type, tax_percent, status } = req.body as {
       name?: string;
       price?: number;
       duration?: number;
+      plan_type?: string;
+      tax_percent?: number;
+      status?: string;
     };
     const data = await parkingPlanService.create({
       name: name ?? '',
       price: Number(price),
       duration: Number(duration),
+      plan_type: plan_type,
+      tax_percent: tax_percent !== undefined ? Number(tax_percent) : undefined,
+      status: status,
     });
     res.status(201).json({ success: true, message: 'Parking plan created', data });
   } catch (err) {
@@ -53,15 +59,21 @@ export const updateParkingPlan = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
-    const { name, price, duration } = req.body as {
+    const { name, price, duration, plan_type, tax_percent, status } = req.body as {
       name?: string;
       price?: number;
       duration?: number;
+      plan_type?: string;
+      tax_percent?: number;
+      status?: string;
     };
     const data = await parkingPlanService.update(id, {
       name,
       price: price !== undefined ? Number(price) : undefined,
       duration: duration !== undefined ? Number(duration) : undefined,
+      plan_type,
+      tax_percent: tax_percent !== undefined ? Number(tax_percent) : undefined,
+      status,
     });
     res.status(200).json({ success: true, message: 'Parking plan updated', data });
   } catch (err) {

@@ -23,6 +23,13 @@ class ReportsService {
                 return reportRepo.getDue(from, to);
             case 'location':
                 return reportRepo.getLocationPerformance(from, to);
+            case 'peak-hours': {
+                const usage = await reportRepo.getUsage(from, to);
+                return {
+                    hourlyHistogram: usage.hourlyHistogram,
+                    heatmapByWeekdayHour: usage.heatmapByWeekdayHour,
+                };
+            }
             case 'occupancy':
                 return reportRepo.getOccupancy(from, to);
             case 'plan':
@@ -30,10 +37,10 @@ class ReportsService {
             case 'audit':
                 return reportRepo.getAuditReport(Number(query.limit ?? '50'));
             case 'vehicle-history':
-                if (!query.license_plate) {
+                if (!query.license_plate?.trim()) {
                     throw new commonErrors_1.ValidationError('license_plate query parameter is required for vehicle history');
                 }
-                return reportRepo.getVehicleHistory(query.license_plate);
+                return reportRepo.getVehicleHistory(query.license_plate.trim(), query.from?.trim() || undefined, query.to?.trim() || undefined, query.location?.trim() || undefined);
             case 'refunds':
                 return reportRepo.getRefunds(Number(query.limit ?? '50'));
             default:

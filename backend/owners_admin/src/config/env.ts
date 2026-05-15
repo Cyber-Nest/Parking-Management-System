@@ -24,7 +24,7 @@ export const env = {
   jwt: {
     accessSecret:     required('JWT_ACCESS_SECRET'),
     refreshSecret:    required('JWT_REFRESH_SECRET'),
-    accessExpiresIn:  optional('JWT_ACCESS_EXPIRES_IN', '15m'),
+    accessExpiresIn:  optional('JWT_ACCESS_EXPIRES_IN', '6h'),
     refreshExpiresIn: optional('JWT_REFRESH_EXPIRES_IN', '7d'),
   },
 
@@ -38,5 +38,8 @@ export const env = {
   },
 
   frontendUrl:      optional('FRONTEND_URL', 'http://localhost:3000'),
-  bcryptSaltRounds: parseInt(optional('BCRYPT_SALT_ROUNDS', '12'), 10),
+  bcryptSaltRounds: (() => {
+    const n = parseInt(optional('BCRYPT_SALT_ROUNDS', '12'), 10);
+    return Number.isFinite(n) && n >= 4 ? Math.min(15, n) : 12;
+  })(),
 } as const;

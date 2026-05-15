@@ -34,6 +34,15 @@ const tableFromArray = (rows: unknown[]): { headers: string[]; body: (string | n
     return { headers, body };
 };
 
+const PDF_TABLE_ROW_CAP = 200;
+
+const ensureVerticalSpace = (doc: PdfDoc, y: number, need: number): number => {
+    const bottom = doc.page.height - doc.page.margins.bottom;
+    if (y + need <= bottom) return y;
+    doc.addPage();
+    return doc.page.margins.top;
+};
+
 const appendArrayTablePdf = (doc: PdfDoc, title: string, rows: unknown[]): void => {
     const table = tableFromArray(rows);
     if (!table) {
@@ -41,34 +50,105 @@ const appendArrayTablePdf = (doc: PdfDoc, title: string, rows: unknown[]): void 
         doc.moveDown(0.5);
         return;
     }
-    doc.fontSize(12).text(title, { underline: true });
-    doc.moveDown(0.3);
-    doc.fontSize(9).text(table.headers.join('  |  '), { continued: false });
-    doc.moveDown(0.2);
-    const limit = 80;
-    for (let i = 0; i < Math.min(table.body.length, limit); i += 1) {
-        doc.text(table.body[i].join('  |  '));
+
+    const left = doc.page.margins.left;
+    const usable = doc.page.width - doc.page.margins.left - doc.page.margins.right;
+    let y = doc.y;
+
+    y = ensureVerticalSpace(doc, y, 28);
+    doc.font('Helvetica-Bold').fontSize(11).fillColor('#111111').text(title.replace(/_/g, ' '), left, y, {
+        width: usable,
+        underline: true,
+    });
+    y += 18;
+
+    const { headers, body } = table;
+    const capped = body.slice(0, PDF_TABLE_ROW_CAP);
+    const colCount = Math.max(1, headers.length);
+    const colW = usable / colCount;
+    const pad = 5;
+    const headerH = 22;
+
+    y = ensureVerticalSpace(doc, y, headerH + 8);
+    doc.save();
+    doc.rect(left, y, usable, headerH).fill('#e5e7eb');
+    doc.restore();
+    doc.strokeColor('#94a3b8').lineWidth(0.4).rect(left, y, usable, headerH).stroke();
+
+    doc.font('Helvetica-Bold').fontSize(8).fillColor('#0f172a');
+    for (let c = 0; c < colCount; c += 1) {
+        const x = left + c * colW;
+        doc.strokeColor('#94a3b8').rect(x, y, colW, headerH).stroke();
+        doc.text(String(headers[c] ?? ''), x + pad, y + 6, {
+            width: colW - pad * 2,
+            ellipsis: true,
+        });
     }
-    if (table.body.length > limit) {
-        doc.fontSize(8).fillColor('gray').text(`… ${table.body.length - limit} more rows not shown`);
-        doc.fillColor('black');
+    y += headerH;
+
+    doc.font('Helvetica').fontSize(7.5).fillColor('#111111');
+    const rowH = 22;
+    for (let r = 0; r < capped.length; r += 1) {
+        y = ensureVerticalSpace(doc, y, rowH + 4);
+        if (r % 2 === 0) {
+            doc.save();
+            doc.rect(left, y, usable, rowH).fill('#f8fafc');
+            doc.restore();
+        }
+        const row = capped[r];
+        for (let c = 0; c < colCount; c += 1) {
+            const x = left + c * colW;
+            doc.strokeColor('#e2e8f0').rect(x, y, colW, rowH).stroke();
+            const raw = String(row[c] ?? '');
+            const cell = raw.length > 1200 ? `${raw.slice(0, 1200)}…` : raw;
+            doc.text(cell, x + pad, y + 4, {
+                width: colW - pad * 2,
+                height: rowH - 8,
+                ellipsis: true,
+            });
+        }
+        y += rowH;
     }
-    doc.moveDown();
+
+    if (body.length > PDF_TABLE_ROW_CAP) {
+        y = ensureVerticalSpace(doc, y, 16);
+        doc.font('Helvetica').fontSize(8).fillColor('#64748b').text(
+            `… ${body.length - PDF_TABLE_ROW_CAP} more rows not shown (export row cap)`,
+            left,
+            y
+        );
+        y += 14;
+    }
+
+    doc.fillColor('#000000');
+    doc.y = y + 10;
 };
 
 const appendObjectPdf = (doc: PdfDoc, title: string, obj: Record<string, unknown>): void => {
-    doc.fontSize(12).text(title, { underline: true });
-    doc.moveDown(0.3);
-    doc.fontSize(9);
+    doc.font('Helvetica-Bold').fontSize(12).fillColor('#111111').text(title.replace(/_/g, ' '), { underline: true });
+    doc.moveDown(0.35);
+
+    const flushScalars = (rows: { field: string; value: string | number }[]) => {
+        if (!rows.length) return;
+        appendArrayTablePdf(doc, `${title} — fields`, rows as unknown[]);
+    };
+
+    const scalarRows: { field: string; value: string | number }[] = [];
     Object.entries(obj).forEach(([k, v]) => {
         if (Array.isArray(v)) {
-            doc.moveDown(0.3);
+            flushScalars(scalarRows.splice(0, scalarRows.length));
+            doc.moveDown(0.2);
             appendArrayTablePdf(doc, k, v);
+        } else if (isPlainObject(v)) {
+            flushScalars(scalarRows.splice(0, scalarRows.length));
+            doc.moveDown(0.2);
+            appendObjectPdf(doc, k, v);
         } else {
-            doc.text(`${k}: ${cellString(v)}`);
+            scalarRows.push({ field: k, value: cellString(v) });
         }
     });
-    doc.moveDown();
+    flushScalars(scalarRows);
+    doc.moveDown(0.25);
 };
 
 const walkDataPdf = (doc: PdfDoc, data: unknown): void => {
@@ -81,16 +161,25 @@ const walkDataPdf = (doc: PdfDoc, data: unknown): void => {
         return;
     }
     if (isPlainObject(data)) {
-        Object.entries(data).forEach(([key, value]) => {
+        const obj = data as Record<string, unknown>;
+        const scalarRows: { field: string; value: string | number }[] = [];
+        const flushScalars = () => {
+            if (!scalarRows.length) return;
+            appendArrayTablePdf(doc, 'Summary', scalarRows as unknown[]);
+            scalarRows.length = 0;
+        };
+        Object.entries(obj).forEach(([key, value]) => {
             if (Array.isArray(value) && value.length && isPlainObject(value[0])) {
+                flushScalars();
                 appendArrayTablePdf(doc, key, value);
             } else if (isPlainObject(value)) {
+                flushScalars();
                 appendObjectPdf(doc, key, value);
             } else {
-                doc.fontSize(10).text(`${key}: ${cellString(value)}`);
-                doc.moveDown(0.2);
+                scalarRows.push({ field: key, value: cellString(value) });
             }
         });
+        flushScalars();
         return;
     }
     doc.fontSize(10).text(cellString(data) as string);
@@ -124,13 +213,14 @@ const addSheetFromRows = (workbook: ExcelJS.Workbook, sheetName: string, rows: u
     const header = sheet.getRow(1);
     header.font = { bold: true };
     table.body.forEach((r) => sheet.addRow(r));
-    sheet.columns.forEach((col: ExcelJS.Column) => {
+    sheet.columns.forEach((col) => {
+        const column = col as ExcelJS.Column;
         let max = 10;
-        col.eachCell?.({ includeEmpty: true }, (cell: ExcelJS.Cell) => {
+        column.eachCell?.({ includeEmpty: true }, (cell: ExcelJS.Cell) => {
             const len = cell.value ? String(cell.value).length : 0;
             if (len > max) max = Math.min(len, 40);
         });
-        col.width = max + 2;
+        column.width = max + 2;
     });
 };
 

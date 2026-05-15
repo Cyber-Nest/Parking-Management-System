@@ -12,6 +12,12 @@ export declare class AdminRepository {
         fullName: string;
         roleId: string;
     }): Promise<string | null>;
+    insertAdmin(params: {
+        email: string;
+        passwordHash: string;
+        fullName: string;
+        roleId: string;
+    }): Promise<string>;
 }
 export declare class AuthTokenRepository {
     create(params: {

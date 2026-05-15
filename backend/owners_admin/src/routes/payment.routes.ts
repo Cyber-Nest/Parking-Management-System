@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { verifyToken, requireAdmin } from '../middleware/auth.middleware';
-import { createPayment, getPaymentSummary, listPayments } from '../controllers/payment.controller';
+import { createPayment, getPaymentById, getPaymentReceipt, getPaymentSummary, listPayments } from '../controllers/payment.controller';
 
 const router = Router();
 
@@ -12,8 +12,10 @@ const adminOnly = (
   handler as unknown as (req: Request, res: Response, next: NextFunction) => void,
 ];
 
-router.get('/', ...adminOnly(listPayments));
 router.get('/summary', ...adminOnly(getPaymentSummary));
+router.get('/:id/receipt', ...adminOnly(getPaymentReceipt));
+router.get('/:id', ...adminOnly(getPaymentById));
+router.get('/', ...adminOnly(listPayments));
 router.post('/', ...adminOnly(createPayment));
 
 export default router;

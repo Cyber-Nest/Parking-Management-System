@@ -8,7 +8,9 @@ exports.Payment = database_1.sequelize.define("Payment", {
     amount: sequelize_1.DataTypes.FLOAT,
     payment_method: sequelize_1.DataTypes.ENUM("credit_card", "debit_card", "apple_pay", "visa", "mastercard", "amex"),
     payment_type: sequelize_1.DataTypes.ENUM("parking", "penalty", "extension"),
-    status: sequelize_1.DataTypes.ENUM("pending", "success", "failed", "refunded")
+    status: sequelize_1.DataTypes.ENUM("pending", "success", "failed", "refunded"),
+    receipt_number: sequelize_1.DataTypes.STRING,
+    receipt_date: sequelize_1.DataTypes.DATE,
 }, {
     tableName: 'payments',
     timestamps: false,

@@ -22,6 +22,9 @@ class ParkingPlanService {
             name: body.name,
             price: body.price,
             duration: body.duration,
+            plan_type: body.plan_type,
+            tax_percent: body.tax_percent,
+            status: body.status,
         });
         return parkingPlanRepo.findById(id);
     }

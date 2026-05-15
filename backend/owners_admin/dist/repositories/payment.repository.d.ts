@@ -21,6 +21,8 @@ export interface PaymentRow {
     status: PaymentStatus;
     transaction_ref: string | null;
     paid_at: Date | null;
+    receipt_number: string | null;
+    receipt_date: Date | null;
     created_at: Date;
 }
 export declare class PaymentRepository {
@@ -29,6 +31,7 @@ export declare class PaymentRepository {
         items: PaymentRow[];
         total: number;
     }>;
+    findById(id: string): Promise<PaymentRow | null>;
     summary(): Promise<{
         todayPayments: number;
         todayAmount: number;

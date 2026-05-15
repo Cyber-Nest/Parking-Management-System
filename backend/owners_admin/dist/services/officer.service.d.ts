@@ -1,6 +1,18 @@
 import { UiOfficerStatus } from '../repositories/officer.repository';
 import { OfficerRole } from '../types';
 export declare class OfficerService {
+    getById(id: string): Promise<{
+        id: string;
+        officer_id: string;
+        full_name: string;
+        email: string;
+        phone: string | null;
+        role: OfficerRole;
+        status: string;
+        tickets_issued: number;
+        last_login_at: Date | null;
+        created_at: Date;
+    }>;
     summary(): Promise<{
         totalOfficers: number;
         activeOfficers: number;

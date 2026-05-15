@@ -74,6 +74,9 @@ const run = async () => {
       name VARCHAR(150) NOT NULL,
       price DECIMAL(10,2) NOT NULL,
       duration INT NOT NULL COMMENT 'minutes',
+      plan_type VARCHAR(50) NULL DEFAULT 'Hourly',
+      tax_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
+      status ENUM('Active', 'Inactive') NOT NULL DEFAULT 'Active',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     );
@@ -85,6 +88,7 @@ const run = async () => {
       license_plate VARCHAR(50) NOT NULL,
       plan_id CHAR(36) NULL,
       plan_name VARCHAR(150) NULL,
+      location_name VARCHAR(150) NULL,
       start_time DATETIME NOT NULL,
       end_time DATETIME NOT NULL,
       duration_minutes INT NOT NULL,
@@ -109,6 +113,8 @@ const run = async () => {
       status ENUM('pending', 'success', 'failed', 'refunded') NOT NULL DEFAULT 'success',
       transaction_ref VARCHAR(191) NULL,
       paid_at DATETIME NULL,
+      receipt_number VARCHAR(64) NULL,
+      receipt_date DATETIME NULL,
       receipt_email_sent TINYINT(1) NOT NULL DEFAULT 0,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -123,6 +129,7 @@ const run = async () => {
       officer_name VARCHAR(191) NOT NULL,
       session_id CHAR(36) NULL,
       license_plate VARCHAR(50) NOT NULL,
+      location_name VARCHAR(150) NULL,
       amount DECIMAL(10,2) NOT NULL,
       reason VARCHAR(255) NOT NULL,
       status ENUM('unpaid', 'paid', 'cancelled', 'disputed', 'resolved') NOT NULL DEFAULT 'unpaid',
@@ -131,6 +138,7 @@ const run = async () => {
       paid_at DATETIME NULL,
       payment_id CHAR(36) NULL,
       remarks TEXT NULL,
+      note TEXT NULL,
       dispute_raised TINYINT(1) NOT NULL DEFAULT 0,
       dispute_message TEXT NULL,
       dispute_at DATETIME NULL,
@@ -185,6 +193,12 @@ const run = async () => {
       week_starts_on VARCHAR(10) DEFAULT 'sunday',
       currency VARCHAR(10) DEFAULT 'USD',
       session_expiry_display INT DEFAULT 30,
+      tax_rate_percent DECIMAL(5,2) NOT NULL DEFAULT 5.00,
+      service_fee DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+      rounding_rule VARCHAR(50) NOT NULL DEFAULT 'nearest_cent',
+      prices_include_tax TINYINT(1) NOT NULL DEFAULT 1,
+      refund_allowed TINYINT(1) NOT NULL DEFAULT 1,
+      refund_approval_required TINYINT(1) NOT NULL DEFAULT 1,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     );
@@ -229,6 +243,42 @@ const run = async () => {
       INDEX idx_audit_created_at (created_at),
       INDEX idx_audit_module (module)
     );
+
+    CREATE TABLE IF NOT EXISTS taxes (
+      id CHAR(36) PRIMARY KEY,
+      name VARCHAR(100) NOT NULL,
+      rate DECIMAL(5,2) NOT NULL,
+      description TEXT NULL,
+      is_active TINYINT(1) NOT NULL DEFAULT 1,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS pricings (
+      id CHAR(36) PRIMARY KEY,
+      name VARCHAR(100) NOT NULL,
+      type VARCHAR(50) NOT NULL,
+      amount DECIMAL(10,2) NOT NULL,
+      description TEXT NULL,
+      is_active TINYINT(1) NOT NULL DEFAULT 1,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS users (
+      id CHAR(36) PRIMARY KEY,
+      username VARCHAR(100) NOT NULL UNIQUE,
+      email VARCHAR(191) NOT NULL UNIQUE,
+      password_hash VARCHAR(255) NOT NULL,
+      role_id CHAR(36) NOT NULL,
+      is_active TINYINT(1) NOT NULL DEFAULT 1,
+      last_login DATETIME NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      CONSTRAINT fk_user_role FOREIGN KEY (role_id) REFERENCES roles(id),
+      INDEX idx_users_username (username),
+      INDEX idx_users_email (email)
+    );
   `;
 
   const alterSql = `
@@ -259,6 +309,24 @@ const run = async () => {
       throw error;
     }
   }
+
+  await conn.query(`USE \`${database}\``);
+
+  const addColumn = async (table, column, ddl) => {
+    const [c] = await conn.query(
+      `SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS
+       WHERE TABLE_SCHEMA = ? AND TABLE_NAME = ? AND COLUMN_NAME = ?`,
+      [database, table, column]
+    );
+    if (!c.length) {
+      await conn.query(`ALTER TABLE \`${table}\` ADD COLUMN ${ddl}`);
+      console.log(`[DB INIT] Added missing column ${table}.${column}`);
+    }
+  };
+
+  await addColumn('penalty_tickets', 'note', '`note` TEXT NULL AFTER `remarks`');
+  await addColumn('payments', 'receipt_number', '`receipt_number` VARCHAR(64) NULL AFTER `paid_at`');
+  await addColumn('payments', 'receipt_date', '`receipt_date` DATETIME NULL AFTER `receipt_number`');
 
   await conn.query(
     `INSERT IGNORE INTO roles (id, name) VALUES

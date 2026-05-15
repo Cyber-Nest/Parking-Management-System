@@ -51,6 +51,20 @@ class OfficerRepository {
        ${clause}`, values);
         return { items, total: countRows[0]?.total ?? 0 };
     }
+    async findById(id) {
+        const rows = await (0, database_1.queryRows)(`SELECT
+          o.id, o.full_name, o.email, o.phone, o.badge_number, o.role, o.status, o.last_login_at, o.created_at,
+          COALESCE(t.tickets_issued, 0) AS tickets_issued
+       FROM officers o
+       LEFT JOIN (
+         SELECT officer_id, COUNT(*) AS tickets_issued
+         FROM penalty_tickets
+         GROUP BY officer_id
+       ) t ON t.officer_id = o.id
+       WHERE o.id = ?
+       LIMIT 1`, [id]);
+        return rows[0] ?? null;
+    }
     async summary() {
         const [totalRows, activeRows, disabledRows, ticketsTodayRows] = await Promise.all([
             (0, database_1.queryRows)(`SELECT COUNT(*) AS total FROM officers`),

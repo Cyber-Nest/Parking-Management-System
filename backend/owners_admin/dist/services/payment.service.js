@@ -53,6 +53,34 @@ class PaymentService {
         });
         return { id };
     }
+    async getById(id) {
+        const row = await paymentRepo.findById(id);
+        if (!row)
+            throw new commonErrors_1.NotFoundError('Payment not found');
+        return row;
+    }
+    getReceiptPayload(row) {
+        const subtotal = Number(row.amount);
+        return {
+            receipt_id: row.id,
+            receipt_number: row.receipt_number,
+            license_plate: row.license_plate,
+            amount: subtotal,
+            payment_method: row.payment_method,
+            payment_type: row.payment_type,
+            status: row.status,
+            transaction_ref: row.transaction_ref,
+            paid_at: row.paid_at,
+            receipt_date: row.receipt_date,
+            created_at: row.created_at,
+            session_id: row.session_id,
+            ticket_id: row.ticket_id,
+            line_items: [
+                { description: `${row.payment_type} payment`, amount: subtotal },
+            ],
+            total: subtotal,
+        };
+    }
 }
 exports.PaymentService = PaymentService;
 //# sourceMappingURL=payment.service.js.map

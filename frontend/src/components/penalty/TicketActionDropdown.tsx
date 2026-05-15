@@ -114,7 +114,7 @@ export const TicketActionDropdown = ({
                 setOpen(false);
               }}
             />
-            {ticket.status === "Unpaid" && (
+            {(ticket.status === "Unpaid" || ticket.status === "Disputed") && (
               <DropdownItem
                 icon={<CheckCircle2 size={14} className="sm:w-[15px] sm:h-[15px]" />}
                 label="Mark Paid"
@@ -125,7 +125,8 @@ export const TicketActionDropdown = ({
                 }}
               />
             )}
-            {ticket.status !== "Cancelled" && (
+            {ticket.status !== "Cancelled" &&
+              ticket.status !== "Paid" && (
               <DropdownItem
                 icon={<Ban size={14} className="sm:w-[15px] sm:h-[15px]" />}
                 label="Cancel Ticket"

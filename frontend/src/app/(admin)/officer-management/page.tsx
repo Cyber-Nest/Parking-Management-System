@@ -171,7 +171,15 @@ export default function OfficerManagementPage() {
       toast.success(`Officer ${newStatus === "DISABLED" ? "disabled" : "enabled"} successfully`);
     } catch (error) {
       console.error(error);
-      toast.error("Failed to update officer status");
+      const msg =
+        typeof error === "object" &&
+        error !== null &&
+        "response" in error &&
+        typeof (error as { response?: { data?: { message?: string } } }).response?.data?.message ===
+          "string"
+          ? (error as { response: { data: { message: string } } }).response.data.message
+          : "Failed to update officer status";
+      toast.error(msg);
     }
   };
 
@@ -218,7 +226,14 @@ export default function OfficerManagementPage() {
       resetForm();
     } catch (e) {
       console.error(e);
-      toast.error("Could not save officer");
+      const msg =
+        typeof e === "object" &&
+        e !== null &&
+        "response" in e &&
+        typeof (e as { response?: { data?: { message?: string } } }).response?.data?.message === "string"
+          ? (e as { response: { data: { message: string } } }).response.data.message
+          : "Could not save officer";
+      toast.error(msg);
     }
   };
 

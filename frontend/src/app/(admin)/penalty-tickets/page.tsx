@@ -32,9 +32,11 @@ import {
   markTicketPaid,
   cancelTicket,
   addTicketNote,
+  getTicketPrint,
 } from "@/services/tickets.service";
 import { EditTicketDrawer } from "@/components/penalty/EditTicketDrawer";
 import toast from "react-hot-toast";
+import { printKeyValuePayload } from "@/lib/printPayload";
 
 const PERIOD_TABS = [
   "Today",
@@ -43,6 +45,15 @@ const PERIOD_TABS = [
   "This Month",
   "Custom Period",
 ];
+
+const apiErrorMessage = (e: unknown, fallback: string): string => {
+  if (typeof e === "object" && e !== null && "response" in e) {
+    const data = (e as { response?: { data?: { message?: unknown } } }).response?.data;
+    const m = data?.message;
+    if (typeof m === "string" && m.trim()) return m;
+  }
+  return fallback;
+};
 
 // Helper functions for date filtering
 const isToday = (dateStr: string) => {
@@ -216,12 +227,17 @@ export default function PenaltyTicketsPage() {
     setIsPhotoGalleryOpen(true);
   };
 
-  const handleReprint = (ticket: PenaltyTicket) => {
-    console.log("Generate ticket PDF:", ticket.id);
-    toast.success(`Reprinting ticket: ${ticket.id}`);
+  const handleReprint = async (ticket: PenaltyTicket) => {
+    try {
+      const data = (await getTicketPrint(ticket.id)) as Record<string, unknown>;
+      printKeyValuePayload("Penalty ticket", data);
+      toast.success("Print dialog opened");
+    } catch (e) {
+      console.error(e);
+      toast.error(apiErrorMessage(e, "Could not load ticket for printing"));
+    }
   };
 
-<<<<<<< HEAD
   const handleMarkPaid = async (ticket: PenaltyTicket) => {
     try {
       await markTicketPaid(ticket.id, { payment_method: "visa" });
@@ -229,7 +245,7 @@ export default function PenaltyTicketsPage() {
       await refreshTickets();
     } catch (e) {
       console.error(e);
-      toast.error("Could not mark ticket paid");
+      toast.error(apiErrorMessage(e, "Could not mark ticket paid"));
     }
   };
 
@@ -240,45 +256,8 @@ export default function PenaltyTicketsPage() {
       await refreshTickets();
     } catch (e) {
       console.error(e);
-      toast.error("Could not cancel ticket");
+      toast.error(apiErrorMessage(e, "Could not cancel ticket"));
     }
-=======
-  const handleMarkPaid = (ticket: PenaltyTicket) => {
-    const updated = tickets.map((item) => {
-      if (item.id === ticket.id) {
-        return {
-          ...item,
-          status: "Paid" as const,
-          paymentStatus: "Paid",
-          paymentMethod: "Cash",
-          paymentId: "PAY-" + Date.now(),
-          transactionReference:
-            "txn_" + Math.random().toString(36).substring(2, 8),
-          paidAt: new Date().toLocaleString(),
-        };
-      }
-      return item;
-    });
-    setTickets(updated as any);
-    toast.success(`Ticket ${ticket.id} marked as paid`);
-  };
-
-  const handleCancel = (ticket: PenaltyTicket) => {
-    const updated = tickets.map((item) => {
-      if (item.id === ticket.id) {
-        return {
-          ...item,
-          status: "Cancelled" as const,
-          cancelledBy: "Admin",
-          cancelledAt: new Date().toLocaleString(),
-          cancelReason: "Cancelled manually by admin.",
-        };
-      }
-      return item;
-    });
-    setTickets(updated as any);
-    toast.success(`Ticket ${ticket.id} has been cancelled`);
->>>>>>> 6d20be75aa1e0b07e3b0dfadc5ae76b7d82dce33
   };
 
   const handleEdit = (ticket: PenaltyTicket) => {
@@ -296,12 +275,12 @@ export default function PenaltyTicketsPage() {
     try {
       await addTicketNote(noteTicket.id, noteText);
       toast.success("Note saved");
-      setIsNoteDrawerOpen(false);
       setNoteTicket(null);
       await refreshTickets();
     } catch (e) {
       console.error(e);
-      toast.error("Could not save note");
+      toast.error(apiErrorMessage(e, "Could not save note"));
+      throw e;
     }
   };
 
@@ -667,7 +646,10 @@ export default function PenaltyTicketsPage() {
       />
       <AddNoteDrawer
         isOpen={isNoteDrawerOpen}
-        onClose={() => setIsNoteDrawerOpen(false)}
+        onClose={() => {
+          setIsNoteDrawerOpen(false);
+          setNoteTicket(null);
+        }}
         onSave={handleSaveNote}
       />
       <PhotoGalleryDrawer

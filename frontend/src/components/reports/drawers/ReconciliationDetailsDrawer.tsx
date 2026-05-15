@@ -24,13 +24,22 @@ import toast from "react-hot-toast";
 import {
   paymentReconciliationService,
   ReconciliationData,
+  ReconciliationFilters,
 } from "@/services/payment-reconciliation.service";
 
 interface ReconciliationDetailsDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   itemId: string | null;
+  exportFilters: ReconciliationFilters;
 }
+
+const escapeHtml = (s: string) =>
+  s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 
 const InfoRow = ({ label, value, icon, color, subValue }: any) => (
   <div className="flex items-center justify-between py-3.5 px-2 hover:bg-[var(--color-surface-soft)]/40 rounded-xl transition-all group">
@@ -92,9 +101,11 @@ export const ReconciliationDetailsDrawer = ({
   isOpen,
   onClose,
   itemId,
+  exportFilters,
 }: ReconciliationDetailsDrawerProps) => {
   const [loading, setLoading] = useState(true);
   const [details, setDetails] = useState<ReconciliationData | null>(null);
+  const [downloading, setDownloading] = useState(false);
 
   useEffect(() => {
     if (isOpen && itemId) {
@@ -114,6 +125,74 @@ export const ReconciliationDetailsDrawer = ({
       fetchData();
     }
   }, [isOpen, itemId]);
+
+  const printDetails = () => {
+    if (!details) {
+      toast.error("Nothing to print yet");
+      return;
+    }
+    const w = window.open("", "_blank");
+    if (!w) {
+      toast.error("Pop-up blocked — allow pop-ups to print this slip");
+      return;
+    }
+    const rows: [string, string][] = [
+      ["Posting date", details.date],
+      ["Bank reference", details.bankReference],
+      ["Status", details.status],
+      ["Gross collected", `$${details.totalCollected.toLocaleString()}`],
+      ["Card payments", `$${details.cardAmount.toLocaleString()}`],
+      ["Other channels", `$${details.otherAmount.toLocaleString()}`],
+      ["Refunds", `-$${Math.abs(details.refunds).toLocaleString()}`],
+      ["Corrections / adjustments", `$${details.adjustment.toLocaleString()}`],
+      ["Deposited", `$${details.deposited.toLocaleString()}`],
+      ["Net expected", `$${details.netExpected.toLocaleString(undefined, { minimumFractionDigits: 2 })}`],
+      ["Variance", `$${details.variance.toFixed(2)}`],
+    ];
+    const bodyRows = rows
+      .map(
+        ([k, v]) =>
+          `<tr><td style="padding:8px;border:1px solid #ccc;font-weight:600;width:40%">${escapeHtml(k)}</td><td style="padding:8px;border:1px solid #ccc">${escapeHtml(String(v))}</td></tr>`,
+      )
+      .join("");
+    w.document.write(`<!DOCTYPE html><html><head><title>Reconciliation slip</title>
+      <style>body{font-family:system-ui,sans-serif;padding:24px;color:#111} h1{font-size:18px;margin:0 0 16px}</style>
+      </head><body><h1>Payment reconciliation — detail</h1>
+      <table style="border-collapse:collapse;width:100%;max-width:640px">${bodyRows}</table>
+      ${details.notes ? `<p style="margin-top:16px;font-size:12px"><strong>Notes:</strong> ${escapeHtml(details.notes)}</p>` : ""}
+      </body></html>`);
+    w.document.close();
+    w.focus();
+    w.print();
+    w.close();
+  };
+
+  const downloadPeriodPdf = async () => {
+    try {
+      setDownloading(true);
+      const { blob } = await paymentReconciliationService.exportReport({
+        ...exportFilters,
+        format: "pdf",
+      });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute(
+        "download",
+        `reconciliation_detail_${new Date().toISOString().split("T")[0]}.pdf`,
+      );
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success("PDF downloaded");
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to download PDF");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   if (!itemId) return null;
 
@@ -303,12 +382,26 @@ export const ReconciliationDetailsDrawer = ({
 
             {/* Footer */}
             <div className="sticky bottom-0 p-6 bg-[var(--color-surface)]/80 backdrop-blur-md border-t border-[var(--color-border)] flex gap-3">
-              <button className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest border border-[var(--color-border)] hover:bg-[var(--color-surface-soft)] transition-all active:scale-95">
+              <button
+                type="button"
+                disabled={loading || !details}
+                onClick={printDetails}
+                className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest border border-[var(--color-border)] hover:bg-[var(--color-surface-soft)] transition-all active:scale-95 disabled:opacity-50"
+              >
                 <Printer size={16} />
                 Print
               </button>
-              <button className="flex-[1.5] flex items-center justify-center gap-2 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest bg-[var(--color-primary)] text-white hover:opacity-95 shadow-lg shadow-[var(--color-primary)]/20 transition-all active:scale-95">
-                <Download size={16} />
+              <button
+                type="button"
+                disabled={loading || downloading}
+                onClick={() => void downloadPeriodPdf()}
+                className="flex-[1.5] flex items-center justify-center gap-2 py-3.5 rounded-xl text-xs font-black uppercase tracking-widest bg-[var(--color-primary)] text-white hover:opacity-95 shadow-lg shadow-[var(--color-primary)]/20 transition-all active:scale-95 disabled:opacity-50"
+              >
+                {downloading ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <Download size={16} />
+                )}
                 Download Report
               </button>
             </div>

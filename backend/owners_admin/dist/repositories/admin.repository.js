@@ -39,6 +39,11 @@ class AdminRepository {
         const result = await (0, database_1.execute)(`INSERT IGNORE INTO admins (id, email, password_hash, full_name, role_id) VALUES (?, ?, ?, ?, ?)`, [id, params.email.toLowerCase().trim(), params.passwordHash, params.fullName, params.roleId]);
         return result.affectedRows > 0 ? id : null;
     }
+    async insertAdmin(params) {
+        const id = crypto_1.default.randomUUID();
+        await (0, database_1.execute)(`INSERT INTO admins (id, email, password_hash, full_name, role_id) VALUES (?, ?, ?, ?, ?)`, [id, params.email.toLowerCase().trim(), params.passwordHash, params.fullName, params.roleId]);
+        return id;
+    }
 }
 exports.AdminRepository = AdminRepository;
 class AuthTokenRepository {

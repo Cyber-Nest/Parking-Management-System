@@ -17,6 +17,7 @@ export const API_ENDPOINTS = {
     LIST: "/admin/tickets",
     SUMMARY: "/admin/tickets/summary",
     BY_ID: (id: string) => `/admin/tickets/${id}`,
+    PRINT: (id: string) => `/admin/tickets/${id}/print`,
     MARK_PAID: (id: string) => `/admin/tickets/${id}/mark-paid`,
     CANCEL: (id: string) => `/admin/tickets/${id}/cancel`,
     NOTE: (id: string) => `/admin/tickets/${id}/note`,

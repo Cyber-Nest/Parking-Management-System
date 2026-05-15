@@ -1,8 +1,10 @@
 import { CreateTicketBody, PaginatedResponse, TicketPublic, TicketStatus } from '../types';
 import { TicketRepository } from '../repositories/ticket.repository';
-import { ValidationError } from './commonErrors';
+import { PaymentRepository } from '../repositories/payment.repository';
+import { NotFoundError, ValidationError } from './commonErrors';
 
 const ticketRepo = new TicketRepository();
+const paymentRepo = new PaymentRepository();
 
 export class TicketService {
   async list(query: Record<string, string | undefined>): Promise<PaginatedResponse<TicketPublic>> {
@@ -32,8 +34,10 @@ export class TicketService {
       due_date: t.due_date,
       paid_at: t.paid_at,
       remarks: t.remarks,
+      note: t.note,
       dispute_raised: t.dispute_raised === 1,
       photos: [],
+      location_name: t.location_name ?? null,
     }));
 
     return {
@@ -71,5 +75,107 @@ export class TicketService {
     });
 
     return { id };
+  }
+
+  /** Flat payload for admin print / reprint (same pattern as payment receipt). */
+  getPrintPayload(t: TicketPublic): Record<string, unknown> {
+    return {
+      ticket_id: t.id,
+      ticket_number: t.ticket_number,
+      license_plate: t.license_plate,
+      violation: t.reason,
+      amount: t.amount,
+      status: t.status,
+      officer_name: t.officer_name,
+      location_name: t.location_name,
+      date_issued: t.date_issued,
+      due_date: t.due_date,
+      paid_at: t.paid_at,
+      remarks: t.remarks,
+      note: t.note,
+    };
+  }
+
+  async getById(id: string): Promise<TicketPublic> {
+    const t = await ticketRepo.findById(id);
+    if (!t) throw new NotFoundError('Ticket not found');
+    return {
+      id: t.id,
+      ticket_number: t.ticket_number,
+      officer_id: t.officer_id,
+      officer_name: t.officer_name,
+      license_plate: t.license_plate,
+      amount: t.amount,
+      reason: t.reason,
+      status: t.status,
+      date_issued: t.date_issued,
+      due_date: t.due_date,
+      paid_at: t.paid_at,
+      remarks: t.remarks,
+      note: t.note,
+      dispute_raised: t.dispute_raised === 1,
+      photos: [],
+      location_name: t.location_name ?? null,
+    };
+  }
+
+  async updateTicket(
+    id: string,
+    body: {
+      license_plate?: string;
+      amount?: number;
+      reason?: string;
+      due_date?: string | null;
+      location_name?: string | null;
+    }
+  ): Promise<TicketPublic> {
+    const existing = await ticketRepo.findById(id);
+    if (!existing) throw new NotFoundError('Ticket not found');
+    if (existing.status === 'paid' || existing.status === 'cancelled') {
+      throw new ValidationError('Cannot edit a paid or cancelled ticket');
+    }
+    await ticketRepo.updateTicket(id, {
+      licensePlate: body.license_plate,
+      amount: body.amount,
+      reason: body.reason,
+      dueDate: body.due_date,
+      locationName: body.location_name,
+    });
+    return this.getById(id);
+  }
+
+  async addNote(id: string, note: string): Promise<void> {
+    if (!note?.trim()) throw new ValidationError('note is required');
+    const n = await ticketRepo.appendRemarks(id, note.trim());
+    if (n === 0) throw new NotFoundError('Ticket not found');
+  }
+
+  async cancelTicket(id: string): Promise<void> {
+    const t = await ticketRepo.findById(id);
+    if (!t) throw new NotFoundError('Ticket not found');
+    if (t.status === 'paid') throw new ValidationError('Cannot cancel a paid ticket');
+    if (t.status === 'cancelled') return;
+    await ticketRepo.setStatus(id, 'cancelled');
+  }
+
+  async markPaid(id: string, body?: { payment_method?: string; transaction_ref?: string }): Promise<{ payment_id: string }> {
+    const t = await ticketRepo.findById(id);
+    if (!t) throw new NotFoundError('Ticket not found');
+    if (t.status !== 'unpaid' && t.status !== 'disputed') {
+      throw new ValidationError('Only unpaid or disputed tickets can be marked paid');
+    }
+    const method = (body?.payment_method as any) || 'visa';
+    const paymentId = await paymentRepo.create({
+      ticketId: id,
+      licensePlate: t.license_plate,
+      amount: Number(t.amount),
+      paymentMethod: method,
+      paymentType: 'penalty',
+      status: 'success',
+      transactionRef: body?.transaction_ref ?? `ADMIN-${Date.now()}`,
+      paidAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
+    });
+    await ticketRepo.setStatus(id, 'paid', { paymentId });
+    return { payment_id: paymentId };
   }
 }

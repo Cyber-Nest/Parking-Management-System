@@ -1,6 +1,16 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { verifyToken, requireAdmin } from '../middleware/auth.middleware';
-import { createTicket, getTicketSummary, listTickets } from '../controllers/ticket.controller';
+import {
+  addTicketNote,
+  cancelTicket,
+  createTicket,
+  getTicketById,
+  getTicketPrint,
+  getTicketSummary,
+  listTickets,
+  markTicketPaid,
+  updateTicket,
+} from '../controllers/ticket.controller';
 
 const router = Router();
 
@@ -12,8 +22,14 @@ const adminOnly = (
   handler as unknown as (req: Request, res: Response, next: NextFunction) => void,
 ];
 
-router.get('/', ...adminOnly(listTickets));
 router.get('/summary', ...adminOnly(getTicketSummary));
+router.get('/:id/print', ...adminOnly(getTicketPrint));
+router.get('/:id', ...adminOnly(getTicketById));
+router.patch('/:id/mark-paid', ...adminOnly(markTicketPaid));
+router.patch('/:id/cancel', ...adminOnly(cancelTicket));
+router.patch('/:id/note', ...adminOnly(addTicketNote));
+router.patch('/:id', ...adminOnly(updateTicket));
+router.get('/', ...adminOnly(listTickets));
 router.post('/', ...adminOnly(createTicket));
 
 export default router;

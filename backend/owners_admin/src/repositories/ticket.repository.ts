@@ -25,8 +25,11 @@ export interface TicketRow {
   due_date: Date | null;
   paid_at: Date | null;
   remarks: string | null;
+  note: string | null;
   dispute_raised: number;
   created_at: Date;
+  session_id?: string | null;
+  location_name?: string | null;
 }
 
 interface CountRow {
@@ -74,8 +77,8 @@ export class TicketRepository {
     const offset = (filters.page - 1) * filters.limit;
 
     const items = await queryRows<TicketRow>(
-      `SELECT id, ticket_number, officer_id, officer_name, license_plate, amount, reason, status,
-              date_issued, due_date, paid_at, remarks, dispute_raised, created_at
+      `SELECT id, ticket_number, officer_id, officer_name, license_plate, location_name, amount, reason, status,
+              date_issued, due_date, paid_at, remarks, note, dispute_raised, created_at, session_id
        FROM penalty_tickets
        ${clause}
        ORDER BY date_issued DESC
@@ -157,8 +160,8 @@ export class TicketRepository {
 
     await execute(
       `INSERT INTO penalty_tickets
-      (id, ticket_number, officer_id, officer_name, session_id, license_plate, amount, reason, status, date_issued, due_date, remarks)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)`,
+      (id, ticket_number, officer_id, officer_name, session_id, license_plate, amount, reason, status, date_issued, due_date, remarks, note)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?)`,
       [
         id,
         ticketNumber,
@@ -171,9 +174,96 @@ export class TicketRepository {
         params.status ?? 'unpaid',
         params.dueDate ?? null,
         params.remarks ?? null,
+        null, // note
       ]
     );
 
     return id;
+  }
+
+  async findById(id: string): Promise<TicketRow | null> {
+    const rows = await queryRows<TicketRow>(
+      `SELECT id, ticket_number, officer_id, officer_name, license_plate, location_name, amount, reason, status,
+              date_issued, due_date, paid_at, remarks, note, dispute_raised, created_at, session_id
+       FROM penalty_tickets WHERE id = ? LIMIT 1`,
+      [id]
+    );
+    return rows[0] ?? null;
+  }
+
+  async updateTicket(
+    id: string,
+    params: {
+      licensePlate?: string;
+      amount?: number;
+      reason?: string;
+      dueDate?: string | null;
+      locationName?: string | null;
+    }
+  ): Promise<number> {
+    const updates: string[] = [];
+    const values: any[] = [];
+    if (params.licensePlate !== undefined) {
+      updates.push('license_plate = ?');
+      values.push(params.licensePlate.trim().toUpperCase());
+    }
+    if (params.amount !== undefined) {
+      updates.push('amount = ?');
+      values.push(params.amount);
+    }
+    if (params.reason !== undefined) {
+      updates.push('reason = ?');
+      values.push(params.reason.trim());
+    }
+    if (params.dueDate !== undefined) {
+      updates.push('due_date = ?');
+      values.push(params.dueDate);
+    }
+    if (params.locationName !== undefined) {
+      updates.push('location_name = ?');
+      values.push(params.locationName);
+    }
+    if (updates.length === 0) return 0;
+    values.push(id);
+    const result = await execute(
+      `UPDATE penalty_tickets SET ${updates.join(', ')}, updated_at = NOW() WHERE id = ?`,
+      values
+    );
+    return result.affectedRows;
+  }
+
+  async appendRemarks(id: string, note: string): Promise<number> {
+    const row = await this.findById(id);
+    if (!row) return 0;
+    const stamp = new Date().toISOString();
+    const trimmed = note.trim();
+    const next = row.remarks ? `${row.remarks}\n[${stamp}] ${trimmed}` : `[${stamp}] ${trimmed}`;
+    // `remarks` = full audit log; `note` = latest admin note (handy for DB browsing / exports)
+    const result = await execute(
+      `UPDATE penalty_tickets SET remarks = ?, note = ?, updated_at = NOW() WHERE id = ?`,
+      [next, trimmed, id]
+    );
+    return result.affectedRows;
+  }
+
+  async setStatus(id: string, status: TicketStatus, extras?: { paidAt?: Date | null; paymentId?: string | null }): Promise<number> {
+    const paidAt = extras?.paidAt;
+    const paymentId = extras?.paymentId;
+    if (status === 'paid') {
+      const result = await execute(
+        `UPDATE penalty_tickets SET status = ?, paid_at = COALESCE(?, NOW()), payment_id = ?, updated_at = NOW() WHERE id = ?`,
+        [status, paidAt ?? null, paymentId ?? null, id]
+      );
+      return result.affectedRows;
+    }
+    if (status === 'cancelled') {
+      const result = await execute(
+        `UPDATE penalty_tickets SET status = ?, updated_at = NOW() WHERE id = ?`,
+        [status, id]
+      );
+      return result.affectedRows;
+    }
+    const result = await execute(`UPDATE penalty_tickets SET status = ?, updated_at = NOW() WHERE id = ?`, [status, id]);
+    return result.affectedRows;
   }
 }

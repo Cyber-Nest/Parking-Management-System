@@ -1,279 +1,347 @@
+/**
+ * Rich sample data for local QA (10+ rows per major table where applicable).
+ * Run after: npm run db:init && npm run db:migrate && npm run seed
+ * Usage: npm run db:seed-sample
+ * Force re-run: npm run db:seed-sample -- --force
+ */
 require('dotenv').config();
-const crypto = require('crypto');
-const bcrypt = require('bcryptjs');
 const mysql = require('mysql2/promise');
+const bcrypt = require('bcryptjs');
+const { randomUUID } = require('crypto');
 
-const uuid = () => crypto.randomUUID();
-const plate = () => {
-  const letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-  const part = () => letters[Math.floor(Math.random() * letters.length)];
-  return `${part()}${part()}${part()}-${1000 + Math.floor(Math.random() * 9000)}`;
-};
+const LOCATIONS = [
+  'Downtown',
+  'Airport',
+  'Mall',
+  'Stadium',
+  'City Center',
+  'Market Street',
+  'Residential Area',
+  'Harbor',
+  'University',
+  'Transit Hub',
+  'Medical Center',
+  'Tech Park',
+];
+
+const fmt = (d) => d.toISOString().slice(0, 19).replace('T', ' ');
 
 const run = async () => {
+  const force = process.argv.includes('--force');
   const conn = await mysql.createConnection({
     host: process.env.DB_HOST || 'localhost',
     port: Number(process.env.DB_PORT || 3306),
     user: process.env.DB_USER || 'root',
     password: process.env.DB_PASSWORD || '',
     database: process.env.DB_NAME || 'parksmart',
+    multipleStatements: true,
   });
 
-  const [ownerRows] = await conn.query(
-    `SELECT a.id, a.full_name
-     FROM admins a
-     JOIN roles r ON a.role_id = r.id
-     WHERE r.name = 'owner'
-     ORDER BY a.created_at ASC
-     LIMIT 1`
+  if (force) {
+    await conn.query(`DELETE FROM payments WHERE receipt_number LIKE 'RCP-SEED-%'`);
+    await conn.query(`DELETE FROM penalty_tickets WHERE ticket_number LIKE 'SEED-TKT-%'`);
+    await conn.query(`DELETE FROM parking_sessions WHERE license_plate LIKE 'SAM%'`);
+    await conn.query(`DELETE FROM penalty_rules WHERE code LIKE 'VIO-4%'`);
+    await conn.query(`DELETE FROM parking_plans WHERE name LIKE 'Sample Plan %'`);
+    await conn.query(`DELETE FROM officers WHERE email LIKE '%@sample.parksmart.test'`);
+    await conn.query(`DELETE FROM users WHERE email LIKE '%@sample.parksmart.test'`);
+    await conn.query(`DELETE FROM taxes WHERE description LIKE 'Seeded tax row%'`);
+    await conn.query(`DELETE FROM pricings WHERE description LIKE 'Seeded pricing %'`);
+    await conn.query(`DELETE FROM audit_logs WHERE details LIKE 'Seeded audit row%'`);
+    await conn.query(`DELETE FROM roles WHERE description LIKE 'Sample %'`);
+  }
+
+  const [[{ cnt: ticketCnt }]] = await conn.query('SELECT COUNT(*) AS cnt FROM penalty_tickets');
+  if (!force && Number(ticketCnt) >= 20) {
+    console.log('[SEED] penalty_tickets already has', ticketCnt, 'rows — skipping (use --force to re-seed).');
+    await conn.end();
+    return;
+  }
+
+  const [adminRows] = await conn.query(
+    `SELECT a.id AS id FROM admins a JOIN roles r ON r.id = a.role_id WHERE r.name = 'owner' LIMIT 1`
   );
-
-  if (!ownerRows.length) {
-    throw new Error('No owner admin found. Run npm run seed first.');
+  const adminId = adminRows[0]?.id || null;
+  if (!adminId) {
+    console.error('[SEED] No owner admin found. Run npm run seed first.');
+    await conn.end();
+    process.exit(1);
   }
 
-  const owner = ownerRows[0];
-
-  const planRows = [
-    { id: uuid(), name: 'Hourly Basic', price: 20, duration: 60 },
-    { id: uuid(), name: 'Half Day', price: 80, duration: 240 },
-    { id: uuid(), name: 'Full Day', price: 150, duration: 720 },
-    { id: uuid(), name: 'Weekly Pass', price: 700, duration: 10080 },
-  ];
-
-  for (const p of planRows) {
-    await conn.query(
-      `INSERT IGNORE INTO parking_plans (id, name, price, duration)
-       VALUES (?, ?, ?, ?)`,
-      [p.id, p.name, p.price, p.duration]
-    );
+  const [[{ id: userRoleId } = {}]] = await conn.query(`SELECT id FROM roles WHERE name = 'user' LIMIT 1`);
+  const [[{ id: inspectorRoleId } = {}]] = await conn.query(`SELECT id FROM roles WHERE name = 'inspector' LIMIT 1`);
+  const fallbackRoleId = userRoleId || inspectorRoleId;
+  if (!fallbackRoleId) {
+    console.error('[SEED] Missing user/inspector role row in roles table.');
+    await conn.end();
+    process.exit(1);
   }
 
-  const officerPasswordHash = await bcrypt.hash('Officer@123', 10);
-  // Create 10 officers for better performance metrics
-  const officers = [
-    { id: uuid(), full_name: 'John Smith', email: 'john.smith@parking.com', phone: '+1234567890', badge_number: 'OF-1001', role: 'OFFICER', status: 'active' },
-    { id: uuid(), full_name: 'Sarah Wright', email: 'sarah.wright@parking.com', phone: '+1987654321', badge_number: 'OF-1002', role: 'SUPERVISOR', status: 'active' },
-    { id: uuid(), full_name: 'Mike Turner', email: 'mike.turner@parking.com', phone: '+1123456789', badge_number: 'OF-1003', role: 'OFFICER', status: 'suspended' },
-    { id: uuid(), full_name: 'Emily Chen', email: 'emily.chen@parking.com', phone: '+1555666777', badge_number: 'OF-1004', role: 'OFFICER', status: 'active' },
-    { id: uuid(), full_name: 'David Brown', email: 'david.brown@parking.com', phone: '+1444333222', badge_number: 'OF-1005', role: 'OFFICER', status: 'active' },
-    { id: uuid(), full_name: 'Jessica Lee', email: 'jessica.lee@parking.com', phone: '+1777888999', badge_number: 'OF-1006', role: 'OFFICER', status: 'active' },
-    { id: uuid(), full_name: 'Robert Martinez', email: 'robert.martinez@parking.com', phone: '+1666555444', badge_number: 'OF-1007', role: 'OFFICER', status: 'active' },
-    { id: uuid(), full_name: 'Lisa Anderson', email: 'lisa.anderson@parking.com', phone: '+1333222111', badge_number: 'OF-1008', role: 'SUPERVISOR', status: 'active' },
-    { id: uuid(), full_name: 'James Wilson', email: 'james.wilson@parking.com', phone: '+1999888777', badge_number: 'OF-1009', role: 'OFFICER', status: 'active' },
-    { id: uuid(), full_name: 'Michelle Taylor', email: 'michelle.taylor@parking.com', phone: '+1222111000', badge_number: 'OF-1010', role: 'OFFICER', status: 'inactive' },
-  ];
+  const pwd = await bcrypt.hash('Officer@123', 10);
+  const officerIds = [];
+  for (let i = 0; i < 15; i += 1) officerIds.push(randomUUID());
 
-  for (const o of officers) {
+  for (let i = 0; i < 15; i += 1) {
+    const id = officerIds[i];
+    const n = i + 1;
     await conn.query(
-      `INSERT IGNORE INTO officers
-      (id, created_by_admin_id, full_name, email, phone, password_hash, badge_number, role, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [o.id, owner.id, o.full_name, o.email, o.phone, officerPasswordHash, o.badge_number, o.role, o.status]
-    );
-  }
-
-  // Get all officers
-  const [officerRows] = await conn.query(
-    `SELECT id, full_name FROM officers ORDER BY created_at ASC`
-  );
-
-  // Create 60 penalty tickets across different dates
-  const ticketIds = [];
-  for (let i = 0; i < 60; i += 1) {
-    const officer = officerRows[i % officerRows.length];
-    const id = uuid();
-    const ticketNo = `TKT-${100200 + i}`;
-    const statusPool = ['unpaid', 'unpaid', 'unpaid', 'paid', 'paid', 'disputed', 'cancelled'];
-    const status = statusPool[i % statusPool.length];
-    const amount = [50, 75, 100, 120, 150][i % 5];
-    const daysAgo = Math.floor(i / 2) + 1;
-
-    await conn.query(
-      `INSERT IGNORE INTO penalty_tickets
-      (id, ticket_number, officer_id, officer_name, license_plate, amount, reason, status, date_issued, due_date, remarks, dispute_raised)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, DATE_SUB(NOW(), INTERVAL ? DAY), DATE_ADD(DATE_SUB(NOW(), INTERVAL ? DAY), INTERVAL 14 DAY), ?, ?)`,
+      `INSERT IGNORE INTO officers (id, created_by_admin_id, full_name, email, phone, password_hash, badge_number, role, status)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
-        ticketNo,
-        officer.id,
-        officer.full_name,
-        plate(),
-        amount,
-        i % 3 === 0 ? 'Expired Parking' : (i % 3 === 1 ? 'No Parking Zone' : 'Invalid Permit'),
-        status,
-        daysAgo,
-        daysAgo,
-        'Generated sample ticket',
-        status === 'disputed' ? 1 : 0,
-      ]
-    );
-    ticketIds.push({ id, status, amount });
-  }
-
-  // Create 50 parking sessions
-  const [sessionPlans] = await conn.query(
-    `SELECT id, name, price, duration FROM parking_plans ORDER BY created_at ASC LIMIT 4`
-  );
-
-  const sessionRows = [];
-  for (let i = 0; i < 50; i += 1) {
-    const plan = sessionPlans[i % sessionPlans.length];
-    const officer = officerRows[i % officerRows.length];
-    const id = uuid();
-    const license = plate();
-    const startTime = new Date(Date.now() - (i + Math.floor(i / 5)) * 2 * 60 * 60 * 1000);
-    const endTime = new Date(startTime.getTime() + plan.duration * 60 * 1000);
-    const statuses = ['active', 'expired', 'extended', 'cancelled', 'completed'];
-    const status = statuses[i % statuses.length];
-
-    await conn.query(
-      `INSERT IGNORE INTO parking_sessions
-      (id, user_id, vehicle_id, license_plate, plan_id, plan_name, start_time, end_time, duration_minutes, status, notes, created_by_officer)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        id,
-        null,
-        null,
-        license,
-        plan.id,
-        plan.name,
-        startTime,
-        endTime,
-        plan.duration,
-        status,
-        'Sample session data',
-        officer.id,
-      ]
-    );
-    sessionRows.push({ id, license, amount: plan.price });
-  }
-
-  // Create 80 payments - mix of session and ticket payments
-  for (let i = 0; i < 40; i += 1) {
-    const session = sessionRows[i % sessionRows.length];
-    const id = uuid();
-
-    await conn.query(
-      `INSERT IGNORE INTO payments
-      (id, session_id, ticket_id, license_plate, amount, payment_method, payment_type, status, transaction_ref, paid_at, receipt_email_sent)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        id,
-        session.id,
-        null,
-        session.license,
-        session.amount,
-        ['visa', 'mastercard', 'amex'][i % 3],
-        'parking',
-        'success',
-        `TXN-${Date.now()}-${i}`,
-        new Date(Date.now() - (i * 60 * 60 * 1000)),
-        1,
+        adminId,
+        `Officer ${n}`,
+        `officer${n}@sample.parksmart.test`,
+        `555-010${String(n).padStart(2, '0')}`,
+        pwd,
+        `BDG-${2000 + n}`,
+        i % 5 === 0 ? 'SUPERVISOR' : 'OFFICER',
+        i % 7 === 0 ? 'inactive' : 'active',
       ]
     );
   }
 
-  // Create 40 ticket payments
-  for (let i = 0; i < 40; i += 1) {
-    const ticket = ticketIds[i % ticketIds.length];
-    const id = uuid();
-    const statuses = ['success', 'success', 'success', 'pending', 'failed', 'refunded'];
-    const status = statuses[i % statuses.length];
-
+  const planIds = [];
+  const planNames = [];
+  const types = ['Hourly', 'Daily', 'Monthly', 'Event'];
+  for (let i = 0; i < 15; i += 1) {
+    const id = randomUUID();
+    planIds.push(id);
+    planNames.push(`Sample Plan ${i + 1}`);
+    const price = 2 + i * 1.5;
+    const duration = [60, 120, 180, 240, 480, 1440, 10080, 43200][i % 8];
     await conn.query(
-      `INSERT IGNORE INTO payments
-      (id, ticket_id, session_id, license_plate, amount, payment_method, payment_type, status, transaction_ref, paid_at, receipt_email_sent)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        id,
-        ticket.id,
-        null,
-        plate(),
-        ticket.amount,
-        ['visa', 'mastercard', 'debit_card', 'amex'][i % 4],
-        'penalty',
-        status,
-        `TXN-${Date.now()}-TICKET-${i}`,
-        status === 'success' || status === 'refunded' ? new Date(Date.now() - (i * 60 * 60 * 1000)) : null,
-        status === 'success' ? 1 : 0,
-      ]
-    );
-  }
-
-  await conn.query(
-    `INSERT IGNORE INTO system_settings
-     (id, timezone, language, date_format, time_format, week_starts_on, currency, session_expiry_display)
-     VALUES
-     ('00000000-0000-0000-0000-000000000001', 'UTC', 'en', 'MM/DD/YYYY', '12h', 'sunday', 'USD', 30)`
-  );
-
-  await conn.query(
-    `INSERT IGNORE INTO branding_settings
-     (id, system_name, theme_color, dark_mode, logo_url, favicon_url, sidebar_collapsed)
-     VALUES
-     ('00000000-0000-0000-0000-000000000001', 'ParkSmart', '#0F766E', 'system', null, null, 0)`
-  );
-
-  // Create audit log entries
-  for (let i = 0; i < 30; i += 1) {
-    const officer = officerRows[i % officerRows.length];
-    await conn.query(
-      `INSERT IGNORE INTO audit_logs
-       (id, user_id, user_name, action, module, details, status)
+      `INSERT IGNORE INTO parking_plans (id, name, price, duration, plan_type, tax_percent, status)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
       [
-        uuid(),
-        officer.id,
-        officer.full_name,
-        ['Login', 'Issued Ticket', 'Updated Payment', 'Extended Session', 'Created Report'][i % 5],
-        ['System', 'Tickets', 'Payments', 'Sessions', 'Reports'][i % 5],
-        `Sample audit log entry ${i}`,
-        'success',
+        id,
+        planNames[i],
+        price,
+        duration,
+        types[i % 4],
+        5 + (i % 3),
+        i % 9 === 0 ? 'Inactive' : 'Active',
       ]
     );
   }
 
-  // Penalty rules
-  const rules = [
-    { id: uuid(), violation: 'Expired Parking', code: 'EXP-PARK', amount: 50, grace_minutes: 10, description: 'Vehicle stayed beyond purchased time', status: 'Active' },
-    { id: uuid(), violation: 'No Parking Zone', code: 'NO-ZONE', amount: 75, grace_minutes: 0, description: 'Parked in a restricted area', status: 'Active' },
-    { id: uuid(), violation: 'Blocking Fire Lane', code: 'FIRE-LANE', amount: 120, grace_minutes: 0, description: 'Blocking emergency access', status: 'Active' },
-    { id: uuid(), violation: 'Invalid Permit', code: 'INV-PERMIT', amount: 60, grace_minutes: 5, description: 'Permit missing/invalid for zone', status: 'Inactive' },
-    { id: uuid(), violation: 'Double Parking', code: 'DBL-PARK', amount: 100, grace_minutes: 0, description: 'Parked in two spaces', status: 'Active' },
-  ];
-
-  for (const r of rules) {
+  const sessionIds = [];
+  const now = new Date();
+  for (let i = 0; i < 40; i += 1) {
+    const id = randomUUID();
+    sessionIds.push(id);
+    const plan = planIds[i % 15];
+    const loc = LOCATIONS[i % LOCATIONS.length];
+    const officer = officerIds[i % 15];
+    const plate = `SAM${String(100 + i).padStart(3, '0')}`;
+    const daysAgo = (i * 3) % 35;
+    const start = new Date(now);
+    start.setDate(start.getDate() - daysAgo);
+    start.setHours(7 + (i % 12), (i * 11) % 60, 0, 0);
+    const end = new Date(start.getTime() + (45 + (i % 8) * 15) * 60 * 1000);
+    const durationM = Math.max(1, Math.round((end - start) / 60000));
+    const statuses = ['active', 'expired', 'extended', 'cancelled'];
+    const status = statuses[i % 4];
     await conn.query(
-      `INSERT IGNORE INTO penalty_rules
-      (id, violation, code, amount, grace_minutes, description, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [r.id, r.violation, r.code, r.amount, r.grace_minutes, r.description, r.status]
+      `INSERT IGNORE INTO parking_sessions (id, license_plate, plan_id, plan_name, location_name, start_time, end_time, duration_minutes, status, created_by_officer)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, plate, plan, planNames[i % 15], loc, fmt(start), fmt(end), durationM, status, officer]
     );
   }
 
-  const [[planCount]] = await conn.query(`SELECT COUNT(*) AS total FROM parking_plans`);
-  const [[officerCount]] = await conn.query(`SELECT COUNT(*) AS total FROM officers`);
-  const [[ticketCount]] = await conn.query(`SELECT COUNT(*) AS total FROM penalty_tickets`);
-  const [[paymentCount]] = await conn.query(`SELECT COUNT(*) AS total FROM payments`);
-  const [[sessionCount]] = await conn.query(`SELECT COUNT(*) AS total FROM parking_sessions`);
+  const ruleRows = [];
+  for (let i = 0; i < 15; i += 1) {
+    const id = randomUUID();
+    const code = `VIO-${400 + i}-${randomUUID().slice(0, 8)}`;
+    ruleRows.push({ id, code });
+    await conn.query(
+      `INSERT IGNORE INTO penalty_rules (id, violation, code, amount, grace_minutes, status)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        ['Overtime', 'No Parking', 'Expired Meter', 'Blocking', 'Fire Lane', 'Handicap'][i % 6],
+        code,
+        25 + i * 3,
+        (i % 4) * 5,
+        i % 11 === 0 ? 'Inactive' : 'Active',
+      ]
+    );
+  }
 
-  console.log('[SAMPLE SEED] Done.');
-  console.log({
-    parking_plans: planCount.total,
-    officers: officerCount.total,
-    parking_sessions: sessionCount.total,
-    penalty_tickets: ticketCount.total,
-    payments: paymentCount.total,
-    penalty_rules: rules.length,
-    audit_logs: 30,
-    sample_officer_password: 'Officer@123',
-  });
+  const ticketIds = [];
+  for (let i = 0; i < 28; i += 1) {
+    const id = randomUUID();
+    ticketIds.push(id);
+    const officer = officerIds[i % 15];
+    const [offRows] = await conn.query(`SELECT full_name FROM officers WHERE id = ?`, [officer]);
+    const offName = offRows[0]?.full_name;
+    const plate = i % 5 === 0 ? `SAM${String(100 + (i % 40)).padStart(3, '0')}` : `TKT${200 + i}`;
+    const loc = LOCATIONS[(i + 2) % LOCATIONS.length];
+    const issued = new Date();
+    issued.setDate(issued.getDate() - (i % 25));
+    const due = new Date(issued.getTime() + (1 + (i % 7)) * 86400000);
+    const st = ['unpaid', 'unpaid', 'paid', 'cancelled', 'disputed', 'resolved'][i % 6];
+    const onSession = sessionIds[i % 40];
+    await conn.query(
+      `INSERT IGNORE INTO penalty_tickets
+       (id, ticket_number, officer_id, officer_name, session_id, license_plate, location_name, amount, reason, status, date_issued, due_date, remarks)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        `SEED-TKT-${8000 + i}-${i}`,
+        officer,
+        offName || 'Officer',
+        onSession,
+        plate,
+        loc,
+        35 + i * 2,
+        `${ruleRows[i % ruleRows.length].code} violation`,
+        st,
+        fmt(issued),
+        fmt(due),
+        i % 4 === 0 ? 'Follow-up required' : null,
+      ]
+    );
+  }
 
+  const paymentIds = [];
+  const methods = ['credit_card', 'debit_card', 'visa', 'mastercard', 'apple_pay'];
+  const payTypes = ['parking', 'penalty', 'extension'];
+  for (let i = 0; i < 28; i += 1) {
+    const id = randomUUID();
+    paymentIds.push(id);
+    const sessionIdx = i % 40;
+    const plate = `SAM${String(100 + sessionIdx).padStart(3, '0')}`;
+    const sess = sessionIds[i % 40];
+    const typ = payTypes[i % 3];
+    const ticket = i % 3 === 0 ? ticketIds[i % 28] : null;
+    const paid = new Date();
+    paid.setDate(paid.getDate() - (i % 20));
+    const rcp = `RCP-SEED-${9000 + i}`;
+    const rdt = fmt(paid);
+    await conn.query(
+      `INSERT IGNORE INTO payments (id, session_id, ticket_id, license_plate, amount, payment_method, payment_type, status, transaction_ref, paid_at, receipt_number, receipt_date)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'success', ?, ?, ?, ?)`,
+      [id, sess, ticket, plate, 5 + i * 2.25, methods[i % methods.length], typ, `TXREF-${12000 + i}`, fmt(paid), rcp, rdt]
+    );
+  }
+
+  for (let j = 0; j < 6; j += 1) {
+    const id = randomUUID();
+    const paid = new Date();
+    paid.setDate(paid.getDate() - (j + 1));
+    const rPlate = `SAM${String(100 + (j % 40)).padStart(3, '0')}`;
+    await conn.query(
+      `INSERT IGNORE INTO payments (id, session_id, ticket_id, license_plate, amount, payment_method, payment_type, status, transaction_ref, paid_at, receipt_number, receipt_date)
+       VALUES (?, NULL, NULL, ?, ?, 'visa', 'parking', 'refunded', ?, ?, NULL, ?)`,
+      [id, rPlate, 8.5 + j, `RFND-SEED-${j}`, fmt(paid), fmt(paid)]
+    );
+  }
+
+  if (paymentIds[3] && ticketIds[2]) {
+    await conn.query(`UPDATE penalty_tickets SET status = 'paid', paid_at = date_issued, payment_id = ? WHERE id = ?`, [
+      paymentIds[3],
+      ticketIds[2],
+    ]);
+  }
+
+  for (let i = 0; i < 22; i += 1) {
+    await conn.query(
+      `INSERT INTO audit_logs (id, user_id, user_name, action, module, resource_id, resource_name, details, status)
+       VALUES (?, ?, 'Admin User', ?, ?, ?, ?, ?, 'success')`,
+      [
+        randomUUID(),
+        adminId,
+        ['create', 'update', 'delete', 'export', 'view'][i % 5],
+        ['payments', 'tickets', 'sessions', 'settings', 'reports'][i % 5],
+        randomUUID(),
+        `resource-${i}`,
+        `Seeded audit row ${i + 1}`,
+      ]
+    );
+  }
+
+  const EXTRA_ROLES = [
+    ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa01', 'Admin'],
+    ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa02', 'Manager'],
+    ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa03', 'Supervisor'],
+    ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa04', 'Operator'],
+    ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa05', 'Auditor'],
+    ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa06', 'Support'],
+    ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa07', 'Analyst'],
+    ['aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaa08', 'Lead'],
+  ];
+  const extraRoleIds = [];
+  for (const [rid, rname] of EXTRA_ROLES) {
+    extraRoleIds.push(rid);
+    await conn.query(
+      `INSERT IGNORE INTO roles (id, name, description, permissions)
+       VALUES (?, ?, ?, ?)`,
+      [rid, rname, `Sample ${rname} role`, JSON.stringify(['read', 'write'])]
+    );
+  }
+
+  const userIds = [];
+  for (let i = 0; i < 14; i += 1) {
+    const id = randomUUID();
+    userIds.push(id);
+    const roleId = i % 3 === 0 && extraRoleIds[0] ? extraRoleIds[i % extraRoleIds.length] : fallbackRoleId;
+    const hp = await bcrypt.hash('User@123', 10);
+    await conn.query(
+      `INSERT IGNORE INTO users (id, username, email, password_hash, role_id, is_active)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        `portaluser${i + 1}`,
+        `portaluser${i + 1}@sample.parksmart.test`,
+        hp,
+        roleId,
+        i % 8 !== 0 ? 1 : 0,
+      ]
+    );
+  }
+
+  for (let i = 0; i < 14; i += 1) {
+    const id = randomUUID();
+    await conn.query(
+      `INSERT IGNORE INTO taxes (id, name, rate, description, is_active)
+       VALUES (?, ?, ?, ?, ?)`,
+      [
+        id,
+        ['GST', 'VAT', 'City Levy', 'Tourism Tax', 'Eco Fee', 'Night Surcharge', 'Weekend Tax', 'Event Tax', 'Airport Fee', 'EV Discount Tax', 'Luxury Tax', 'Service Tax', 'Import Duty', 'Parking Tax'][i % 14],
+        2 + (i % 9) * 0.75,
+        `Seeded tax row ${i + 1}`,
+        i !== 11 ? 1 : 0,
+      ]
+    );
+  }
+
+  for (let i = 0; i < 14; i += 1) {
+    const id = randomUUID();
+    const amt = 8 + i * 3.5;
+    await conn.query(
+      `INSERT IGNORE INTO pricings (id, name, type, amount, description, is_active, base_price, additional_fees)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        id,
+        `Price Tier ${i + 1}`,
+        ['Base', 'Premium', 'Discount', 'Special', 'Corporate', 'Visitor', 'VIP', 'Student'][i % 8].toLowerCase(),
+        amt,
+        `Seeded pricing ${i + 1}`,
+        i !== 10 ? 1 : 0,
+        amt,
+        i % 4 === 0 ? 1.5 : 0,
+      ]
+    );
+  }
+
+  console.log(
+    '[SEED] Sample officers, plans, sessions, tickets, payments, rules, audit, extra roles, portal users, taxes, pricings inserted.',
+  );
   await conn.end();
 };
 
 run().catch((err) => {
-  console.error('[SAMPLE SEED] Failed:', err.message || err);
+  console.error('[SEED] Failed:', err.message || err);
   process.exit(1);
 });

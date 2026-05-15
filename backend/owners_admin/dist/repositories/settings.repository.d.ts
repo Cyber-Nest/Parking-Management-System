@@ -6,6 +6,12 @@ export interface SystemSettingsPublic {
     week_starts_on: string;
     currency: string;
     session_expiry_display: number;
+    tax_rate_percent?: number;
+    service_fee?: number;
+    rounding_rule?: string;
+    prices_include_tax?: number;
+    refund_allowed?: number;
+    refund_approval_required?: number;
 }
 export interface BrandingSettingsPublic {
     system_name: string;
@@ -21,6 +27,44 @@ export declare class SettingsRepository {
     updateSystemSettings(settings: SystemSettingsPublic): Promise<SystemSettingsPublic>;
     getBrandingSettings(): Promise<BrandingSettingsPublic | null>;
     updateBrandingSettings(settings: BrandingSettingsPublic): Promise<BrandingSettingsPublic>;
+    getTaxPricing(): Promise<{
+        tax_rate_percent: number;
+        currency: string;
+        service_fee: number;
+        rounding_rule: string;
+        prices_include_tax: number;
+        refund_allowed: number;
+        refund_approval_required: number;
+    }>;
+    updateTaxPricing(patch: {
+        tax_rate_percent?: number;
+        service_fee?: number;
+        rounding_rule?: string;
+        prices_include_tax?: number;
+        refund_allowed?: number;
+        refund_approval_required?: number;
+    }): Promise<void>;
+    listAdmins(): Promise<{
+        id: string;
+        email: string;
+        full_name: string;
+        role_name: string;
+        is_active: number;
+        last_login_at: Date | null;
+        created_at: Date;
+    }[]>;
+    findRoleIdByName(name: string): Promise<string | null>;
+    updateAdmin(id: string, patch: {
+        full_name?: string;
+        role_id?: string;
+        is_active?: number;
+    }): Promise<number>;
+    listRolesWithPermissions(): Promise<{
+        id: string;
+        name: string;
+        permissions: string | null;
+    }[]>;
+    upsertRolePermissions(roleId: string, permissionsJson: string): Promise<void>;
     private getDefaultSystemSettings;
     private getDefaultBrandingSettings;
 }

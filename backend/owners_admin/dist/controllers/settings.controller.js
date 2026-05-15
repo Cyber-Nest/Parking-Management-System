@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateBrandingSettings = exports.getBrandingSettings = exports.updateSystemSettings = exports.getSystemSettings = void 0;
+exports.updateRolePermissions = exports.listRoles = exports.updateAdminUser = exports.createAdminUser = exports.listAdminUsers = exports.updateTaxPricing = exports.getTaxPricing = exports.updateBrandingSettings = exports.getBrandingSettings = exports.updateSystemSettings = exports.getSystemSettings = void 0;
 const settings_service_1 = require("../services/settings.service");
 const commonErrors_1 = require("../services/commonErrors");
 const settingsService = new settings_service_1.SettingsService();
@@ -118,4 +118,169 @@ const updateBrandingSettings = async (req, res) => {
     }
 };
 exports.updateBrandingSettings = updateBrandingSettings;
+const mapTaxToFrontend = (t) => ({
+    taxRate: String(t.tax_rate_percent),
+    currency: t.currency,
+    roundingRule: t.rounding_rule,
+    pricesIncludeTax: t.prices_include_tax ? 'yes' : 'no',
+    refundAllowed: t.refund_allowed ? 'yes' : 'no',
+    refundApprovalRequired: t.refund_approval_required ? 'yes' : 'no',
+});
+const getTaxPricing = async (_req, res) => {
+    try {
+        const t = await settingsService.getTaxPricing();
+        res.status(200).json({ success: true, message: 'Tax settings fetched', data: mapTaxToFrontend(t) });
+    }
+    catch (err) {
+        handleError(err, res);
+    }
+};
+exports.getTaxPricing = getTaxPricing;
+const updateTaxPricing = async (req, res) => {
+    try {
+        const b = req.body;
+        await settingsService.updateTaxPricing({
+            tax_rate_percent: Number(b.taxRate ?? b.tax_rate_percent ?? 0),
+            service_fee: Number(b.serviceFee ?? b.service_fee ?? 0),
+            rounding_rule: String(b.roundingRule ?? b.rounding_rule ?? 'nearest_cent'),
+            prices_include_tax: (b.pricesIncludeTax ?? b.prices_include_tax) === 'yes' || b.prices_include_tax === 1 ? 1 : 0,
+            refund_allowed: (b.refundAllowed ?? b.refund_allowed) === 'yes' || b.refund_allowed === 1 ? 1 : 0,
+            refund_approval_required: (b.refundApprovalRequired ?? b.refund_approval_required) === 'yes' || b.refund_approval_required === 1 ? 1 : 0,
+        });
+        const t = await settingsService.getTaxPricing();
+        res.status(200).json({ success: true, message: 'Tax settings updated', data: mapTaxToFrontend(t) });
+    }
+    catch (err) {
+        handleError(err, res);
+    }
+};
+exports.updateTaxPricing = updateTaxPricing;
+const mapRoleLabel = (roleName) => {
+    if (roleName === 'owner')
+        return 'Admin';
+    if (roleName === 'inspector')
+        return 'Inspector';
+    return roleName;
+};
+const listAdminUsers = async (_req, res) => {
+    try {
+        const rows = await settingsService.listAdmins();
+        const users = rows.map((r) => ({
+            id: r.id,
+            name: r.full_name,
+            email: r.email,
+            role: mapRoleLabel(r.role_name),
+            status: r.is_active ? 'active' : 'inactive',
+            lastLogin: r.last_login_at ? new Date(r.last_login_at).toISOString() : undefined,
+            createdAt: r.created_at ? new Date(r.created_at).toISOString() : undefined,
+        }));
+        res.status(200).json({ success: true, message: 'Users fetched', data: users });
+    }
+    catch (err) {
+        handleError(err, res);
+    }
+};
+exports.listAdminUsers = listAdminUsers;
+const createAdminUser = async (req, res) => {
+    try {
+        const { name, email, role, password } = req.body;
+        if (!name?.trim() || !email?.trim()) {
+            res.status(400).json({ success: false, message: 'name and email are required' });
+            return;
+        }
+        const roleName = role === 'Admin' || role === 'owner'
+            ? 'owner'
+            : role === 'Inspector' || role === 'inspector'
+                ? 'inspector'
+                : 'user';
+        const { id } = await settingsService.createAdmin({
+            full_name: name,
+            email,
+            role_name: roleName,
+            password: password ?? 'Admin@123456',
+        });
+        res.status(201).json({ success: true, message: 'User created', data: { id } });
+    }
+    catch (err) {
+        handleError(err, res);
+    }
+};
+exports.createAdminUser = createAdminUser;
+const updateAdminUser = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, email, role, status } = req.body;
+        const patch = {};
+        if (name !== undefined)
+            patch.full_name = String(name);
+        if (status !== undefined)
+            patch.is_active = status === 'active' ? 1 : 0;
+        if (role !== undefined) {
+            const roleName = role === 'Admin' || role === 'owner'
+                ? 'owner'
+                : role === 'Inspector' || role === 'inspector'
+                    ? 'inspector'
+                    : 'user';
+            const roleId = await settingsService.findRoleIdByName(roleName);
+            if (!roleId) {
+                res.status(400).json({ success: false, message: 'Invalid role' });
+                return;
+            }
+            patch.role_id = roleId;
+        }
+        void email;
+        const n = await settingsService.updateAdmin(id, patch);
+        if (!n) {
+            res.status(404).json({ success: false, message: 'User not found' });
+            return;
+        }
+        res.status(200).json({ success: true, message: 'User updated' });
+    }
+    catch (err) {
+        handleError(err, res);
+    }
+};
+exports.updateAdminUser = updateAdminUser;
+const listRoles = async (_req, res) => {
+    try {
+        const rows = await settingsService.listRolesWithPermissions();
+        const roles = rows.map((r) => {
+            let permissions = {};
+            try {
+                permissions = r.permissions ? JSON.parse(r.permissions) : {};
+            }
+            catch {
+                permissions = {};
+            }
+            return {
+                id: r.id,
+                name: mapRoleLabel(r.name),
+                description: '',
+                permissions,
+                isDefault: r.name === 'owner',
+            };
+        });
+        res.status(200).json({ success: true, message: 'Roles fetched', data: roles });
+    }
+    catch (err) {
+        handleError(err, res);
+    }
+};
+exports.listRoles = listRoles;
+const updateRolePermissions = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { permissions } = req.body;
+        if (!permissions) {
+            res.status(400).json({ success: false, message: 'permissions is required' });
+            return;
+        }
+        await settingsService.upsertRolePermissions(id, permissions);
+        res.status(200).json({ success: true, message: 'Role permissions updated' });
+    }
+    catch (err) {
+        handleError(err, res);
+    }
+};
+exports.updateRolePermissions = updateRolePermissions;
 //# sourceMappingURL=settings.controller.js.map

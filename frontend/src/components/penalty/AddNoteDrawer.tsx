@@ -7,7 +7,8 @@ import { X, Plus, MessageSquarePlus, Info, CheckCircle2 } from "lucide-react";
 interface AddNoteDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (note: string) => void;
+  /** May be async; drawer waits before closing so the parent still has ticket context. */
+  onSave: (note: string) => void | Promise<void>;
 }
 
 export const AddNoteDrawer = ({
@@ -23,11 +24,11 @@ export const AddNoteDrawer = ({
     if (!isOpen) setNote("");
   }, [isOpen]);
 
-  const handleSave = () => {
-    if (note.trim()) {
-      onSave(note);
-      onClose();
-    }
+  const handleSave = async () => {
+    const trimmed = note.trim();
+    if (!trimmed) return;
+    await onSave(trimmed);
+    onClose();
   };
 
   return (

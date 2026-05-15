@@ -9,7 +9,8 @@ exports.Ticket = database_1.sequelize.define("Ticket", {
     license_plate: sequelize_1.DataTypes.STRING,
     reason: sequelize_1.DataTypes.STRING,
     amount: sequelize_1.DataTypes.FLOAT,
-    status: sequelize_1.DataTypes.ENUM("unpaid", "paid", "cancelled", "disputed", "resolved")
+    status: sequelize_1.DataTypes.ENUM("unpaid", "paid", "cancelled", "disputed", "resolved"),
+    note: sequelize_1.DataTypes.TEXT,
 }, {
     tableName: 'penalty_tickets',
     timestamps: false,

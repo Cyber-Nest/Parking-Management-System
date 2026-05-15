@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteOfficer = exports.setOfficerStatus = exports.updateOfficer = exports.createOfficer = exports.listOfficers = exports.getOfficerSummary = void 0;
+exports.deleteOfficer = exports.setOfficerStatus = exports.updateOfficer = exports.createOfficer = exports.listOfficers = exports.getOfficerSummary = exports.getOfficerById = void 0;
 const officer_service_1 = require("../services/officer.service");
 const commonErrors_1 = require("../services/commonErrors");
 const officerService = new officer_service_1.OfficerService();
@@ -12,6 +12,16 @@ const handleError = (err, res) => {
     console.error('[OfficerController] Unhandled error:', err);
     res.status(500).json({ success: false, message: 'Internal server error' });
 };
+const getOfficerById = async (req, res) => {
+    try {
+        const data = await officerService.getById(req.params.id);
+        res.status(200).json({ success: true, message: 'Officer fetched', data });
+    }
+    catch (err) {
+        handleError(err, res);
+    }
+};
+exports.getOfficerById = getOfficerById;
 const getOfficerSummary = async (_req, res) => {
     try {
         const data = await officerService.summary();

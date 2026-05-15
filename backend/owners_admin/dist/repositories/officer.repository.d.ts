@@ -25,6 +25,7 @@ export declare class OfficerRepository {
         items: OfficerRow[];
         total: number;
     }>;
+    findById(id: string): Promise<OfficerRow | null>;
     summary(): Promise<{
         totalOfficers: number;
         activeOfficers: number;

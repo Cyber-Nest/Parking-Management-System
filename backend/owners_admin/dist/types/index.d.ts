@@ -80,8 +80,10 @@ export interface TicketPublic {
     due_date: Date | null;
     paid_at: Date | null;
     remarks: string | null;
+    note: string | null;
     dispute_raised: boolean;
     photos: string[];
+    location_name?: string | null;
 }
 export interface CreateTicketBody {
     license_plate: string;

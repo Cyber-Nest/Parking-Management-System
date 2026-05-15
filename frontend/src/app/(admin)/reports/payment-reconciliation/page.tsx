@@ -624,6 +624,7 @@ export default function PaymentReconciliationReport() {
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
         itemId={selectedItemId}
+        exportFilters={filters}
       />
     </div>
   );

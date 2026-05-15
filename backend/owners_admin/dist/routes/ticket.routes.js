@@ -9,8 +9,13 @@ const adminOnly = (handler) => [
     auth_middleware_1.requireAdmin,
     handler,
 ];
-router.get('/', ...adminOnly(ticket_controller_1.listTickets));
 router.get('/summary', ...adminOnly(ticket_controller_1.getTicketSummary));
+router.get('/:id', ...adminOnly(ticket_controller_1.getTicketById));
+router.patch('/:id/mark-paid', ...adminOnly(ticket_controller_1.markTicketPaid));
+router.patch('/:id/cancel', ...adminOnly(ticket_controller_1.cancelTicket));
+router.patch('/:id/note', ...adminOnly(ticket_controller_1.addTicketNote));
+router.patch('/:id', ...adminOnly(ticket_controller_1.updateTicket));
+router.get('/', ...adminOnly(ticket_controller_1.listTickets));
 router.post('/', ...adminOnly(ticket_controller_1.createTicket));
 exports.default = router;
 //# sourceMappingURL=ticket.routes.js.map

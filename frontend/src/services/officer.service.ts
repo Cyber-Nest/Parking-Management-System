@@ -50,15 +50,19 @@ export const officerService = {
     const items = (res?.items ?? res ?? []) as any[];
     return items.map((o, idx) => {
       const created = new Date(o.created_at ?? Date.now());
-      const status = String(o.status ?? "active");
+      // API returns ACTIVE | DISABLED; DB uses active | inactive | suspended — accept any casing
+      const raw = String(o.status ?? "");
+      const isActive =
+        raw.toUpperCase() === "ACTIVE" || raw.toLowerCase() === "active";
+
       return {
         id: String(o.id ?? `OF-${1000 + idx}`),
         name: String(o.full_name ?? o.name ?? "Officer"),
         email: String(o.email ?? ""),
         phone: String(o.phone ?? ""),
         role: String(o.role ?? "OFFICER"),
-        loginStatus: status === "active" ? "Active" : "Inactive",
-        accessStatus: status === "active" ? "Enabled" : "Disabled",
+        loginStatus: isActive ? "Active" : "Inactive",
+        accessStatus: isActive ? "Enabled" : "Disabled",
         tickets: Number(o.tickets_issued ?? o.tickets ?? 0),
         date: created.toLocaleDateString("en-US", {
           month: "short",

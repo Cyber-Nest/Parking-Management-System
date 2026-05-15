@@ -43,7 +43,7 @@ class PaymentRepository {
         const { clause, values } = this.buildWhere(filters);
         const offset = (filters.page - 1) * filters.limit;
         const items = await (0, database_1.queryRows)(`SELECT id, session_id, ticket_id, user_id, license_plate, amount, payment_method, payment_type,
-              status, transaction_ref, paid_at, created_at
+              status, transaction_ref, paid_at, receipt_number, receipt_date, created_at
        FROM payments
        ${clause}
        ORDER BY created_at DESC
@@ -52,6 +52,12 @@ class PaymentRepository {
        FROM payments
        ${clause}`, values);
         return { items, total: countRows[0]?.total ?? 0 };
+    }
+    async findById(id) {
+        const rows = await (0, database_1.queryRows)(`SELECT id, session_id, ticket_id, user_id, license_plate, amount, payment_method, payment_type,
+              status, transaction_ref, paid_at, receipt_number, receipt_date, created_at
+       FROM payments WHERE id = ? LIMIT 1`, [id]);
+        return rows[0] ?? null;
     }
     async summary() {
         const todayCountRows = await (0, database_1.queryRows)(`SELECT COUNT(*) AS total
@@ -86,9 +92,11 @@ class PaymentRepository {
     }
     async create(params) {
         const id = crypto_1.default.randomUUID();
+        const receiptNumber = `RCP-${Date.now()}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
+        const receiptDate = new Date().toISOString().slice(0, 19).replace('T', ' ');
         await (0, database_1.execute)(`INSERT INTO payments
-      (id, session_id, ticket_id, user_id, license_plate, amount, payment_method, payment_type, status, transaction_ref, paid_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
+      (id, session_id, ticket_id, user_id, license_plate, amount, payment_method, payment_type, status, transaction_ref, paid_at, receipt_number, receipt_date)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
             id,
             params.sessionId ?? null,
             params.ticketId ?? null,
@@ -100,6 +108,8 @@ class PaymentRepository {
             params.status ?? 'success',
             params.transactionRef ?? null,
             params.paidAt ?? null,
+            receiptNumber,
+            receiptDate,
         ]);
         return id;
     }

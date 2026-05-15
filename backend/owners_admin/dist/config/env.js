@@ -27,7 +27,7 @@ exports.env = {
     jwt: {
         accessSecret: required('JWT_ACCESS_SECRET'),
         refreshSecret: required('JWT_REFRESH_SECRET'),
-        accessExpiresIn: optional('JWT_ACCESS_EXPIRES_IN', '15m'),
+        accessExpiresIn: optional('JWT_ACCESS_EXPIRES_IN', '6h'),
         refreshExpiresIn: optional('JWT_REFRESH_EXPIRES_IN', '7d'),
     },
     smtp: {
