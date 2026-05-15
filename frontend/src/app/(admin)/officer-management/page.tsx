@@ -31,6 +31,7 @@ import { createOfficer, updateOfficer } from "@/services/officers.service";
 
 
 const initialFormData: OfficerFormData = {
+  countryCode: "+1",
   name: "",
   email: "",
   phone: "",
@@ -126,6 +127,7 @@ export default function OfficerManagementPage() {
   const openEditForm = (officer: Officer) => {
     setEditingOfficer(officer);
     setFormData({
+      countryCode: "+1",
       name: officer.name || "",
       email: officer.email || "",
       phone: officer.phone || "",
@@ -370,7 +372,10 @@ export default function OfficerManagementPage() {
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden">
                             <img
-                              src={`https://i.pravatar.cc/150?u=${idx}`}
+                              src={
+                                officer.profilePhoto ||
+                                `https://i.pravatar.cc/150?u=${idx}`
+                              }
                               alt="avatar"
                             />
                           </div>

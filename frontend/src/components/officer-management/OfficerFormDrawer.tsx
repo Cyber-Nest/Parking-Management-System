@@ -17,6 +17,7 @@ import { Officer } from "@/services/officer.service";
 import { useState } from "react";
 
 export interface OfficerFormData {
+  countryCode: string;
   name: string;
   email: string;
   phone: string;
@@ -319,14 +320,28 @@ export const OfficerFormDrawer = ({
                 {/* Phone */}
                 <FieldWrapper label="Primary Contact Number">
                   <div className="flex gap-2.5">
-                    <div className="w-24 px-4 py-2.5 border border-[var(--color-border)] rounded-xl bg-[var(--color-bg)] flex items-center justify-center text-sm font-bold text-[var(--color-text-secondary)] shadow-inner">
-                      🇺🇸 +1
-                    </div>
+                    {/* Country Code Select */}
+                    <select
+                      className="w-32 px-3 py-2.5 border border-[var(--color-border)] rounded-xl bg-[var(--color-bg)] text-sm font-bold text-[var(--color-text-secondary)] shadow-inner outline-none"
+                      value={formData?.countryCode || "+1"}
+                      onChange={(e) =>
+                        onFormChange("countryCode", e.target.value)
+                      }
+                    >
+                      <option value="+1">🇺🇸 +1 (USA)</option>
+                      <option value="+1-CA">🇨🇦 +1 (Canada)</option>
+                      <option value="+91">🇮🇳 +91 (India)</option>
+                      <option value="+44">🇬🇧 +44 (UK)</option>
+                      <option value="+61">🇦🇺 +61 (Australia)</option>
+                    </select>
+
+                    {/* Phone Input */}
                     <div className="relative flex-1">
                       <Phone
                         size={16}
                         className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]"
                       />
+
                       <input
                         type="tel"
                         placeholder="(555) 123-4567"
