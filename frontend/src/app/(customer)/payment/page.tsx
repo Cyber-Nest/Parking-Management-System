@@ -280,10 +280,11 @@ export default function PaymentPage() {
 
   useEffect(() => {
     if (
-      !parkingDetails ||
-      !vehicleDetails ||
-      !selectedDuration ||
-      !bookingSummary
+      !showSuccess &&
+      (!parkingDetails ||
+        !vehicleDetails ||
+        !selectedDuration ||
+        !bookingSummary)
     ) {
       toast.error("Incomplete booking flow", {
         style: {
@@ -308,6 +309,18 @@ export default function PaymentPage() {
     bookingSummary,
     router,
   ]);
+
+  useEffect(() => {
+    if (!showSuccess) return;
+
+    const timer = setTimeout(() => {
+      clearBooking();
+
+      router.push("/");
+    }, 6000);
+
+    return () => clearTimeout(timer);
+  }, [showSuccess, clearBooking, router]);
 
   const handlePayment = async () => {
     try {
@@ -449,8 +462,7 @@ export default function PaymentPage() {
             {/* Summary */}
             <div className="bg-[#1A1A1A] rounded-[28px] p-6 border border-white/5 space-y-4 shadow-xl">
               <div className="flex justify-between text-xs text-[#9CA3AF]">
-                <span>Base Fare (Spot {parkingDetails?.spotId})</span>
-
+                Base Fare ({parkingDetails?.parkingName})
                 <span className="text-white font-mono">
                   ${bookingSummary?.subtotal.toFixed(2)}
                 </span>
@@ -524,8 +536,8 @@ export default function PaymentPage() {
                 </h3>
 
                 <p className="text-[#9CA3AF] text-xs px-4 leading-relaxed">
-                  Your spot {parkingDetails?.spotId} is now reserved. Access is
-                  granted.
+                  Your parking zone is now reserved. Collect digital receipt from
+                  your mail.
                 </p>
 
                 {/* Summary Card */}
@@ -597,10 +609,21 @@ export default function PaymentPage() {
                     Return Home
                   </button>
 
-                  <button className="w-full py-3 text-[#9CA3AF] text-xs font-bold flex items-center justify-center gap-2 hover:text-white transition-colors">
+                  {/* <button className="w-full py-3 text-[#9CA3AF] text-xs font-bold flex items-center justify-center gap-2 hover:text-white transition-colors">
                     <Download size={16} />
                     Get Digital Receipt
-                  </button>
+                  </button> */}
+                  {/* <p className="text-center text-[10px] text-[#4B5563] mt-5 uppercase tracking-[0.2em] font-medium">
+                    Receipt forwarded to{" "}
+                    <span className="text-white/60 font-mono lower-case">
+                      {" "}
+                      your email
+                    </span>
+                  </p> */}
+
+                  <p className="text-center text-[10px] text-[#4B5563] mt-5 uppercase tracking-[0.2em] font-medium">
+                    Booking summary & receipt sent to inbox
+                  </p>
                 </div>
               </div>
             </div>

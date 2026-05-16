@@ -202,6 +202,10 @@ export default function VehicleDetailsPage() {
 
   const [selectedDurationValue, setSelectedDurationValue] = useState("1h");
 
+  const [customHours, setCustomHours] = useState<number | "" | undefined>();
+
+  const [customMinutes, setCustomMinutes] = useState<number | "" | undefined>();
+
   const [formData, setFormData] = useState<VehicleDetails>({
     email: "",
     vehicleModel: "",
@@ -281,8 +285,23 @@ export default function VehicleDetailsPage() {
       return false;
     }
 
+    if (selectedDurationValue === "custom") {
+      const totalMinutes = (customHours || 0) * 60 + (customMinutes || 0);
+
+      if (totalMinutes <= 0) {
+        toast.error("Please select custom parking duration", {
+          ...toastStyle,
+        });
+
+        return false;
+      }
+    }
     return true;
   };
+
+  const customPrice =
+    (((customHours || 0) * 60 + (customMinutes || 0)) / 60) *
+    (parkingDetails?.hourlyRate || 0);
 
   const handleProceedToPayment = () => {
     if (!parkingDetails) {
@@ -435,39 +454,123 @@ export default function VehicleDetailsPage() {
             </div>
 
             {/* Duration */}
-            <div className="space-y-3 pt-4">
-              <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold">
-                Parking Duration
-              </label>
-
+            <div className="space-y-3">
+              {/* Hourly Cards */}
               <div className="grid grid-cols-4 gap-2">
-                {durations.map((d) => (
-                  <button
-                    key={d.value}
-                    type="button"
-                    onClick={() => setSelectedDurationValue(d.value)}
-                    className={`flex flex-col items-center justify-center py-4 rounded-xl border transition-all duration-200 ${
-                      selectedDurationValue === d.value
-                        ? "bg-[#C6F432] border-[#C6F432] text-black"
-                        : "bg-[#1A1A1A] border-white/5 text-[#9CA3AF]"
-                    }`}
-                  >
-                    <span className="text-[10px] font-bold uppercase tracking-tight mb-0.5">
-                      {d.label}
-                    </span>
-
-                    <span
-                      className={`text-sm font-mono font-bold ${
+                {durations
+                  .filter((d) => ["30m", "1h", "3h", "5h"].includes(d.value))
+                  .map((d) => (
+                    <button
+                      key={d.value}
+                      type="button"
+                      onClick={() => setSelectedDurationValue(d.value)}
+                      className={`flex flex-col items-center justify-center py-3.5 rounded-xl border transition-all duration-200 active:scale-[0.97] ${
                         selectedDurationValue === d.value
-                          ? "text-black"
-                          : "text-white"
+                          ? "bg-[#C6F432] border-[#C6F432] text-black shadow-[0_4px_15px_rgba(198,244,50,0.12)]"
+                          : "bg-[#1A1A1A] border-white/5 text-[#9CA3AF]"
                       }`}
                     >
-                      ${d.price.toFixed(2)}
-                    </span>
-                  </button>
-                ))}
+                      <span className="text-[10px] font-bold uppercase tracking-tight mb-0.5">
+                        {d.label}
+                      </span>
+                      <span
+                        className={`text-sm font-mono font-bold ${
+                          selectedDurationValue === d.value
+                            ? "text-black"
+                            : "text-white"
+                        }`}
+                      >
+                        ${d.price.toFixed(2)}
+                      </span>
+                    </button>
+                  ))}
               </div>
+
+              {/* Other Plans */}
+              <div className="grid grid-cols-2 gap-2">
+                {durations
+                  .filter((d) =>
+                    ["half-day", "full-day", "weekly", "custom"].includes(
+                      d.value,
+                    ),
+                  )
+                  .map((d) => (
+                    <button
+                      key={d.value}
+                      type="button"
+                      onClick={() => setSelectedDurationValue(d.value)}
+                      className={`flex flex-col items-center justify-center py-3.5 rounded-xl border transition-all duration-200 active:scale-[0.97] ${
+                        selectedDurationValue === d.value
+                          ? "bg-[#C6F432] border-[#C6F432] text-black shadow-[0_4px_15px_rgba(198,244,50,0.12)]"
+                          : "bg-[#1A1A1A] border-white/5 text-[#9CA3AF]"
+                      }`}
+                    >
+                      <span className="text-[10px] font-bold uppercase tracking-tight mb-0.5">
+                        {d.label}
+                      </span>
+                      <span
+                        className={`text-sm font-mono font-bold ${
+                          selectedDurationValue === d.value
+                            ? "text-black"
+                            : "text-white"
+                        }`}
+                      >
+                        {d.value === "custom"
+                          ? "Flexible"
+                          : `$${d.price.toFixed(2)}`}
+                      </span>
+                    </button>
+                  ))}
+              </div>
+
+              {/* Custom Time */}
+              {selectedDurationValue === "custom" && (
+                <div className="bg-[#121212] border border-white/5 rounded-2xl p-4 grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300 shadow-[2px_10px_30px_rgba(0,0,0,0.5)]">
+                  {/* Hours Picker */}
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold block">
+                      Hours Stay
+                    </label>
+                    <div className="relative flex items-center">
+                      <input
+                        type="number"
+                        min={0}
+                        max={23}
+                        value={customHours}
+                        onChange={(e) => setCustomHours(Number(e.target.value))}
+                        className="w-full bg-[#1A1A1A] border border-white/5 rounded-xl py-3 pl-4 pr-12 text-white text-sm font-mono font-bold focus:border-[#C6F432]/40 focus:outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        placeholder="1"
+                      />
+                      <span className="absolute right-4 text-[10px] text-[#4B5563] uppercase tracking-wider font-bold select-none pointer-events-none">
+                        hrs
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Minutes Picker */}
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold block">
+                      Minutes Stay
+                    </label>
+                    <div className="relative flex items-center">
+                      <input
+                        type="number"
+                        min={0}
+                        max={59}
+                        value={customMinutes}
+                        onChange={(e) =>
+                          setCustomMinutes(Number(e.target.value))
+                        }
+                        className="w-full bg-[#1A1A1A] border border-white/5 rounded-xl py-3 pl-4 pr-12 text-white text-sm font-mono font-bold focus:border-[#C6F432]/40 focus:outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        placeholder="0"
+                      />
+                      <span className="absolute right-4 text-[10px] text-[#4B5563] uppercase tracking-wider font-bold select-none pointer-events-none">
+                        min
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -484,11 +587,13 @@ export default function VehicleDetailsPage() {
                 </p>
               </div>
 
-              <p className="text-[#C6F432] text-3xl font-black font-mono tracking-tighter lg:text-5xl">
+              <p className="text-[#C6F432] text-3xl font-black font-mono tracking-tighter lg:text-5xl mt-2">
                 $
-                {durations
-                  .find((d) => d.value === selectedDurationValue)
-                  ?.price.toFixed(2)}
+                {(selectedDurationValue === "custom"
+                  ? customPrice
+                  : durations.find((d) => d.value === selectedDurationValue)
+                      ?.price || 0
+                ).toFixed(2)}
               </p>
             </div>
 
@@ -498,6 +603,9 @@ export default function VehicleDetailsPage() {
             >
               Proceed to Payment
             </button>
+            <p className="text-center lg:text-left text-[8px] text-[#4B5563] mt-4 uppercase tracking-[0.2em]">
+              Secure Payment Powered by Stripe
+            </p>
           </div>
         </div>
       </div>
