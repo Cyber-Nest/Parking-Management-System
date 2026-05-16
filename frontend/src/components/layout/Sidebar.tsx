@@ -78,7 +78,7 @@
 
 //       <aside
 //         className={`
-//           fixed md:static z-50 top-0 left-0 h-screen w-72 
+//           fixed md:static z-50 top-0 left-0 h-screen w-72
 //           bg-[var(--color-primary)] text-white/90
 //           transform ${isOpen ? "translate-x-0" : "-translate-x-full"}
 //           md:translate-x-0 transition-transform duration-300 ease-[cubic-bezier(0.23,1,0.32,1)]
@@ -200,7 +200,6 @@
 //   );
 // }
 
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -219,6 +218,7 @@ import {
   LogOut,
   X,
   ChevronDown,
+  Building2,
 } from "lucide-react";
 
 export default function Sidebar({
@@ -246,6 +246,11 @@ export default function Sidebar({
     { href: "/active-parking", icon: MapPinned, label: "Active Parking" },
     { href: "/payments", icon: CreditCard, label: "Payments" },
     { href: "/penalty-tickets", icon: Ticket, label: "Penalty Tickets" },
+    {
+      href: "/parking-lot",
+      icon: Building2,
+      label: "Parking Lots",
+    },
     { href: "/officer-management", icon: UserCog, label: "Officer Management" },
     { href: "/parking-plan", icon: Map, label: "Parking Plan & Penalty" },
     {
@@ -257,9 +262,13 @@ export default function Sidebar({
         { label: "Parking Usage", href: "/reports/usage" },
         { label: "Penalty Reports", href: "/reports/penalty" },
         { label: "Officer Performance", href: "/reports/performance" },
-        { label: "Payment Reconciliation", href: "/reports/payment-reconciliation" },
+        {
+          label: "Payment Reconciliation",
+          href: "/reports/payment-reconciliation",
+        },
         { label: "Outstanding / Due", href: "/reports/due" },
         { label: "Location Performance", href: "/reports/location" },
+
         { label: "Peak Hours & Occupancy", href: "/reports/occupancy" },
         { label: "Plan Performance", href: "/reports/plan" },
         { label: "Audit Logs", href: "/reports/audit" },
@@ -300,7 +309,9 @@ export default function Sidebar({
         <div className="h-20 px-6 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3 group cursor-pointer">
             <div className="w-9 h-9 md:w-10 md:h-10 bg-white/10 dark:bg-[var(--color-primary)]/20 rounded-xl flex items-center justify-center border border-white/20 dark:border-[var(--color-border)] group-hover:scale-110 transition-transform">
-              <span className="font-black text-lg md:text-xl text-white dark:text-[var(--color-primary)]">P</span>
+              <span className="font-black text-lg md:text-xl text-white dark:text-[var(--color-primary)]">
+                P
+              </span>
             </div>
             <span className="text-lg md:text-xl font-bold tracking-tight text-white dark:text-[var(--color-text-primary)]">
               ParkSmart
@@ -326,9 +337,14 @@ export default function Sidebar({
                   >
                     <div className="flex items-center gap-3">
                       <item.icon size={18} className="md:w-5 md:h-5" />
-                      <span className="font-medium text-[13px] md:text-[14px]">{item.label}</span>
+                      <span className="font-medium text-[13px] md:text-[14px]">
+                        {item.label}
+                      </span>
                     </div>
-                    <ChevronDown size={14} className={`transition-transform duration-300 ${isReportsOpen ? "rotate-180" : ""}`} />
+                    <ChevronDown
+                      size={14}
+                      className={`transition-transform duration-300 ${isReportsOpen ? "rotate-180" : ""}`}
+                    />
                   </button>
 
                   <AnimatePresence>
@@ -345,10 +361,12 @@ export default function Sidebar({
                             <Link
                               key={sub.label}
                               href={sub.href}
-                              onClick={() => window.innerWidth < 768 && setIsOpen(false)}
+                              onClick={() =>
+                                window.innerWidth < 768 && setIsOpen(false)
+                              }
                               className={`py-2 pl-6 pr-4 text-[12px] md:text-[13px] transition-all hover:text-white dark:hover:text-[var(--color-text-primary)] ${
-                                isSubActive 
-                                  ? "text-white dark:text-[var(--color-primary)] font-bold" 
+                                isSubActive
+                                  ? "text-white dark:text-[var(--color-primary)] font-bold"
                                   : "text-white/50 dark:text-[var(--color-text-secondary)]"
                               }`}
                             >
@@ -367,16 +385,17 @@ export default function Sidebar({
             return (
               <Link
                 key={item.href}
-                href={item.href || '#'}
+                href={item.href || "#"}
                 onClick={() => setIsOpen(false)}
                 className="relative block"
               >
                 <div
                   className={`
                     flex items-center gap-3 px-4 py-2.5 md:py-3 rounded-xl transition-all duration-300 group
-                    ${isActive 
-                      ? "text-[var(--color-primary)] dark:text-white" 
-                      : "text-white/60 dark:text-[var(--color-text-secondary)] hover:text-white dark:hover:text-[var(--color-text-primary)] hover:bg-white/5 dark:hover:bg-[var(--color-primary)]/10"
+                    ${
+                      isActive
+                        ? "text-[var(--color-primary)] dark:text-white"
+                        : "text-white/60 dark:text-[var(--color-text-secondary)] hover:text-white dark:hover:text-[var(--color-text-primary)] hover:bg-white/5 dark:hover:bg-[var(--color-primary)]/10"
                     }
                   `}
                 >
@@ -384,7 +403,11 @@ export default function Sidebar({
                     <motion.div
                       layoutId="activeNav"
                       className="absolute inset-0 bg-white dark:bg-[var(--color-primary)] rounded-xl shadow-lg"
-                      transition={{ type: "spring", bounce: 0.25, duration: 0.5 }}
+                      transition={{
+                        type: "spring",
+                        bounce: 0.25,
+                        duration: 0.5,
+                      }}
                     />
                   )}
 
@@ -407,7 +430,10 @@ export default function Sidebar({
             onClick={handleLogout}
             className="flex items-center gap-3 w-full px-4 py-2.5 md:py-3 text-white/50 dark:text-[var(--color-text-secondary)] hover:text-white dark:hover:text-red-400 bg-white/5 dark:bg-transparent hover:bg-red-500/10 rounded-xl transition-all group"
           >
-            <LogOut size={18} className="group-hover:-translate-x-1 transition-transform" />
+            <LogOut
+              size={18}
+              className="group-hover:-translate-x-1 transition-transform"
+            />
             <span className="font-semibold text-xs md:text-sm">Logout</span>
           </button>
         </div>

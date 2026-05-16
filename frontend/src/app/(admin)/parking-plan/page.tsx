@@ -235,7 +235,6 @@ export default function ParkingPlanAndRulesPage() {
   };
 
   // Edit Handler
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleEdit = (item: any) => {
     setEditingItem(item);
     if (activeTab === "plans") {
@@ -302,15 +301,6 @@ export default function ParkingPlanAndRulesPage() {
     <div className="min-h-screen px-3 md:px-4 lg:px-4 bg-[var(--color-bg)]">
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-        {/* <div>
-          <h1 className="text-2xl font-bold tracking-tight">
-            Parking{" "}
-            <span className="text-[var(--color-primary)]">Settings</span>
-          </h1>
-          <p className="text-[var(--color-text-secondary)] text-sm">
-            Manage rates, durations, and violation penalty rules
-          </p>
-        </div> */}
         <div>
           <h1 className="text-xl md:text-3xl font-black tracking-tight text-[var(--color-text-primary)]">
             Parking{" "}
@@ -322,7 +312,6 @@ export default function ParkingPlanAndRulesPage() {
           </p>
         </div>
 
-        <button></button>
         <button
           onClick={() => {
             resetForm();
