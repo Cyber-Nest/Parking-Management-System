@@ -16,6 +16,7 @@ import taxRoutes from './routes/tax.routes';
 import pricingRoutes from './routes/pricing.routes';
 import userRoutes from './routes/user.routes';
 import roleRoutes from './routes/role.routes';
+import customerRoutes from './routes/customer.routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.middleware';
 
 dotenv.config();
@@ -64,6 +65,7 @@ app.use('/api/admin/taxes', taxRoutes);
 app.use('/api/admin/pricings', pricingRoutes);
 app.use('/api/admin/users', userRoutes);
 app.use('/api/admin/roles', roleRoutes);
+app.use('/api/customer', customerRoutes);
 app.use(notFoundHandler);
 app.use(errorHandler);
 

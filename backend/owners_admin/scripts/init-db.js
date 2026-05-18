@@ -81,6 +81,20 @@ const run = async () => {
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     );
 
+    CREATE TABLE IF NOT EXISTS parking_zones (
+      id VARCHAR(60) PRIMARY KEY,
+      parking_name VARCHAR(191) NOT NULL,
+      address VARCHAR(255) NOT NULL,
+      image_url TEXT NOT NULL,
+      hourly_rate DECIMAL(10,2) NOT NULL,
+      available_spots INT NOT NULL DEFAULT 0,
+      total_spots INT NOT NULL DEFAULT 0,
+      spot_id VARCHAR(100) NOT NULL,
+      status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    );
+
     CREATE TABLE IF NOT EXISTS parking_sessions (
       id CHAR(36) PRIMARY KEY,
       user_id CHAR(36) NULL,

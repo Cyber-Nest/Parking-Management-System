@@ -131,6 +131,38 @@ export interface PaymentPublic {
   created_at: Date;
 }
 
+export interface ParkingZonePublic {
+  id: string;
+  parking_name: string;
+  address: string;
+  image_url: string;
+  hourly_rate: number;
+  available_spots: number;
+  total_spots: number;
+  spot_id: string;
+}
+
+export interface ParkingZoneRow extends ParkingZonePublic {}
+
+export interface CustomerBookingPayload {
+  zoneId: string;
+  email: string;
+  vehicleModel: string;
+  plateNumber: string;
+  carColor: string;
+  durationLabel: string;
+  durationMinutes: number;
+  price: number;
+}
+
+export interface CustomerBookingResponse {
+  bookingId: string;
+  paymentId: string;
+  receiptNumber: string;
+  amount: number;
+  total: number;
+}
+
 export interface CreatePaymentBody {
   session_id?: string;
   ticket_id?: string;

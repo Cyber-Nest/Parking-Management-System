@@ -1,6 +1,8 @@
 // src/config/env.ts
 import dotenv from 'dotenv';
-dotenv.config();
+import path from 'path';
+
+dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 const required = (key: string): string => {
   const value = process.env[key];
@@ -35,6 +37,10 @@ export const env = {
     user:   optional('SMTP_USER', ''),
     pass:   optional('SMTP_PASS', ''),
     from:   optional('EMAIL_FROM', 'ParkSmart <no-reply@parksmart.com>'),
+  },
+
+  stripe: {
+    secretKey: optional('STRIPE_SECRET_KEY', ''),
   },
 
   frontendUrl:      optional('FRONTEND_URL', 'http://localhost:3000'),

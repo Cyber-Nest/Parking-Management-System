@@ -55,6 +55,12 @@ export const API_ENDPOINTS = {
     BY_ID: (id: string) => `/admin/users/${id}`,
   },
 
+  CUSTOMER: {
+    PARKING_ZONE: (id: string) => `/customer/parking-zones/${id}`,
+    PAYMENT_INTENT: "/customer/payment-intents",
+    BOOKINGS: "/customer/bookings",
+  },
+
   ROLES: {
     LIST: "/admin/roles",
     BY_ID: (id: string) => `/admin/roles/${id}`,

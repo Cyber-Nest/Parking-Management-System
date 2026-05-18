@@ -227,7 +227,7 @@ export default function LandingPage() {
       try {
         setLoading(true);
 
-        const zoneId = searchParams.get("zoneId") || "ZONE-101";
+        const zoneId = searchParams.get("zoneId") || "ZONE-201";
 
         const response = await customerService.getParkingZoneById(zoneId);
 
