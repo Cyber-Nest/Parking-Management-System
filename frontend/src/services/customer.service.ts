@@ -50,6 +50,50 @@ export interface CompleteBookingPayload {
   selectedDuration: DurationOption;
 }
 
+export interface PenaltyVehicleDetails {
+  vehicleModel: string;
+  plateNumber: string;
+  carColor: string;
+}
+
+export interface PenaltyDetails {
+  penaltyId: string;
+
+  parkingName: string;
+
+  zoneName?: string;
+
+  hasMultipleZones: boolean;
+
+  vehicleDetails: PenaltyVehicleDetails;
+
+  bookingStartTime: string;
+
+  allowedEndTime: string;
+
+  overtimeDuration: string;
+
+  generatedPenalty: number;
+
+  violationReason: string;
+
+  status: "pending" | "paid" | "disputed";
+
+  issuedAt: string;
+}
+
+export interface PenaltyDisputePayload {
+  fullName: string;
+
+  email: string;
+
+  phone: string;
+
+  explanation: string;
+
+  proofImage?: string | null;
+}
+
 class CustomerService {
   async getParkingZoneById(zoneId: string): Promise<ParkingDetails> {
     await new Promise((resolve) => setTimeout(resolve, 500));
@@ -206,6 +250,110 @@ class CustomerService {
 
   async processDummyPayment(): Promise<boolean> {
     await new Promise((resolve) => setTimeout(resolve, 500));
+
+    return true;
+  }
+
+  private penalties: PenaltyDetails[] = [
+    {
+      penaltyId: "PN-1021",
+
+      parkingName: "Central Parking Tower",
+
+      zoneName: "VIP Floor",
+
+      hasMultipleZones: false,
+
+      vehicleDetails: {
+        vehicleModel: "Tesla Model 3",
+
+        plateNumber: "ONT-129",
+
+        carColor: "Silver",
+      },
+
+      bookingStartTime: "10:00 AM",
+
+      allowedEndTime: "10:30 AM",
+
+      overtimeDuration: "42 Minutes",
+
+      generatedPenalty: 40,
+
+      violationReason:
+        "Vehicle remained parked after booking expiration and grace window completion.",
+
+      status: "pending",
+
+      issuedAt: "2026-08-14T10:42:00Z",
+    },
+
+    {
+      penaltyId: "PN-1022",
+
+      parkingName: "Maple Street Parking Hub",
+
+      hasMultipleZones: false,
+
+      vehicleDetails: {
+        vehicleModel: "BMW X5",
+
+        plateNumber: "TOR-882",
+
+        carColor: "Black",
+      },
+
+      bookingStartTime: "03:00 PM",
+
+      allowedEndTime: "04:00 PM",
+
+      overtimeDuration: "18 Minutes",
+
+      generatedPenalty: 25,
+
+      violationReason: "Vehicle exceeded permitted parking duration.",
+
+      status: "pending",
+
+      issuedAt: "2026-08-15T04:18:00Z",
+    },
+  ];
+
+  async getPenaltyById(penaltyId: string): Promise<PenaltyDetails | null> {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    return this.penalties.find((item) => item.penaltyId === penaltyId) || null;
+  }
+
+  async payPenalty(penaltyId: string): Promise<boolean> {
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+
+    const penalty = this.penalties.find((item) => item.penaltyId === penaltyId);
+
+    if (!penalty) {
+      return false;
+    }
+
+    penalty.status = "paid";
+
+    return true;
+  }
+
+  async submitPenaltyDispute(
+    penaltyId: string,
+    payload: PenaltyDisputePayload,
+  ): Promise<boolean> {
+    console.log("Penalty Dispute Submitted:", penaltyId, payload);
+
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+
+    const penalty = this.penalties.find((item) => item.penaltyId === penaltyId);
+
+    if (!penalty) {
+      return false;
+    }
+
+    penalty.status = "disputed";
 
     return true;
   }
