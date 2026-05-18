@@ -33,6 +33,17 @@ export class ParkingPlanRepository {
     return rows[0] ?? null;
   }
 
+  async findByPriceAndDuration(price: number, duration: number): Promise<ParkingPlanRow | null> {
+    const rows = await queryRows<ParkingPlanRow>(
+      `SELECT id, name, price, duration, plan_type, tax_percent, status, created_at, updated_at
+       FROM parking_plans
+       WHERE price = ? AND duration = ?
+       LIMIT 1`,
+      [price, duration]
+    );
+    return rows[0] ?? null;
+  }
+
   async create(params: {
     name: string;
     price: number;

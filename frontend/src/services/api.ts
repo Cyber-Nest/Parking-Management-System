@@ -59,6 +59,7 @@ export const API_ENDPOINTS = {
     PARKING_ZONE: (id: string) => `/customer/parking-zones/${id}`,
     PAYMENT_INTENT: "/customer/payment-intents",
     BOOKINGS: "/customer/bookings",
+    CONFIG: "/customer/config",
   },
 
   ROLES: {

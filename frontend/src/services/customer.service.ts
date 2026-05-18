@@ -137,6 +137,11 @@ class CustomerService {
     return response.data?.data as PaymentIntentResponse;
   }
 
+  async getStripeConfig(): Promise<{ stripePublishableKey: string }> {
+    const response = await axios.get(API_ENDPOINTS.CUSTOMER.CONFIG);
+    return response.data?.data as { stripePublishableKey: string };
+  }
+
   async submitBooking(
     payload: CompleteBookingPayload,
     stripePaymentIntentId: string,

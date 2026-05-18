@@ -2,6 +2,7 @@ import Stripe from 'stripe';
 import { env } from '../config/env';
 import { PaymentRepository } from '../repositories/payment.repository';
 import { SessionRepository } from '../repositories/session.repository';
+import { ParkingPlanRepository } from '../repositories/parkingPlan.repository';
 import { ParkingZoneRepository } from '../repositories/parkingZone.repository';
 import {
   CustomerBookingPayload,
@@ -10,9 +11,10 @@ import {
 } from '../types';
 
 const parkingZoneRepo = new ParkingZoneRepository();
+const parkingPlanRepo = new ParkingPlanRepository();
 const sessionRepo = new SessionRepository();
 const paymentRepo = new PaymentRepository();
-const stripe = new Stripe(env.stripe.secretKey, { apiVersion: '2024-08-23' });
+const stripe = new Stripe(env.stripe.secretKey, { apiVersion: '2022-11-15' });
 
 const formatDateTime = (date: Date): string =>
   date.toISOString().slice(0, 19).replace('T', ' ');
@@ -67,6 +69,16 @@ export class CustomerService {
     }
   }
 
+  async getStripeConfig(): Promise<{ stripePublishableKey: string }> {
+    if (!env.stripe.publishableKey) {
+      throw new Error('Stripe publishable key is not configured. Please set STRIPE_PUBLISHABLE_KEY in backend .env');
+    }
+
+    return {
+      stripePublishableKey: env.stripe.publishableKey,
+    };
+  }
+
   async createBooking(payload: CustomerBookingPayload): Promise<CustomerBookingResponse> {
     const zone = await parkingZoneRepo.findById(payload.zoneId);
     if (!zone) {
@@ -91,17 +103,20 @@ export class CustomerService {
     const endTime = new Date(startTime.getTime() + payload.durationMinutes * 60000);
     const paidAt = formatDateTime(new Date());
 
+    const matchingPlan = await parkingPlanRepo.findByPriceAndDuration(
+      payload.price,
+      payload.durationMinutes,
+    );
+
     const sessionId = await sessionRepo.create({
       licensePlate: payload.plateNumber,
-      planId: zone.id,
+      planId: matchingPlan?.id,
       planName: payload.durationLabel,
       startTime: formatDateTime(startTime),
       endTime: formatDateTime(endTime),
       durationMinutes: payload.durationMinutes,
       status: 'active',
       notes: `Vehicle: ${payload.vehicleModel} / ${payload.carColor}`,
-      userId: null,
-      vehicleId: null,
     });
 
     const totalAmount = Number(payload.price) + 2;

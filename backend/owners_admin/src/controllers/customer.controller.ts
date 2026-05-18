@@ -1,10 +1,10 @@
 import { Request, Response } from 'express';
 import { customerService } from '../services/customer.service';
-import { ApiResponse } from '../types';
+import { ApiResponse, CustomerBookingResponse, ParkingZonePublic } from '../types';
 
 export const getParkingZoneById = async (
   req: Request,
-  res: Response<ApiResponse>
+  res: Response<ApiResponse<ParkingZonePublic>>
 ): Promise<void> => {
   try {
     const { id } = req.params;
@@ -16,9 +16,22 @@ export const getParkingZoneById = async (
   }
 };
 
+export const getStripeConfig = async (
+  _req: Request,
+  res: Response<ApiResponse<{ stripePublishableKey: string }>>
+): Promise<void> => {
+  try {
+    const data = await customerService.getStripeConfig();
+    res.status(200).json({ success: true, message: 'Stripe config fetched', data });
+  } catch (err) {
+    console.error('[CustomerController] getStripeConfig error:', err instanceof Error ? err.stack : err);
+    res.status(500).json({ success: false, message: String(err instanceof Error ? err.message : 'Failed to fetch Stripe config') });
+  }
+};
+
 export const createPaymentIntent = async (
   req: Request,
-  res: Response<ApiResponse>
+  res: Response<ApiResponse<{ clientSecret: string; amount: number; currency: string }>>
 ): Promise<void> => {
   try {
     const { amount } = req.body;
@@ -37,7 +50,7 @@ export const createPaymentIntent = async (
 
 export const createBooking = async (
   req: Request,
-  res: Response<ApiResponse>
+  res: Response<ApiResponse<CustomerBookingResponse>>
 ): Promise<void> => {
   try {
     const {
@@ -52,18 +65,22 @@ export const createBooking = async (
       stripePaymentIntentId,
     } = req.body;
 
-    if (
-      !zoneId ||
-      !email ||
-      !vehicleModel ||
-      !plateNumber ||
-      !carColor ||
-      !durationLabel ||
-      !durationMinutes ||
-      !price ||
-      !stripePaymentIntentId
-    ) {
-      res.status(400).json({ success: false, message: 'Missing required booking fields' });
+    const missingFields: string[] = [];
+
+    if (!zoneId) missingFields.push('zoneId');
+    if (!email) missingFields.push('email');
+    if (!vehicleModel) missingFields.push('vehicleModel');
+    if (!plateNumber) missingFields.push('plateNumber');
+    if (!carColor) missingFields.push('carColor');
+    if (!durationLabel) missingFields.push('durationLabel');
+    if (durationMinutes === undefined || durationMinutes === null) missingFields.push('durationMinutes');
+    if (price === undefined || price === null) missingFields.push('price');
+    if (!stripePaymentIntentId) missingFields.push('stripePaymentIntentId');
+
+    if (missingFields.length > 0) {
+      const message = `Missing required booking fields: ${missingFields.join(', ')}`;
+      console.error('[CustomerController] createBooking validation failed:', message, 'body:', req.body);
+      res.status(400).json({ success: false, message });
       return;
     }
 

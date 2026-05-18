@@ -41,6 +41,7 @@ export const env = {
 
   stripe: {
     secretKey: optional('STRIPE_SECRET_KEY', ''),
+    publishableKey: optional('STRIPE_PUBLISHABLE_KEY', ''),
   },
 
   frontendUrl:      optional('FRONTEND_URL', 'http://localhost:3000'),

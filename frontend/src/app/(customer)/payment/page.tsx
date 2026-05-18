@@ -244,7 +244,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { loadStripe } from "@stripe/stripe-js";
+import { loadStripe, type Stripe } from "@stripe/stripe-js";
 import {
   CardElement,
   Elements,
@@ -275,9 +275,6 @@ import {
 } from "@/contexts/CustomerParkingContext";
 
 const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim() ?? "";
-const stripePromise = stripePublishableKey
-  ? loadStripe(stripePublishableKey)
-  : Promise.resolve(null);
 
 interface CheckoutFormProps {
   parkingDetails: ParkingDetails | null;
@@ -397,7 +394,17 @@ function CheckoutForm({
       onComplete();
     } catch (error) {
       console.error(error);
-      toast.error("Payment processing failed. Please try again.");
+      const axiosError = error as { response?: { data?: { message?: string } } } | Error;
+      const backendMessage =
+        axiosError &&
+        'response' in axiosError &&
+        axiosError.response?.data?.message
+          ? axiosError.response.data.message
+          : error instanceof Error
+          ? error.message
+          : 'Payment processing failed. Please try again.';
+
+      toast.error(backendMessage);
     } finally {
       setIsProcessing(false);
     }
@@ -648,17 +655,54 @@ export default function PaymentPageWrapper() {
     clearBooking,
   } = useParkingBooking();
 
-  if (!stripePublishableKey) {
+  const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
+  const [stripeConfigError, setStripeConfigError] = useState<string | null>(null);
+  const [isStripeLoading, setIsStripeLoading] = useState(true);
+
+  useEffect(() => {
+    const initializeStripe = async () => {
+      try {
+        const publishableKey = stripePublishableKey
+          ? stripePublishableKey
+          : (await customerService.getStripeConfig()).stripePublishableKey;
+
+        if (!publishableKey) {
+          throw new Error('Stripe publishable key is missing');
+        }
+
+        setStripePromise(loadStripe(publishableKey));
+      } catch (error) {
+        console.error(error);
+        setStripeConfigError(
+          'Stripe is not configured. Please check backend and frontend settings.',
+        );
+      } finally {
+        setIsStripeLoading(false);
+      }
+    };
+
+    initializeStripe();
+  }, []);
+
+  if (isStripeLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#0D0D0D] text-white">
+        <p className="text-base">Loading payment configuration…</p>
+      </div>
+    );
+  }
+
+  if (stripeConfigError || !stripePromise) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0D0D0D] text-white p-6">
         <div className="max-w-lg rounded-3xl border border-[#2D2D2D] bg-[#111111] p-10 text-center shadow-xl">
           <h1 className="text-2xl font-bold mb-3">Stripe configuration missing</h1>
-          <p className="text-sm text-[#C6C6C6] mb-6">
-            The frontend Stripe publishable key is not configured. Please add
-            <code className="block py-1 px-2 rounded bg-[#1F1F1F] text-[#A5FFA0] mt-3">
-              NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
-            </code>
-            to <code className="block py-1 px-2 rounded bg-[#1F1F1F]">frontend/.env.local</code> and restart the dev server.
+          <p className="text-sm text-[#C6F6FF] mb-6">
+            {stripeConfigError ||
+              'The Stripe publishable key is not configured. Please add it to frontend/.env.local or backend .env.'}
+          </p>
+          <p className="text-xs text-[#9CA3AF]">
+            If this keeps happening, restart both servers and verify Stripe settings.
           </p>
         </div>
       </div>

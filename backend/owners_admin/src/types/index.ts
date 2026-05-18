@@ -153,6 +153,7 @@ export interface CustomerBookingPayload {
   durationLabel: string;
   durationMinutes: number;
   price: number;
+  stripePaymentIntentId: string;
 }
 
 export interface CustomerBookingResponse {
