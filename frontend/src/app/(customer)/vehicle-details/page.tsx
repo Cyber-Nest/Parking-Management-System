@@ -1,176 +1,3 @@
-// "use client";
-// import React, { useState } from "react";
-// import { ArrowLeft, Car, Mail, Palette, Hash } from "lucide-react";
-// import Link from "next/link";
-
-// export default function VehicleDetailsPage() {
-//   const [selectedDuration, setSelectedDuration] = useState("1h");
-
-//   const durations = [
-//     { label: "30m", value: "30m", price: "$2.50" },
-//     { label: "1h", value: "1h", price: "$4.50" },
-//     { label: "3h", value: "3h", price: "$12.00" },
-//     { label: "Day", value: "day", price: "$25.00" },
-//   ];
-
-//   return (
-//     <div className="h-screen bg-[#0D0D0D] text-white font-sans overflow-x-hidden overflow-y-auto scrollbar-hide">
-//       <div className="max-w-xl lg:max-w-5xl mx-auto min-h-screen flex flex-col p-6 pt-10">
-
-//         <div className="flex items-center gap-4 mb-8">
-//           <Link
-//             href="/"
-//             className="w-9 h-9 rounded-full bg-[#1A1A1A] flex items-center justify-center border border-white/5 hover:bg-white/5 transition-colors"
-//           >
-//             <ArrowLeft size={18} />
-//           </Link>
-//           <h2
-//             className="text-xl font-medium tracking-tight"
-//             style={{ fontFamily: "serif" }}
-//           >
-//             Vehicle Details
-//           </h2>
-//         </div>
-
-//         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16">
-
-//           {/* Left Column: Form Fields */}
-//           <div className="space-y-6">
-//             {/* Email Input */}
-//             <div className="space-y-1.5">
-//               <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold">
-//                 Receipt Email
-//               </label>
-//               <div className="relative">
-//                 <Mail
-//                   className="absolute left-4 top-1/2 -translate-y-1/2 text-[#374151]"
-//                   size={16}
-//                 />
-//                 <input
-//                   type="email"
-//                   placeholder="your@email.com"
-//                   className="w-full bg-[#1A1A1A] border border-white/5 rounded-xl py-3.5 pl-11 pr-4 focus:border-[#C6F432]/40 focus:outline-none transition-all placeholder:text-[#374151] text-sm"
-//                 />
-//               </div>
-//             </div>
-
-//             {/* Vehicle Model Field */}
-//             <div className="space-y-1.5">
-//               <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold">
-//                 Vehicle Model
-//               </label>
-//               <div className="relative">
-//                 <Car
-//                   className="absolute left-4 top-1/2 -translate-y-1/2 text-[#374151]"
-//                   size={16}
-//                 />
-//                 <input
-//                   type="text"
-//                   placeholder="e.g. Tesla Model 3"
-//                   className="w-full bg-[#1A1A1A] border border-white/5 rounded-xl py-3.5 pl-11 pr-4 focus:border-[#C6F432]/40 focus:outline-none transition-all placeholder:text-[#374151] text-sm"
-//                 />
-//               </div>
-//             </div>
-
-//             {/* Plate & Color  */}
-//             <div className="grid grid-cols-2 gap-4">
-//               <div className="space-y-1.5">
-//                 <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold">
-//                   Plate No.
-//                 </label>
-//                 <div className="relative">
-//                   <Hash
-//                     className="absolute left-4 top-1/2 -translate-y-1/2 text-[#374151]"
-//                     size={16}
-//                   />
-//                   <input
-//                     type="text"
-//                     placeholder="ONT-123"
-//                     className="w-full bg-[#1A1A1A] border border-white/5 rounded-xl py-3.5 pl-11 pr-4 focus:border-[#C6F432]/40 focus:outline-none transition-all placeholder:text-[#374151] text-sm font-mono"
-//                   />
-//                 </div>
-//               </div>
-//               <div className="space-y-1.5">
-//                 <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold">
-//                   Car Color
-//                 </label>
-//                 <div className="relative">
-//                   <Palette
-//                     className="absolute left-4 top-1/2 -translate-y-1/2 text-[#374151]"
-//                     size={16}
-//                   />
-//                   <input
-//                     type="text"
-//                     placeholder="e.g. Silver"
-//                     className="w-full bg-[#1A1A1A] border border-white/5 rounded-xl py-3.5 pl-11 pr-4 focus:border-[#C6F432]/40 focus:outline-none transition-all placeholder:text-[#374151] text-sm"
-//                   />
-//                 </div>
-//               </div>
-//             </div>
-
-//             {/* Duration Selection */}
-//             <div className="space-y-3 pt-4">
-//               <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold">
-//                 Parking Duration
-//               </label>
-//               <div className="grid grid-cols-4 gap-2">
-//                 {durations.map((d) => (
-//                   <button
-//                     key={d.value}
-//                     onClick={() => setSelectedDuration(d.value)}
-//                     className={`flex flex-col items-center justify-center py-4 rounded-xl border transition-all duration-200 ${
-//                       selectedDuration === d.value
-//                         ? "bg-[#C6F432] border-[#C6F432] text-black"
-//                         : "bg-[#1A1A1A] border-white/5 text-[#9CA3AF]"
-//                     }`}
-//                   >
-//                     <span className="text-[10px] font-bold uppercase tracking-tight mb-0.5">
-//                       {d.label}
-//                     </span>
-//                     <span
-//                       className={`text-sm font-mono font-bold ${selectedDuration === d.value ? "text-black" : "text-white"}`}
-//                     >
-//                       {d.price.split(".")[0]}
-//                     </span>
-//                   </button>
-//                 ))}
-//               </div>
-//             </div>
-//           </div>
-
-//           {/* Right Column: Summary Card & acttion*/}
-//           <div className="flex flex-col justify-end lg:justify-start lg:pt-5 pb-8">
-//             <div className="bg-[#1A1A1A] rounded-2xl p-5 border border-white/5 mb-6 flex justify-between items-center lg:flex-col lg:items-start lg:gap-4 shadow-xl">
-//               <div>
-//                 <p className="text-[#4B5563] text-[9px] uppercase tracking-widest font-black">
-//                   Total Due
-//                 </p>
-//                 <p className="text-lg font-bold mt-0.5">
-//                   Summary for {selectedDuration}
-//                 </p>
-//               </div>
-//               <p className="text-[#C6F432] text-3xl font-black font-mono tracking-tighter lg:text-5xl">
-//                 {durations.find((d) => d.value === selectedDuration)?.price}
-//               </p>
-//             </div>
-
-//             <Link href="/payment">
-//               <button className="w-full bg-[#C6F432] hover:bg-[#d4ff45] text-black font-black py-4 rounded-full flex items-center justify-center gap-3 transition-all active:scale-[0.98] text-md shadow-[0_10px_30px_rgba(198,244,50,0.3)] lg:text-lg">
-//                 Proceed to Payment
-//               </button>
-//             </Link>
-
-//             {/* <p className="text-center text-[10px] text-[#4B5563] mt-6 uppercase tracking-[0.2em] font-medium">
-//               Free cancellation up to 5 mins before start
-//             </p> */}
-//           </div>
-
-//         </div>
-//       </div>
-//     </div>
-//   );
-// }
-
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -201,6 +28,10 @@ export default function VehicleDetailsPage() {
   const durations = customerService.getDurationOptions();
 
   const [selectedDurationValue, setSelectedDurationValue] = useState("1h");
+
+  const [customHours, setCustomHours] = useState<number | "" | undefined>();
+
+  const [customMinutes, setCustomMinutes] = useState<number | "" | undefined>();
 
   const [formData, setFormData] = useState<VehicleDetails>({
     email: "",
@@ -281,8 +112,23 @@ export default function VehicleDetailsPage() {
       return false;
     }
 
+    if (selectedDurationValue === "custom") {
+      const totalMinutes = (customHours || 0) * 60 + (customMinutes || 0);
+
+      if (totalMinutes <= 0) {
+        toast.error("Please select custom parking duration", {
+          ...toastStyle,
+        });
+
+        return false;
+      }
+    }
     return true;
   };
+
+  const customPrice =
+    (((customHours || 0) * 60 + (customMinutes || 0)) / 60) *
+    (parkingDetails?.hourlyRate || 0);
 
   const handleProceedToPayment = () => {
     if (!parkingDetails) {
@@ -435,39 +281,123 @@ export default function VehicleDetailsPage() {
             </div>
 
             {/* Duration */}
-            <div className="space-y-3 pt-4">
-              <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold">
-                Parking Duration
-              </label>
-
+            <div className="space-y-3">
+              {/* Hourly Cards */}
               <div className="grid grid-cols-4 gap-2">
-                {durations.map((d) => (
-                  <button
-                    key={d.value}
-                    type="button"
-                    onClick={() => setSelectedDurationValue(d.value)}
-                    className={`flex flex-col items-center justify-center py-4 rounded-xl border transition-all duration-200 ${
-                      selectedDurationValue === d.value
-                        ? "bg-[#C6F432] border-[#C6F432] text-black"
-                        : "bg-[#1A1A1A] border-white/5 text-[#9CA3AF]"
-                    }`}
-                  >
-                    <span className="text-[10px] font-bold uppercase tracking-tight mb-0.5">
-                      {d.label}
-                    </span>
-
-                    <span
-                      className={`text-sm font-mono font-bold ${
+                {durations
+                  .filter((d) => ["30m", "1h", "3h", "5h"].includes(d.value))
+                  .map((d) => (
+                    <button
+                      key={d.value}
+                      type="button"
+                      onClick={() => setSelectedDurationValue(d.value)}
+                      className={`flex flex-col items-center justify-center py-3.5 rounded-xl border transition-all duration-200 active:scale-[0.97] ${
                         selectedDurationValue === d.value
-                          ? "text-black"
-                          : "text-white"
+                          ? "bg-[#C6F432] border-[#C6F432] text-black shadow-[0_4px_15px_rgba(198,244,50,0.12)]"
+                          : "bg-[#1A1A1A] border-white/5 text-[#9CA3AF]"
                       }`}
                     >
-                      ${d.price.toFixed(2)}
-                    </span>
-                  </button>
-                ))}
+                      <span className="text-[10px] font-bold uppercase tracking-tight mb-0.5">
+                        {d.label}
+                      </span>
+                      <span
+                        className={`text-sm font-mono font-bold ${
+                          selectedDurationValue === d.value
+                            ? "text-black"
+                            : "text-white"
+                        }`}
+                      >
+                        ${d.price.toFixed(2)}
+                      </span>
+                    </button>
+                  ))}
               </div>
+
+              {/* Other Plans */}
+              <div className="grid grid-cols-2 gap-2">
+                {durations
+                  .filter((d) =>
+                    ["half-day", "full-day", "weekly", "custom"].includes(
+                      d.value,
+                    ),
+                  )
+                  .map((d) => (
+                    <button
+                      key={d.value}
+                      type="button"
+                      onClick={() => setSelectedDurationValue(d.value)}
+                      className={`flex flex-col items-center justify-center py-3.5 rounded-xl border transition-all duration-200 active:scale-[0.97] ${
+                        selectedDurationValue === d.value
+                          ? "bg-[#C6F432] border-[#C6F432] text-black shadow-[0_4px_15px_rgba(198,244,50,0.12)]"
+                          : "bg-[#1A1A1A] border-white/5 text-[#9CA3AF]"
+                      }`}
+                    >
+                      <span className="text-[10px] font-bold uppercase tracking-tight mb-0.5">
+                        {d.label}
+                      </span>
+                      <span
+                        className={`text-sm font-mono font-bold ${
+                          selectedDurationValue === d.value
+                            ? "text-black"
+                            : "text-white"
+                        }`}
+                      >
+                        {d.value === "custom"
+                          ? "Flexible"
+                          : `$${d.price.toFixed(2)}`}
+                      </span>
+                    </button>
+                  ))}
+              </div>
+
+              {/* Custom Time */}
+              {selectedDurationValue === "custom" && (
+                <div className="bg-[#121212] border border-white/5 rounded-2xl p-4 grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300 shadow-[2px_10px_30px_rgba(0,0,0,0.5)]">
+                  {/* Hours Picker */}
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold block">
+                      Hours Stay
+                    </label>
+                    <div className="relative flex items-center">
+                      <input
+                        type="number"
+                        min={0}
+                        max={23}
+                        value={customHours}
+                        onChange={(e) => setCustomHours(Number(e.target.value))}
+                        className="w-full bg-[#1A1A1A] border border-white/5 rounded-xl py-3 pl-4 pr-12 text-white text-sm font-mono font-bold focus:border-[#C6F432]/40 focus:outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        placeholder="1"
+                      />
+                      <span className="absolute right-4 text-[10px] text-[#4B5563] uppercase tracking-wider font-bold select-none pointer-events-none">
+                        hrs
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Minutes Picker */}
+                  <div className="space-y-1.5">
+                    <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold block">
+                      Minutes Stay
+                    </label>
+                    <div className="relative flex items-center">
+                      <input
+                        type="number"
+                        min={0}
+                        max={59}
+                        value={customMinutes}
+                        onChange={(e) =>
+                          setCustomMinutes(Number(e.target.value))
+                        }
+                        className="w-full bg-[#1A1A1A] border border-white/5 rounded-xl py-3 pl-4 pr-12 text-white text-sm font-mono font-bold focus:border-[#C6F432]/40 focus:outline-none transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                        placeholder="0"
+                      />
+                      <span className="absolute right-4 text-[10px] text-[#4B5563] uppercase tracking-wider font-bold select-none pointer-events-none">
+                        min
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -484,11 +414,13 @@ export default function VehicleDetailsPage() {
                 </p>
               </div>
 
-              <p className="text-[#C6F432] text-3xl font-black font-mono tracking-tighter lg:text-5xl">
+              <p className="text-[#C6F432] text-3xl font-black font-mono tracking-tighter lg:text-5xl mt-2">
                 $
-                {durations
-                  .find((d) => d.value === selectedDurationValue)
-                  ?.price.toFixed(2)}
+                {(selectedDurationValue === "custom"
+                  ? customPrice
+                  : durations.find((d) => d.value === selectedDurationValue)
+                      ?.price || 0
+                ).toFixed(2)}
               </p>
             </div>
 
@@ -498,6 +430,9 @@ export default function VehicleDetailsPage() {
             >
               Proceed to Payment
             </button>
+            <p className="text-center lg:text-left text-[8px] text-[#4B5563] mt-4 uppercase tracking-[0.2em]">
+              Secure Payment Powered by Stripe
+            </p>
           </div>
         </div>
       </div>

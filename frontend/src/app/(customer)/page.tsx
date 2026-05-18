@@ -1,135 +1,3 @@
-// import React from "react";
-// import {
-//   ArrowRight,
-//   MapPin,
-//   ShieldCheck,
-//   Zap,
-//   Globe,
-//   HelpCircle,
-// } from "lucide-react";
-// import Link from "next/link";
-
-// export default function LandingPage() {
-//   return (
-//     <div className="h-screen bg-[#0D0D0D] text-white font-sans selection:bg-[#C6F432] selection:text-black overflow-y-auto scrollbar-hide">
-//       <nav className="fixed top-0 left-0 right-0 z-50 bg-[#0D0D0D]/80 backdrop-blur-md border-b border-white/5">
-//         <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
-//           {/* Logo Section */}
-//           <div className="flex items-center gap-2">
-//             <div className="w-8 h-8 bg-[#C6F432] rounded-lg flex items-center justify-center">
-//               <span className="text-black font-black text-xl">P</span>
-//             </div>
-//             <span className="font-bold tracking-tighter text-lg uppercase">
-//               ParkSmart
-//             </span>
-//           </div>
-
-//           {/* Action Icons */}
-//           <div className="flex items-center gap-4 text-[#9CA3AF]">
-//             <button className="hover:text-[#C6F432] transition-colors">
-//               <Globe size={20} />
-//             </button>
-//             <button className="hover:text-[#C6F432] transition-colors">
-//               <HelpCircle size={20} />
-//             </button>
-//           </div>
-//         </div>
-//       </nav>
-
-//       <main className="max-w-7xl mx-auto px-6 pt-24 pb-12 lg:pt-32">
-//         {/* Grid Layout: Mobile me stack (col), Laptop me side-by-side */}
-//         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
-//           {/* Top Visual Card (Image) */}
-
-//           <div className="relative w-full h-[300px] md:h-[400px] lg:h-[550px] rounded-[32px] overflow-hidden group shadow-2xl lg:order-2">
-//             <img
-//               src="https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&q=80"
-//               alt="Premium Parking"
-//               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-70"
-//             />
-//             <div className="absolute inset-0 bg-gradient-to-t from-[#0D0D0D] via-transparent to-transparent" />
-
-//             <div className="absolute top-6 left-6 flex gap-2">
-//               <span className="bg-[#C6F432] text-black px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-lg">
-//                 <span className="w-2 h-2 bg-black rounded-full animate-pulse" />
-//                 Available
-//               </span>
-//             </div>
-//           </div>
-
-//           {/* Editorial Text Content */}
-//           <div className="flex flex-col lg:order-1 space-y-6 lg:space-y-10">
-//             <div>
-//               <h1
-//                 className="text-5xl md:text-7xl lg:text-8xl font-medium tracking-tight leading-[1.1]"
-//                 style={{ fontFamily: "serif" }}
-//               >
-//                 Central <br />
-//                 <span className="text-[#C6F432]">Parking</span> Tower
-//               </h1>
-
-//               <div className="mt-6 flex items-center gap-3 px-2 text-[#9CA3AF]">
-//                 <MapPin size={18} className="text-[#C6F432]" />
-//                 <span className="text-sm md:text-base font-light italic">
-//                   123 Commerce St, Downtown Toronto, ON
-//                 </span>
-//               </div>
-//             </div>
-
-//             {/* Pricing & Features Grid */}
-//             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-//               <div className="bg-[#1A1A1A] p-5 rounded-2xl border border-white/5 flex items-center gap-4">
-//                 <div className="w-12 h-12 rounded-xl bg-[#C6F432]/10 flex items-center justify-center">
-//                   <Zap className="text-[#C6F432]" size={24} />
-//                 </div>
-//                 <div>
-//                   <p className="text-[10px] uppercase tracking-wider text-[#9CA3AF]">
-//                     Rate per hour
-//                   </p>
-//                   <p className="text-2xl lg:text-3xl font-bold font-mono">
-//                     $4.50
-//                   </p>
-//                 </div>
-//               </div>
-
-//               <div className="bg-[#1A1A1A] p-5 rounded-2xl border border-white/5 flex items-center gap-4">
-//                 <div className="w-12 h-12 rounded-xl bg-[#2D7BFF]/10 flex items-center justify-center">
-//                   <ShieldCheck className="text-[#2D7BFF]" size={24} />
-//                 </div>
-//                 {/* <div>
-//                   <p className="text-[10px] uppercase tracking-wider text-[#9CA3AF]">Spot ID</p>
-//                   <p className="text-2xl lg:text-3xl font-bold font-mono uppercase text-white/90">A-102</p>
-//                 </div> */}
-//                 <div>
-//                   <p className="text-[10px] uppercase tracking-wider text-[#9CA3AF]">
-//                     Spot Availability
-//                   </p>
-//                   <p className="text-2xl lg:text-3xl font-bold font-mono uppercase text-white/90">
-//                     10/10
-//                   </p>
-//                 </div>
-//               </div>
-//             </div>
-
-//             {/* Bottom CTA Button */}
-//             <div className="pt-4 lg:pt-8">
-//               <Link href="/vehicle-details">
-//                 <button className="w-full lg:w-max lg:px-12 bg-[#C6F432] hover:bg-[#d4ff45] text-black font-black py-4 rounded-full flex items-center justify-center gap-3 transition-all active:scale-[0.98] text-md lg:text-lg shadow-[0_10px_30px_rgba(198,244,50,0.2)]">
-//                   Proceed to Booking
-//                   <ArrowRight size={22} strokeWidth={3} />
-//                 </button>
-//               </Link>
-//               <p className="text-center lg:text-left text-[11px] text-[#4B5563] mt-4 uppercase tracking-[0.2em]">
-//                 Secure Payment Powered by Stripe
-//               </p>
-//             </div>
-//           </div>
-//         </div>
-//       </main>
-//     </div>
-//   );
-// }
-
 "use client";
 
 import React, { useEffect, useState } from "react";
@@ -219,7 +87,7 @@ export default function LandingPage() {
   const { setParkingDetails } = useParkingBooking();
 
   const [parkingData, setParkingData] = useState<ParkingDetails | null>(null);
-
+  const [selectedZone, setSelectedZone] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -233,7 +101,18 @@ export default function LandingPage() {
 
         setParkingData(response);
 
-        setParkingDetails(response);
+        if ((response?.zones?.length ?? 0) > 1) {
+          const defaultZone = response?.zones?.[0];
+
+          setSelectedZone(defaultZone);
+
+          setParkingDetails({
+            ...response,
+            ...defaultZone,
+          });
+        } else {
+          setParkingDetails(response);
+        }
       } catch (error) {
         console.error(error);
 
@@ -255,6 +134,17 @@ export default function LandingPage() {
 
     fetchParkingZone();
   }, [searchParams, setParkingDetails]);
+
+  const handleZoneSelect = (zone: any) => {
+    setSelectedZone(zone);
+
+    if (!parkingData) return;
+
+    setParkingDetails({
+      ...parkingData,
+      ...zone,
+    });
+  };
 
   return (
     <div className="h-screen bg-[#0D0D0D] text-white font-sans selection:bg-[#C6F432] selection:text-black overflow-y-auto scrollbar-hide">
@@ -356,6 +246,57 @@ export default function LandingPage() {
               )}
             </div>
 
+            {/* Zone Selection  */}
+            {!loading && parkingData?.zones && parkingData.zones.length > 1 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between px-1">
+                  <p className="text-[10px] uppercase tracking-[0.2em] text-[#4B5563] font-bold">
+                    Select Parking Zone
+                  </p>
+
+                  <span className="text-[10px] uppercase tracking-wider text-[#9CA3AF] bg-white/5 px-2.5 py-0.5 rounded-md border border-white/5 font-mono">
+                    {parkingData.zones.length} Zones Available
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                  {parkingData.zones.map((zone) => {
+                    const isActive = selectedZone?.zoneId === zone.zoneId;
+
+                    return (
+                      <button
+                        key={zone.zoneId}
+                        onClick={() => handleZoneSelect(zone)}
+                        className={`flex flex-col items-center justify-center py-3.5 px-4 rounded-xl border transition-all duration-300 w-full active:scale-[0.97] ${
+                          isActive
+                            ? "bg-[#C6F432] border-[#C6F432] text-black shadow-[0_4px_20px_rgba(198,244,50,0.12)]"
+                            : "bg-[#1A1A1A] border-white/5 text-[#9CA3AF] hover:border-white/10"
+                        }`}
+                      >
+                        {/* Zone Title */}
+                        <span
+                          className={`text-[11px] font-bold uppercase tracking-wider mb-0.5 ${
+                            isActive ? "text-black" : "text-white"
+                          }`}
+                        >
+                          {zone.zoneName}
+                        </span>
+
+                        {/* Spot Code */}
+                        <span
+                          className={`text-[10px] font-mono font-bold ${
+                            isActive ? "text-black/60" : "text-[#4B5563]"
+                          }`}
+                        >
+                          {zone.spotId}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* Cards */}
             {loading ? (
               <CardsSkeleton />
@@ -379,7 +320,7 @@ export default function LandingPage() {
                 </div>
 
                 {/* Availability */}
-                <div className="bg-[#1A1A1A] p-5 rounded-2xl border border-white/5 flex items-center gap-4">
+                {/* <div className="bg-[#1A1A1A] p-5 rounded-2xl border border-white/5 flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl bg-[#2D7BFF]/10 flex items-center justify-center">
                     <ShieldCheck className="text-[#2D7BFF]" size={24} />
                   </div>
@@ -390,10 +331,10 @@ export default function LandingPage() {
                     </p>
 
                     <p className="text-2xl lg:text-3xl font-bold font-mono uppercase text-white/90">
-                      {parkingData?.availableSpots}/{parkingData?.totalSpots}
+                      {selectedZone?.availableSpots}/{selectedZone?.totalSpots}
                     </p>
                   </div>
-                </div>
+                </div> */}
               </div>
             )}
 
@@ -405,7 +346,13 @@ export default function LandingPage() {
                 <>
                   <Link href="/vehicle-details">
                     <button
-                      disabled={loading || !parkingData?.availableSpots}
+                      disabled={
+                        loading ||
+                        !(
+                          selectedZone?.availableSpots ||
+                          parkingData?.availableSpots
+                        )
+                      }
                       className="w-full lg:w-max lg:px-12 bg-[#C6F432] hover:bg-[#d4ff45] text-black font-black py-4 rounded-full flex items-center justify-center gap-3 transition-all active:scale-[0.98] text-md lg:text-lg shadow-[0_10px_30px_rgba(198,244,50,0.2)] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       Proceed to Booking
@@ -413,8 +360,8 @@ export default function LandingPage() {
                     </button>
                   </Link>
 
-                  <p className="text-center lg:text-left text-[11px] text-[#4B5563] mt-4 uppercase tracking-[0.2em]">
-                    Secure Payment Powered by Stripe
+                  <p className="text-center lg:text-left text-[8px] text-[#4B5563] mt-4 uppercase tracking-[0.2em]">
+                    Scan • Secure • Park Smart
                   </p>
                 </>
               )}
