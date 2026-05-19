@@ -217,9 +217,26 @@ function CheckoutForm({
   };
 
   const handleDownloadInvoice = async () => {
-    const invoiceId = completedBooking?.invoiceId;
+    let invoiceId = completedBooking?.invoiceId;
+
+    if (!invoiceId && completedBooking?.bookingId) {
+      try {
+        const details = await customerService.getBookingWithInvoice(
+          completedBooking.bookingId,
+        );
+        invoiceId = details?.invoice?.id ?? details?.invoiceId;
+        if (invoiceId) {
+          setCompletedBooking((prev) =>
+            prev ? { ...prev, invoiceId, invoiceNumber: details?.invoice?.invoice_number ?? prev.invoiceNumber } : prev,
+          );
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
     if (!invoiceId) {
-      toast.error("Invoice is not available yet.");
+      toast.error("Invoice is not available yet. Your booking is still confirmed.");
       return;
     }
 
@@ -449,6 +466,15 @@ function CheckoutForm({
                 </div>
                 <div className="w-full mt-6 flex flex-col gap-2">
                   <button
+                    onClick={handleDownloadInvoice}
+                    disabled={isDownloading}
+                    className="w-full bg-[#1A1A1A] border border-[#C6F432]/30 text-[#C6F432] py-3 rounded-xl font-bold flex items-center justify-center gap-2 text-sm transition-all hover:bg-[#C6F432]/10 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]"
+                  >
+                    <Download size={16} />
+                    {isDownloading ? "Downloading…" : "Download Invoice (PDF)"}
+                  </button>
+
+                  <button
                     onClick={handleReturnHome}
                     className="w-full bg-[#C6F432] text-black py-3 rounded-xl font-bold flex items-center justify-center gap-2 text-sm transition-transform active:scale-[0.98]"
                   >
@@ -456,20 +482,14 @@ function CheckoutForm({
                     Return Home
                   </button>
 
-                  {/* <button className="w-full py-3 text-[#9CA3AF] text-xs font-bold flex items-center justify-center gap-2 hover:text-white transition-colors">
-                    <Download size={16} />
-                    Get Digital Receipt
-                  </button> */}
-                  {/* <p className="text-center text-[10px] text-[#4B5563] mt-5 uppercase tracking-[0.2em] font-medium">
-                    Receipt forwarded to{" "}
-                    <span className="text-white/60 font-mono lower-case">
-                      {" "}
-                      your email
-                    </span>
-                  </p> */}
+                  {completedBooking?.invoiceNumber ? (
+                    <p className="text-center text-[10px] text-[#9CA3AF] font-mono">
+                      Invoice #{completedBooking.invoiceNumber}
+                    </p>
+                  ) : null}
 
-                  <p className="text-center text-[10px] text-[#4B5563] mt-5 uppercase tracking-[0.2em] font-medium">
-                    Booking summary & receipt sent to inbox
+                  <p className="text-center text-[10px] text-[#4B5563] uppercase tracking-[0.2em] font-medium">
+                    Booking summary & receipt sent to your email
                   </p>
                 </div>
               </div>

@@ -300,6 +300,24 @@ class CustomerService {
     return response.data?.data as BookingResponse;
   }
 
+  async getBookingWithInvoice(bookingId: string): Promise<{
+    invoice?: { id: string; invoice_number?: string };
+    invoiceId?: string;
+  } | null> {
+    const response = await axiosInstance.get(
+      API_ENDPOINTS.CUSTOMER.BOOKING_BY_ID(bookingId),
+    );
+    const data = response.data?.data as {
+      booking?: { id: string };
+      invoice?: { id: string; invoice_number?: string };
+    } | null;
+    if (!data) return null;
+    return {
+      invoice: data.invoice,
+      invoiceId: data.invoice?.id,
+    };
+  }
+
   async downloadInvoice(invoiceId: string): Promise<void> {
     const response = await axiosInstance.get(
       API_ENDPOINTS.CUSTOMER.INVOICE_DOWNLOAD(invoiceId),
