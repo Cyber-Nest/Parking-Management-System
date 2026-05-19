@@ -281,8 +281,7 @@ export default function VehicleDetailsPage() {
             </div>
 
             {/* Duration */}
-            <div className="space-y-3">
-              {/* Hourly Cards */}
+            {/* <div className="space-y-3">
               <div className="grid grid-cols-4 gap-2">
                 {durations
                   .filter((d) => ["30m", "1h", "3h", "5h"].includes(d.value))
@@ -313,7 +312,6 @@ export default function VehicleDetailsPage() {
                   ))}
               </div>
 
-              {/* Other Plans */}
               <div className="grid grid-cols-2 gap-2">
                 {durations
                   .filter((d) =>
@@ -350,10 +348,8 @@ export default function VehicleDetailsPage() {
                   ))}
               </div>
 
-              {/* Custom Time */}
               {selectedDurationValue === "custom" && (
                 <div className="bg-[#121212] border border-white/5 rounded-2xl p-4 grid grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-2 duration-300 shadow-[2px_10px_30px_rgba(0,0,0,0.5)]">
-                  {/* Hours Picker */}
                   <div className="space-y-1.5">
                     <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold block">
                       Hours Stay
@@ -374,7 +370,6 @@ export default function VehicleDetailsPage() {
                     </div>
                   </div>
 
-                  {/* Minutes Picker */}
                   <div className="space-y-1.5">
                     <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold block">
                       Minutes Stay
@@ -398,10 +393,73 @@ export default function VehicleDetailsPage() {
                   </div>
                 </div>
               )}
+            </div> */}
+
+            {/* Short Plans */}
+            <div className="grid grid-cols-4 gap-2">
+              {durations
+                .filter((d) => d.type === "short")
+                .map((d) => (
+                  <button
+                    key={d.value}
+                    type="button"
+                    onClick={() => setSelectedDurationValue(d.value)}
+                    className={`flex flex-col items-center justify-center py-3.5 rounded-xl border transition-all duration-200 active:scale-[0.97] ${
+                      selectedDurationValue === d.value
+                        ? "bg-[#C6F432] border-[#C6F432] text-black shadow-[0_4px_15px_rgba(198,244,50,0.12)]"
+                        : "bg-[#1A1A1A] border-white/5 text-[#9CA3AF]"
+                    }`}
+                  >
+                    <span className="text-[10px] font-bold uppercase tracking-tight mb-0.5">
+                      {d.label}
+                    </span>
+
+                    <span
+                      className={`text-sm font-mono font-bold ${
+                        selectedDurationValue === d.value
+                          ? "text-black"
+                          : "text-white"
+                      }`}
+                    >
+                      ${d.price.toFixed(2)}
+                    </span>
+                  </button>
+                ))}
+            </div>
+
+            {/* Long Plans */}
+            <div className="grid grid-cols-2 gap-2">
+              {durations
+                .filter((d) => d.type === "long")
+                .map((d) => (
+                  <button
+                    key={d.value}
+                    type="button"
+                    onClick={() => setSelectedDurationValue(d.value)}
+                    className={`flex flex-col items-center justify-center py-3.5 rounded-xl border transition-all duration-200 active:scale-[0.97] ${
+                      selectedDurationValue === d.value
+                        ? "bg-[#C6F432] border-[#C6F432] text-black shadow-[0_4px_15px_rgba(198,244,50,0.12)]"
+                        : "bg-[#1A1A1A] border-white/5 text-[#9CA3AF]"
+                    }`}
+                  >
+                    <span className="text-[10px] font-bold uppercase tracking-tight mb-0.5">
+                      {d.label}
+                    </span>
+
+                    <span
+                      className={`text-sm font-mono font-bold ${
+                        selectedDurationValue === d.value
+                          ? "text-black"
+                          : "text-white"
+                      }`}
+                    >
+                      ${d.price.toFixed(2)}
+                    </span>
+                  </button>
+                ))}
             </div>
           </div>
 
-          {/* Right */}
           <div className="flex flex-col justify-end lg:justify-start lg:pt-5 pb-8">
             <div className="bg-[#1A1A1A] rounded-2xl p-5 border border-white/5 mb-6 flex justify-between items-center lg:flex-col lg:items-start lg:gap-4 shadow-xl">
               <div>
