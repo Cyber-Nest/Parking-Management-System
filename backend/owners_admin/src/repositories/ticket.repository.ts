@@ -24,12 +24,20 @@ export interface TicketRow {
   date_issued: Date;
   due_date: Date | null;
   paid_at: Date | null;
+  payment_id?: string | null;
   remarks: string | null;
   note: string | null;
   dispute_raised: number;
+  dispute_message?: string | null;
+  dispute_at?: Date | null;
+  dispute_resolved_at?: Date | null;
   created_at: Date;
   session_id?: string | null;
   location_name?: string | null;
+  start_time?: Date | null;
+  end_time?: Date | null;
+  plan_name?: string | null;
+  notes?: string | null;
 }
 
 interface CountRow {
@@ -183,12 +191,42 @@ export class TicketRepository {
 
   async findById(id: string): Promise<TicketRow | null> {
     const rows = await queryRows<TicketRow>(
-      `SELECT id, ticket_number, officer_id, officer_name, license_plate, location_name, amount, reason, status,
-              date_issued, due_date, paid_at, remarks, note, dispute_raised, created_at, session_id
-       FROM penalty_tickets WHERE id = ? LIMIT 1`,
+      `SELECT t.id, t.ticket_number, t.officer_id, t.officer_name, t.license_plate, t.location_name, t.amount, t.reason, t.status,
+              t.date_issued, t.due_date, t.paid_at, t.payment_id, t.remarks, t.note, t.dispute_raised, t.dispute_message, t.dispute_at,
+              t.dispute_resolved_at, t.created_at, t.session_id, s.start_time, s.end_time, s.plan_name, s.notes
+       FROM penalty_tickets t
+       LEFT JOIN parking_sessions s ON t.session_id = s.id
+       WHERE t.id = ? LIMIT 1`,
       [id]
     );
     return rows[0] ?? null;
+  }
+
+  async findByTicketNumber(ticketNumber: string): Promise<TicketRow | null> {
+    const rows = await queryRows<TicketRow>(
+      `SELECT t.id, t.ticket_number, t.officer_id, t.officer_name, t.license_plate, t.location_name, t.amount, t.reason, t.status,
+              t.date_issued, t.due_date, t.paid_at, t.payment_id, t.remarks, t.note, t.dispute_raised, t.dispute_message, t.dispute_at,
+              t.dispute_resolved_at, t.created_at, t.session_id, s.start_time, s.end_time, s.plan_name, s.notes
+       FROM penalty_tickets t
+       LEFT JOIN parking_sessions s ON t.session_id = s.id
+       WHERE t.ticket_number = ? LIMIT 1`,
+      [ticketNumber]
+    );
+    return rows[0] ?? null;
+  }
+
+  async raiseDispute(id: string, disputeMessage: string): Promise<number> {
+    const result = await execute(
+      `UPDATE penalty_tickets
+       SET dispute_raised = 1,
+           dispute_message = ?,
+           dispute_at = NOW(),
+           status = 'disputed',
+           updated_at = NOW()
+       WHERE id = ?`,
+      [disputeMessage, id]
+    );
+    return result.affectedRows;
   }
 
   async updateTicket(

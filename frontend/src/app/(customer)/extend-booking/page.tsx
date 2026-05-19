@@ -85,21 +85,11 @@ export default function ExtendBookingPage() {
     try {
       setIsProcessing(true);
 
-      const success = await customerService.processDummyPayment();
-
-      if (!success) {
-        toast.error("Failed to extend parking", {
-          style: {
-            background: "#0B0B0B",
-            border: "1px solid rgba(239,68,68,0.2)",
-            color: "#fff",
-            borderRadius: "18px",
-            padding: "14px 16px",
-          },
-        });
-
-        return;
-      }
+      await customerService.extendBooking(bookingData.bookingId, {
+        durationLabel: selectedDuration.label,
+        durationMinutes: selectedDuration.minutes,
+        amount: selectedDuration.price,
+      });
 
       toast.success("Parking extended successfully", {
         style: {

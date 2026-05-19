@@ -17,13 +17,18 @@ export interface BookingRow {
   customer_email: string;
   vehicle_plate_number: string;
   vehicle_model: string;
+  vehicle_color?: string | null;
   parking_name: string;
+  parking_location?: string | null;
   start_time: Date;
   end_time: Date;
-  base_price: number;
+  duration_minutes: number;
+  duration_label?: string | null;
   total_price: number;
   booking_status: string;
   payment_status: string;
+  allow_extension?: number;
+  total_extensions?: number;
 }
 
 export class BookingRepository {

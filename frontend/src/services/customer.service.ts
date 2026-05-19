@@ -57,6 +57,20 @@ export interface BookingResponse {
   invoiceNumber?: string;
 }
 
+export interface CustomerBookingDetails {
+  id: string;
+  bookingReference: string;
+  parking_name: string;
+  parking_location?: string;
+  zone_name?: string;
+  duration_label?: string;
+  hourly_rate?: number;
+  total_price?: number;
+  end_time?: string;
+  booking_status?: string;
+  grace_period_minutes?: number;
+}
+
 export interface BookingSummary {
   subtotal: number;
   serviceFee: number;
@@ -318,6 +332,32 @@ class CustomerService {
     };
   }
 
+  async getBookingByReference(reference: string): Promise<CustomerBookingDetails | null> {
+    const response = await axiosInstance.get(
+      API_ENDPOINTS.CUSTOMER.BOOKING_BY_REFERENCE(reference),
+    );
+    return response.data?.data?.booking ?? null;
+  }
+
+  async extendBooking(
+    bookingId: string,
+    payload: {
+      durationLabel: string;
+      durationMinutes: number;
+      amount: number;
+    },
+  ): Promise<CustomerBookingDetails> {
+    const response = await axiosInstance.patch(
+      API_ENDPOINTS.CUSTOMER.BOOKING_EXTEND(bookingId),
+      {
+        durationLabel: payload.durationLabel,
+        durationMinutes: payload.durationMinutes,
+        amount: payload.amount,
+      },
+    );
+    return response.data?.data as CustomerBookingDetails;
+  }
+
   async downloadInvoice(invoiceId: string): Promise<void> {
     const response = await axiosInstance.get(
       API_ENDPOINTS.CUSTOMER.INVOICE_DOWNLOAD(invoiceId),
@@ -340,108 +380,69 @@ class CustomerService {
     return true;
   }
 
-  private penalties: PenaltyDetails[] = [
-    {
-      penaltyId: "PN-1021",
-
-      parkingName: "Central Parking Tower",
-
-      zoneName: "VIP Floor",
-
-      hasMultipleZones: false,
-
-      vehicleDetails: {
-        vehicleModel: "Tesla Model 3",
-
-        plateNumber: "ONT-129",
-
-        carColor: "Silver",
-      },
-
-      bookingStartTime: "10:00 AM",
-
-      allowedEndTime: "10:30 AM",
-
-      overtimeDuration: "42 Minutes",
-
-      generatedPenalty: 40,
-
-      violationReason:
-        "Vehicle remained parked after booking expiration and grace window completion.",
-
-      status: "pending",
-
-      issuedAt: "2026-08-14T10:42:00Z",
-    },
-
-    {
-      penaltyId: "PN-1022",
-
-      parkingName: "Maple Street Parking Hub",
-
-      hasMultipleZones: false,
-
-      vehicleDetails: {
-        vehicleModel: "BMW X5",
-
-        plateNumber: "TOR-882",
-
-        carColor: "Black",
-      },
-
-      bookingStartTime: "03:00 PM",
-
-      allowedEndTime: "04:00 PM",
-
-      overtimeDuration: "18 Minutes",
-
-      generatedPenalty: 25,
-
-      violationReason: "Vehicle exceeded permitted parking duration.",
-
-      status: "pending",
-
-      issuedAt: "2026-08-15T04:18:00Z",
-    },
-  ];
-
   async getPenaltyById(penaltyId: string): Promise<PenaltyDetails | null> {
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    const response = await axiosInstance.get(API_ENDPOINTS.CUSTOMER.PENALTY(penaltyId));
+    const data = response.data?.data;
+    if (!data) return null;
 
-    return this.penalties.find((item) => item.penaltyId === penaltyId) || null;
+    const startTime = data.start_time
+      ? new Date(data.start_time)
+      : data.date_issued
+      ? new Date(data.date_issued)
+      : null;
+    const endTime = data.end_time
+      ? new Date(data.end_time)
+      : data.due_date
+      ? new Date(data.due_date)
+      : null;
+
+    const overtimeMinutes = endTime
+      ? Math.max(
+          0,
+          Math.round((Date.now() - endTime.getTime()) / 60000),
+        )
+      : 0;
+
+    return {
+      penaltyId: data.ticket_number,
+      parkingName: data.parking_name || data.location_name || 'Parking Location',
+      zoneName: data.zone_name || data.location_name || undefined,
+      hasMultipleZones: Boolean(data.zone_name),
+      vehicleDetails: {
+        vehicleModel: data.vehicle_model || data.plan_name || 'Unknown',
+        plateNumber: data.license_plate || 'N/A',
+        carColor: data.vehicle_color || 'Unknown',
+      },
+      bookingStartTime: startTime
+        ? startTime.toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : 'Unknown',
+      allowedEndTime: endTime
+        ? endTime.toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit',
+          })
+        : 'Unknown',
+      overtimeDuration: `${overtimeMinutes} Minutes`,
+      generatedPenalty: Number(data.amount ?? 0),
+      violationReason: data.reason || 'Violation details unavailable',
+      status:
+        data.status === 'paid'
+          ? 'paid'
+          : data.status === 'disputed'
+          ? 'disputed'
+          : 'pending',
+      issuedAt: data.date_issued ?? new Date().toISOString(),
+    };
   }
 
   async payPenalty(penaltyId: string): Promise<boolean> {
-    await new Promise((resolve) => setTimeout(resolve, 1200));
-
-    const penalty = this.penalties.find((item) => item.penaltyId === penaltyId);
-
-    if (!penalty) {
-      return false;
-    }
-
-    penalty.status = "paid";
-
-    return true;
-  }
-
-  async submitPenaltyDispute(
-    penaltyId: string,
-    payload: PenaltyDisputePayload,
-  ): Promise<boolean> {
-    console.log("Penalty Dispute Submitted:", penaltyId, payload);
-
-    await new Promise((resolve) => setTimeout(resolve, 1200));
-
-    const penalty = this.penalties.find((item) => item.penaltyId === penaltyId);
-
-    if (!penalty) {
-      return false;
-    }
-
-    penalty.status = "disputed";
-
-    return true;
+    const response = await axiosInstance.patch(
+      API_ENDPOINTS.CUSTOMER.PENALTY_PAY(penaltyId),
+    );
+    return response.data?.success === true;
   }
 }
 

@@ -119,6 +119,39 @@ export class TicketService {
     };
   }
 
+  async getByTicketNumber(ticketNumber: string): Promise<TicketPublic> {
+    const t = await ticketRepo.findByTicketNumber(ticketNumber);
+    if (!t) throw new NotFoundError('Ticket not found');
+    return {
+      id: t.id,
+      ticket_number: t.ticket_number,
+      officer_id: t.officer_id,
+      officer_name: t.officer_name,
+      license_plate: t.license_plate,
+      amount: t.amount,
+      reason: t.reason,
+      status: t.status,
+      date_issued: t.date_issued,
+      due_date: t.due_date,
+      paid_at: t.paid_at,
+      remarks: t.remarks,
+      note: t.note,
+      dispute_raised: t.dispute_raised === 1,
+      photos: [],
+      location_name: t.location_name ?? null,
+    };
+  }
+
+  async disputeTicket(ticketNumber: string, disputeMessage: string): Promise<TicketPublic> {
+    const ticket = await ticketRepo.findByTicketNumber(ticketNumber);
+    if (!ticket) throw new NotFoundError('Ticket not found');
+    if (ticket.status === 'paid' || ticket.status === 'cancelled') {
+      throw new ValidationError('Cannot dispute a paid or cancelled ticket');
+    }
+    await ticketRepo.raiseDispute(ticket.id, disputeMessage);
+    return this.getById(ticket.id);
+  }
+
   async updateTicket(
     id: string,
     body: {

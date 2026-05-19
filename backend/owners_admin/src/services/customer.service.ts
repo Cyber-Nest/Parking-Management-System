@@ -96,6 +96,84 @@ export class CustomerService {
     };
   }
 
+  async getBookingByReference(reference: string) {
+    return await bookingService.getBookingByReference(reference);
+  }
+
+  async extendBooking(
+    bookingId: string,
+    payload: {
+      durationLabel: string;
+      durationMinutes: number;
+      amount: number;
+    }
+  ) {
+    const booking = await bookingService.getBooking(bookingId);
+    if (!booking) {
+      throw new Error('Booking not found');
+    }
+
+    if (booking.booking_status === 'cancelled' || booking.booking_status === 'completed') {
+      throw new Error('Cannot extend a cancelled or completed booking');
+    }
+
+    if (booking.allow_extension === 0) {
+      throw new Error('Booking extension is not allowed for this booking');
+    }
+
+    const existingEndTime = new Date(booking.end_time);
+    const newEndTime = new Date(existingEndTime.getTime() + payload.durationMinutes * 60000);
+    const updatedDurationMinutes = Number(booking.duration_minutes) + payload.durationMinutes;
+    const updatedTotalPrice = Number(booking.total_price) + payload.amount;
+    const updatedExtensions = Number(booking.total_extensions ?? 0) + 1;
+
+    const updatedBooking = await bookingService.updateBooking(booking.id, {
+      end_time: newEndTime,
+      duration_label: payload.durationLabel,
+      duration_minutes: updatedDurationMinutes,
+      total_price: updatedTotalPrice,
+      booking_status: 'extended',
+      total_extensions: updatedExtensions,
+    });
+
+    try {
+      const transaction = await transactionService.createTransaction({
+        amount: payload.amount,
+        paymentMethod: 'stripe',
+        transactionType: 'booking_extension',
+        bookingId: booking.id,
+        userEmail: booking.customer_email,
+      });
+      await transactionService.completeTransaction(transaction.id);
+
+      await invoiceService.createInvoice({
+        customerEmail: booking.customer_email,
+        vehiclePlateNumber: booking.vehicle_plate_number,
+        vehicleModel: booking.vehicle_model,
+        vehicleColor: booking.vehicle_color ?? undefined,
+        itemDescription: `Extension for booking ${booking.booking_reference} (${payload.durationLabel})`,
+        itemType: 'extension',
+        quantity: 1,
+        unitPrice: payload.amount,
+        subtotal: payload.amount,
+        taxAmount: 0,
+        serviceFee: 0,
+        totalAmount: payload.amount,
+        bookingId: booking.id,
+        transactionId: transaction.id,
+        parkingZone: booking.parking_name,
+        parkingLocation: booking.parking_location ?? undefined,
+        startTime: existingEndTime,
+        endTime: newEndTime,
+        durationMinutes: payload.durationMinutes,
+      });
+    } catch (error) {
+      console.error('[CustomerService] extendBooking transaction/invoice failed:', error);
+    }
+
+    return updatedBooking;
+  }
+
   async createBooking(payload: CustomerBookingPayload): Promise<CustomerBookingResponse> {
     const zone = await parkingZoneRepo.findById(payload.zoneId);
     if (!zone) {

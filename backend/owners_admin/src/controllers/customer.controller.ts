@@ -3,7 +3,10 @@ import fs from 'fs';
 import path from 'path';
 import { customerService } from '../services/customer.service';
 import { invoiceService } from '../services/invoice.service';
+import { TicketService } from '../services/ticket.service';
 import { ApiResponse, CustomerBookingResponse, ParkingZonePublic } from '../types';
+
+const ticketService = new TicketService();
 
 export const getParkingZoneById = async (
   req: Request,
@@ -120,6 +123,91 @@ export const getCustomerBooking = async (req: Request, res: Response): Promise<v
   } catch (err) {
     console.error('[CustomerController] getCustomerBooking error:', err);
     res.status(500).json({ success: false, message: 'Failed to fetch booking' });
+  }
+};
+
+export const getCustomerBookingByReference = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { reference } = req.params;
+    const booking = await customerService.getBookingByReference(reference);
+
+    if (!booking) {
+      res.status(404).json({ success: false, message: 'Booking not found' });
+      return;
+    }
+
+    res.status(200).json({ success: true, message: 'Booking fetched', data: { booking } });
+  } catch (err) {
+    console.error('[CustomerController] getCustomerBookingByReference error:', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch booking' });
+  }
+};
+
+export const extendCustomerBooking = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { durationLabel, durationMinutes, amount } = req.body;
+
+    if (!durationLabel || durationMinutes === undefined || amount === undefined) {
+      res.status(400).json({ success: false, message: 'Missing required fields for booking extension' });
+      return;
+    }
+
+    const booking = await customerService.extendBooking(id, {
+      durationLabel,
+      durationMinutes: Number(durationMinutes),
+      amount: Number(amount),
+    });
+
+    res.status(200).json({ success: true, message: 'Booking extended successfully', data: booking });
+  } catch (err) {
+    console.error('[CustomerController] extendCustomerBooking error:', err);
+    res.status(500).json({ success: false, message: String(err instanceof Error ? err.message : 'Failed to extend booking') });
+  }
+};
+
+export const getPenaltyByTicketNumber = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const data = await ticketService.getByTicketNumber(id);
+    res.status(200).json({ success: true, message: 'Penalty fetched', data });
+  } catch (err) {
+    console.error('[CustomerController] getPenaltyByTicketNumber error:', err);
+    res.status(404).json({ success: false, message: String(err instanceof Error ? err.message : 'Penalty not found') });
+  }
+};
+
+export const payPenaltyTicket = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const ticket = await ticketService.getByTicketNumber(id);
+    const data = await ticketService.markPaid(ticket.id, {
+      payment_method: 'stripe',
+      transaction_ref: `CUST-${Date.now()}`,
+    });
+    res.status(200).json({ success: true, message: 'Penalty paid successfully', data });
+  } catch (err) {
+    console.error('[CustomerController] payPenaltyTicket error:', err);
+    res.status(500).json({ success: false, message: String(err instanceof Error ? err.message : 'Failed to process penalty payment') });
+  }
+};
+
+export const disputePenaltyTicket = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { fullName, email, phone, explanation, proofImage } = req.body;
+
+    if (!fullName || !email || !phone || !explanation) {
+      res.status(400).json({ success: false, message: 'fullName, email, phone, and explanation are required' });
+      return;
+    }
+
+    const disputeText = `Dispute filed by ${fullName} (${email}, ${phone}): ${explanation}${proofImage ? ` | proof: ${proofImage}` : ''}`;
+    const data = await ticketService.disputeTicket(id, disputeText);
+    res.status(200).json({ success: true, message: 'Penalty dispute submitted', data });
+  } catch (err) {
+    console.error('[CustomerController] disputePenaltyTicket error:', err);
+    res.status(500).json({ success: false, message: String(err instanceof Error ? err.message : 'Failed to submit dispute') });
   }
 };
 
