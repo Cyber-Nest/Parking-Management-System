@@ -456,22 +456,20 @@ function CheckoutForm({
                     Return Home
                   </button>
 
-                  {completedBooking?.invoiceId && (
-                    <button
-                      type="button"
-                      disabled={isDownloading}
-                      onClick={handleDownloadInvoice}
-                      className="w-full py-3 text-[#9CA3AF] text-xs font-bold flex items-center justify-center gap-2 hover:text-white transition-colors disabled:opacity-50"
-                    >
-                      <Download size={16} />
-                      {isDownloading ? "Downloading…" : "Download Invoice (PDF)"}
-                    </button>
-                  )}
+                  {/* <button className="w-full py-3 text-[#9CA3AF] text-xs font-bold flex items-center justify-center gap-2 hover:text-white transition-colors">
+                    <Download size={16} />
+                    Get Digital Receipt
+                  </button> */}
+                  {/* <p className="text-center text-[10px] text-[#4B5563] mt-5 uppercase tracking-[0.2em] font-medium">
+                    Receipt forwarded to{" "}
+                    <span className="text-white/60 font-mono lower-case">
+                      {" "}
+                      your email
+                    </span>
+                  </p> */}
 
                   <p className="text-center text-[10px] text-[#4B5563] mt-5 uppercase tracking-[0.2em] font-medium">
-                    {completedBooking?.invoiceNumber
-                      ? `Invoice ${completedBooking.invoiceNumber}`
-                      : "Booking summary & receipt sent to inbox"}
+                    Booking summary & receipt sent to inbox
                   </p>
                 </div>
               </div>

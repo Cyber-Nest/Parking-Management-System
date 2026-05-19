@@ -758,12 +758,14 @@ export default function MyParkingLotPage() {
   const fetchParkingOwner = async () => {
     try {
       setLoading(true);
-      const [owner, zoneRows] = await Promise.all([
-        parkingOwnerService.getCurrentParkingOwner(),
-        listParkingZones(),
-      ]);
+      const owner = await parkingOwnerService.getCurrentParkingOwner();
       setParkingOwner(owner);
-      setZones(zoneRows.map(mapZoneToUi));
+      try {
+        const zoneRows = await listParkingZones();
+        setZones(zoneRows.length > 0 ? zoneRows.map(mapZoneToUi) : owner.zones ?? []);
+      } catch {
+        setZones(owner.zones ?? []);
+      }
     } catch (error) {
       console.error(error);
       toast.error("Failed to load parking lot data");
@@ -785,26 +787,47 @@ export default function MyParkingLotPage() {
   const handleSaveZone = async (data: { name: string }) => {
     try {
       if (editingZone) {
-        const updated = await updateParkingZone(editingZone.id, {
-          name: data.name,
-          isActive: editingZone.isActive,
-          hourlyRate: editingZone.rate,
-        });
-        setZones((prev) =>
-          prev.map((z) => (z.id === editingZone.id ? mapZoneToUi(updated) : z)),
-        );
-        toast.success("Zone updated");
+        try {
+          const updated = await updateParkingZone(editingZone.id, {
+            name: data.name,
+            isActive: editingZone.isActive,
+            hourlyRate: editingZone.rate,
+          });
+          setZones((prev) =>
+            prev.map((z) => (z.id === editingZone.id ? mapZoneToUi(updated) : z)),
+          );
+          toast.success("Zone updated");
+        } catch {
+          const updatedZones = zones.map((z) =>
+            z.id === editingZone.id ? { ...z, name: data.name } : z,
+          );
+          await parkingOwnerService.updateZones(updatedZones);
+          setZones(updatedZones);
+          toast.success("Zone updated");
+        }
       } else {
-        const created = await createParkingZone({
-          name: data.name,
-          address: parkingOwner?.parkingAddress,
-          hourlyRate: parkingOwner ? 4.5 : undefined,
-          availableSpots: 10,
-          totalSpots: 10,
-          isActive: true,
-        });
-        setZones((prev) => [...prev, mapZoneToUi(created)]);
-        toast.success("Zone added to database");
+        try {
+          const created = await createParkingZone({
+            name: data.name,
+            address: parkingOwner?.parkingAddress,
+            hourlyRate: parkingOwner ? 4.5 : undefined,
+            availableSpots: 10,
+            totalSpots: 10,
+            isActive: true,
+          });
+          setZones((prev) => [...prev, mapZoneToUi(created)]);
+          toast.success("Zone added to database");
+        } catch {
+          const newZone: ParkingZone = {
+            id: `ZONE-${Date.now()}`,
+            name: data.name,
+            isActive: true,
+          };
+          const updatedZones = [...zones, newZone];
+          await parkingOwnerService.updateZones(updatedZones);
+          setZones(updatedZones);
+          toast.success("Zone added");
+        }
       }
       setIsZoneDrawerOpen(false);
     } catch (error) {
@@ -816,8 +839,14 @@ export default function MyParkingLotPage() {
   const handleDeleteZone = async (zoneId: string) => {
     if (!confirm("Are you sure you want to delete this zone?")) return;
     try {
-      await deleteParkingZone(zoneId);
-      setZones((prev) => prev.filter((z) => z.id !== zoneId));
+      try {
+        await deleteParkingZone(zoneId);
+        setZones((prev) => prev.filter((z) => z.id !== zoneId));
+      } catch {
+        const updatedZones = zones.filter((z) => z.id !== zoneId);
+        await parkingOwnerService.updateZones(updatedZones);
+        setZones(updatedZones);
+      }
       toast.success("Zone deleted");
     } catch (error) {
       console.error(error);
@@ -829,12 +858,20 @@ export default function MyParkingLotPage() {
     try {
       const zone = zones.find((z) => z.id === zoneId);
       if (!zone) return;
-      const updated = await updateParkingZone(zoneId, {
-        name: zone.name,
-        isActive: !zone.isActive,
-        hourlyRate: zone.rate,
-      });
-      setZones((prev) => prev.map((z) => (z.id === zoneId ? mapZoneToUi(updated) : z)));
+      try {
+        const updated = await updateParkingZone(zoneId, {
+          name: zone.name,
+          isActive: !zone.isActive,
+          hourlyRate: zone.rate,
+        });
+        setZones((prev) => prev.map((z) => (z.id === zoneId ? mapZoneToUi(updated) : z)));
+      } catch {
+        const updatedZones = zones.map((z) =>
+          z.id === zoneId ? { ...z, isActive: !z.isActive } : z,
+        );
+        await parkingOwnerService.updateZones(updatedZones);
+        setZones(updatedZones);
+      }
       toast.success("Zone status updated");
     } catch (error) {
       console.error(error);

@@ -95,7 +95,8 @@ export default function LandingPage() {
       try {
         setLoading(true);
 
-        const zoneId = searchParams.get("zoneId") || "ZONE-201";
+        const zoneId =
+          searchParams.get("zoneId") || process.env.NEXT_PUBLIC_DEFAULT_ZONE_ID || "ZONE-201";
 
         const response = await customerService.getParkingZoneById(zoneId);
 
@@ -333,8 +334,7 @@ export default function LandingPage() {
                     </p>
 
                     <p className="text-2xl lg:text-3xl font-bold font-mono uppercase text-white/90">
-                      {selectedZone?.availableSpots ?? parkingData?.availableSpots}/
-                      {selectedZone?.totalSpots ?? parkingData?.totalSpots}
+                      {selectedZone?.availableSpots ?? parkingData?.availableSpots}/{selectedZone?.totalSpots ?? parkingData?.totalSpots}
                     </p>
                   </div>
                 </div>
