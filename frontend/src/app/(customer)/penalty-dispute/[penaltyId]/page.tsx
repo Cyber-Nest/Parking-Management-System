@@ -261,7 +261,7 @@ export default function PenaltyDisputePage() {
   );
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] text-white overflow-y-auto no-scrollbar">
+    <div className="h-screen bg-[#0D0D0D] text-white overflow-y-auto scrollbar-hide">
       <div className="max-w-xl md:max-w-3xl lg:max-w-6xl mx-auto p-6 pt-10 pb-12 transition-all duration-300">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-start">
           {/* LEFT COLUMN: Header, Summary Card & Evidence Upload */}

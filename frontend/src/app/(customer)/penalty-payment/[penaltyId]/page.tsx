@@ -11,6 +11,8 @@ import {
   MapPin,
   ShieldAlert,
   Car,
+  Image,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -26,6 +28,8 @@ export default function PenaltyPage() {
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
   const [penalty, setPenalty] = useState<PenaltyDetails | null>(null);
+
+  const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
 
   // fetch penalty by id
   useEffect(() => {
@@ -123,7 +127,7 @@ export default function PenaltyPage() {
   if (!penalty) return null;
 
   return (
-    <div className="min-h-screen bg-[#0D0D0D] text-white font-sans overflow-x-hidden overflow-y-auto no-scrollbar">
+    <div className="h-screen bg-[#0D0D0D] text-white font-sans overflow-x-hidden overflow-y-auto scrollbar-hide">
       <div className="max-w-xl md:max-w-4xl lg:max-w-6xl mx-auto p-6 pt-10 pb-12 transition-all duration-300">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-start">
           {/* LEFT COLUMN: Header & Hero Alert Card (Takes 5 cols on large screen) */}
@@ -245,14 +249,37 @@ export default function PenaltyPage() {
                   </div>
                 </div>
 
+                <button
+                  type="button"
+                  onClick={() => setIsPhotoModalOpen(true)}
+                  className="w-full rounded-xl border border-white/5 bg-black/40 p-4 text-left transition-all duration-300 hover:border-[#C6F432]/20 hover:bg-black/60 active:scale-[0.99] group"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-[#C6F432]/10 flex items-center justify-center group-hover:bg-[#C6F432]/20 transition-colors">
+                        <Image size={16} className="text-[#C6F432]" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-[#4B5563] font-bold">
+                          Citation Evidence
+                        </p>
+                        <p className="text-sm font-bold text-white mt-0.5 group-hover:text-[#C6F432] transition-colors">
+                          View Violation Proof Image
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </button>
+
                 {/* Timestamps */}
+
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-xl bg-black/40 border border-white/5 p-3.5">
                     <div className="flex items-center gap-1.5 mb-1.5 text-[9px] text-[#4B5563] uppercase tracking-wider font-bold">
                       <Clock3 size={12} className="text-[#4B5563]" /> Session
                       Start
                     </div>
-                    <p className="text-xs font-mono font-bold text-white">
+                    <p className="text-xs font-bold text-white leading-normal">
                       {penalty.bookingStartTime}
                     </p>
                   </div>
@@ -261,7 +288,7 @@ export default function PenaltyPage() {
                     <div className="flex items-center gap-1.5 mb-1.5 text-[9px] text-[#4B5563] uppercase tracking-wider font-bold">
                       <Clock3 size={12} className="text-[#4B5563]" /> Expired At
                     </div>
-                    <p className="text-xs font-mono font-bold text-white">
+                    <p className="text-xs font-bold text-white leading-normal">
                       {penalty.allowedEndTime}
                     </p>
                   </div>
@@ -359,6 +386,60 @@ export default function PenaltyPage() {
           </div>
         </div>
       </div>
+      {/*EVIDENCE   POPUP */}
+      {isPhotoModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div
+            className="relative w-full max-w-lg bg-[#121212] border border-white/5 rounded-[28px] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div className="p-5 border-b border-white/5 flex items-center justify-between bg-[#1A1A1A]/50">
+              <div className="flex items-center gap-2">
+                <Image size={16} className="text-[#C6F432]" />
+                <span className="text-xs font-bold uppercase tracking-wider text-white">
+                  Enforcement Photo Proof
+                </span>
+              </div>
+              <button
+                onClick={() => setIsPhotoModalOpen(false)}
+                className="w-7 h-7 rounded-full bg-white/5 border border-white/5 flex items-center justify-center text-[#9CA3AF] hover:text-white hover:bg-white/10 transition-colors"
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            <div className="relative w-full aspect-[4/3] bg-black flex items-center justify-center">
+              <img
+                src={
+                  penalty.evidenceImage ||
+                  "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&q=80"
+                }
+                alt="Enforcement citation evidence plate"
+                className="w-full h-full object-cover opacity-90"
+              />
+              <div className="absolute bottom-4 left-4 right-4 bg-black/70 backdrop-blur-md border border-white/5 rounded-xl p-3 flex items-center justify-between">
+                <div>
+                  <p className="text-[9px] uppercase tracking-wider text-[#4B5563] font-bold">
+                    Captured Target
+                  </p>
+                  <p className="text-xs font-mono font-bold text-white mt-0.5">
+                    {penalty.vehicleDetails?.plateNumber || "N/A"}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[9px] uppercase tracking-wider text-[#4B5563] font-bold">
+                    Citation ID
+                  </p>
+                  <p className="text-xs font-mono font-bold text-[#C6F432] mt-0.5">
+                    #{penalty.penaltyId?.slice(0, 8).toUpperCase()}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

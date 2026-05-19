@@ -206,17 +206,17 @@ export default function ExtendBookingPage() {
                 </div>
               </div>
             </div>
-
-            {/* Duration Cards */}
+            
+             {/* Duration Cards */}
             <div className="space-y-3">
               <p className="text-[10px] uppercase tracking-[0.2em] text-[#4B5563] font-bold ml-1">
                 Extend Duration
               </p>
 
-              {/* Hourly */}
+              {/* Short Duration */}
               <div className="grid grid-cols-4 gap-2">
                 {durations
-                  .filter((d) => ["30m", "1h", "3h", "5h"].includes(d.value))
+                  .filter((d) => d.type === "short")
                   .map((d) => (
                     <button
                       key={d.value}
@@ -229,40 +229,6 @@ export default function ExtendBookingPage() {
                       }`}
                     >
                       <span className="text-[10px] font-bold uppercase tracking-tight mb-0.5">
-                        {d.label}
-                      </span>
-
-                      <span
-                        className={`text-sm font-mono font-bold ${
-                          selectedDurationValue === d.value
-                            ? "text-black"
-                            : "text-white"
-                        }`}
-                      >
-                        ${d.price.toFixed(2)}
-                      </span>
-                    </button>
-                  ))}
-              </div>
-
-              {/* Plans */}
-              <div className="grid grid-cols-3 gap-2">
-                {durations
-                  .filter((d) =>
-                    ["half-day", "full-day", "weekly"].includes(d.value),
-                  )
-                  .map((d) => (
-                    <button
-                      key={d.value}
-                      type="button"
-                      onClick={() => setSelectedDurationValue(d.value)}
-                      className={`flex flex-col items-center justify-center py-3.5 rounded-xl border transition-all duration-200 active:scale-[0.97] ${
-                        selectedDurationValue === d.value
-                          ? "bg-[#C6F432] border-[#C6F432] text-black shadow-[0_4px_15px_rgba(198,244,50,0.12)]"
-                          : "bg-[#1A1A1A] border-white/5 text-[#9CA3AF]"
-                      }`}
-                    >
-                      <span className="text-[10px] font-bold uppercase tracking-tight mb-0.5 text-center px-1">
                         {d.label}
                       </span>
 

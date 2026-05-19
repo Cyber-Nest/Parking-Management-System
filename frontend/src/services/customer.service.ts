@@ -31,6 +31,7 @@ export interface VehicleDetails {
 }
 
 export interface DurationOption {
+  type: string;
   label: string;
   value: string;
   price: number;
@@ -94,6 +95,7 @@ export interface PenaltyVehicleDetails {
 }
 
 export interface PenaltyDetails {
+  evidenceImage: string;
   penaltyId: string;
 
   parkingName: string;
@@ -191,45 +193,50 @@ class CustomerService {
   getDurationOptions(): DurationOption[] {
     return [
       {
-        label: '30M',
-        value: '30m',
-        price: 2.5,
-        minutes: 30,
-      },
-
-      {
         label: '1H',
         value: '1h',
         price: 4.5,
         minutes: 60,
+        type: "short",
       },
 
       {
-        label: '3H',
-        value: '3h',
-        price: 12,
-        minutes: 180,
+        label: "2H",
+        value: "2h",
+        price: 8.0,
+        minutes: 120,
+        type: "short",
       },
 
       {
-        label: "5H",
-        value: "5h",
-        price: 18,
-        minutes: 300,
+        label: "4H",
+        value: "4h",
+        price: 15.0,
+        minutes: 240,
+        type: "short",
       },
 
       {
-        label: "HALF DAY",
-        value: "half-day",
-        price: 30,
-        minutes: 720,
+        label: "8H",
+        value: "8h",
+        price: 32.0,
+        minutes: 480,
+        type: "short",
       },
+
+      // {
+      //   label: "HALF DAY",
+      //   value: "half-day",
+      //   price: 30,
+      //   minutes: 720,
+      // },
 
       {
         label: "FULL DAY",
         value: "full-day",
         price: 50,
         minutes: 1440,
+        type: "long",
       },
 
       {
@@ -237,14 +244,30 @@ class CustomerService {
         value: "weekly",
         price: 180,
         minutes: 10080,
+        type: "long",
       },
 
       {
-        label: "CUSTOM",
-        value: "custom",
-        price: 0,
-        minutes: 0,
+        label: "MONTHLY",
+        value: "monthly",
+        price: 600,
+        minutes: 43200,
+        type: "long",
       },
+      {
+        label: "QUARTERLY",
+        value: "quarterly",
+        price: 1500,
+        minutes: 129600,
+        type: "long",
+      },
+
+      // {
+      //   label: "CUSTOM",
+      //   value: "custom",
+      //   price: 0,
+      //   minutes: 0,
+      // },
     ];
   }
 
@@ -435,12 +458,30 @@ class CustomerService {
           ? 'disputed'
           : 'pending',
       issuedAt: data.date_issued ?? new Date().toISOString(),
+      evidenceImage: data.evidence_image ?? '',
     };
   }
 
   async payPenalty(penaltyId: string): Promise<boolean> {
     const response = await axiosInstance.patch(
       API_ENDPOINTS.CUSTOMER.PENALTY_PAY(penaltyId),
+    );
+    return response.data?.success === true;
+  }
+
+  async submitPenaltyDispute(
+    penaltyId: string,
+    payload: PenaltyDisputePayload,
+  ): Promise<boolean> {
+    const response = await axiosInstance.post(
+      API_ENDPOINTS.CUSTOMER.PENALTY_DISPUTE(penaltyId),
+      {
+        fullName: payload.fullName,
+        email: payload.email,
+        phone: payload.phone,
+        explanation: payload.explanation,
+        proofImage: payload.proofImage,
+      },
     );
     return response.data?.success === true;
   }
