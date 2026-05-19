@@ -1,5 +1,8 @@
 import { Request, Response } from 'express';
+import fs from 'fs';
+import path from 'path';
 import { customerService } from '../services/customer.service';
+import { invoiceService } from '../services/invoice.service';
 import { ApiResponse, CustomerBookingResponse, ParkingZonePublic } from '../types';
 
 export const getParkingZoneById = async (
@@ -100,5 +103,42 @@ export const createBooking = async (
   } catch (err) {
     console.error('[CustomerController] createBooking error:', err);
     res.status(400).json({ success: false, message: String(err instanceof Error ? err.message : 'Booking failed') });
+  }
+};
+
+export const getCustomerBooking = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const data = await customerService.getBookingWithInvoice(id);
+
+    if (!data) {
+      res.status(404).json({ success: false, message: 'Booking not found' });
+      return;
+    }
+
+    res.status(200).json({ success: true, message: 'Booking fetched', data });
+  } catch (err) {
+    console.error('[CustomerController] getCustomerBooking error:', err);
+    res.status(500).json({ success: false, message: 'Failed to fetch booking' });
+  }
+};
+
+export const downloadCustomerInvoice = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const filePath = await invoiceService.downloadInvoice(id);
+
+    if (!filePath || !fs.existsSync(filePath)) {
+      res.status(404).json({ success: false, message: 'Invoice file not found' });
+      return;
+    }
+
+    const fileName = path.basename(filePath);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    fs.createReadStream(filePath).pipe(res);
+  } catch (err) {
+    console.error('[CustomerController] downloadCustomerInvoice error:', err);
+    res.status(500).json({ success: false, message: 'Failed to download invoice' });
   }
 };

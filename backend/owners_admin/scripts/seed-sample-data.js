@@ -149,13 +149,21 @@ const run = async () => {
     );
   }
 
+  const PARKING_IMAGES = [
+    'https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1573348722427-f1d6819fdf98?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1503376780353-7e6692767b70?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1449965405289-9ebbf974f6cc?auto=format&fit=crop&w=1200&q=80',
+    'https://images.unsplash.com/photo-1590674899484-d5640e742f00?auto=format&fit=crop&w=1200&q=80',
+  ];
+
   const zones = Array.from({ length: 20 }, (_, idx) => {
     const n = idx + 1;
     return {
       id: `ZONE-${200 + n}`,
       parking_name: `Sample Zone ${n}`,
       address: `${100 + idx} ${LOCATIONS[idx % LOCATIONS.length]} Blvd, ${LOCATIONS[idx % LOCATIONS.length]}`,
-      image_url: `https://images.unsplash.com/photo-15${10 + idx}000000000?auto=format&fit=crop&q=80`,
+      image_url: PARKING_IMAGES[idx % PARKING_IMAGES.length],
       hourly_rate: 3 + (idx % 6) * 0.75,
       available_spots: 5 + (idx % 10),
       total_spots: 20 + (idx % 15),

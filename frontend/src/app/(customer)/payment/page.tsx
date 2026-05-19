@@ -22,7 +22,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
 
-import { customerService } from "@/services/customer.service";
+import { customerService, BookingResponse } from "@/services/customer.service";
 import {
   BookingSummary,
   DurationDetails,
@@ -54,10 +54,11 @@ function CheckoutForm({
   const elements = useElements();
   const router = useRouter();
 
-  const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [stripeError, setStripeError] = useState<string | null>(null);
+  const [completedBooking, setCompletedBooking] = useState<BookingResponse | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => {
     if (
@@ -140,7 +141,7 @@ function CheckoutForm({
       }
 
       const paymentIntentResponse = await customerService.createPaymentIntent(
-        bookingSummary.total * 100, // Convert to cents
+        bookingSummary.total,
       );
 
       // Confirm payment with Stripe
@@ -176,7 +177,7 @@ function CheckoutForm({
 
       // Submit booking with payment confirmation
       if (parkingDetails && vehicleDetails && selectedDuration) {
-        await customerService.submitBooking(
+        const bookingResult = await customerService.submitBooking(
           {
             parkingDetails,
             vehicleDetails,
@@ -185,6 +186,7 @@ function CheckoutForm({
           result.paymentIntent.id,
         );
 
+        setCompletedBooking(bookingResult);
         setShowSuccess(true);
         toast.success("Payment successful. Booking confirmed.");
         onComplete();
@@ -212,6 +214,25 @@ function CheckoutForm({
   const handleReturnHome = () => {
     clearBooking();
     router.push("/");
+  };
+
+  const handleDownloadInvoice = async () => {
+    const invoiceId = completedBooking?.invoiceId;
+    if (!invoiceId) {
+      toast.error("Invoice is not available yet.");
+      return;
+    }
+
+    try {
+      setIsDownloading(true);
+      await customerService.downloadInvoice(invoiceId);
+      toast.success("Invoice downloaded.");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to download invoice.");
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   return (
@@ -411,7 +432,10 @@ function CheckoutForm({
                       Transaction ID
                     </span>
                     <span className="text-[10px] font-mono text-white/80">
-                      #{bookingSummary?.transactionId}
+                      #
+                      {completedBooking?.transactionReference ??
+                        completedBooking?.bookingReference ??
+                        bookingSummary?.transactionId}
                     </span>
                   </div>
                   <div className="flex justify-between items-center pt-2 border-t border-white/5">
@@ -432,20 +456,22 @@ function CheckoutForm({
                     Return Home
                   </button>
 
-                  {/* <button className="w-full py-3 text-[#9CA3AF] text-xs font-bold flex items-center justify-center gap-2 hover:text-white transition-colors">
-                    <Download size={16} />
-                    Get Digital Receipt
-                  </button> */}
-                  {/* <p className="text-center text-[10px] text-[#4B5563] mt-5 uppercase tracking-[0.2em] font-medium">
-                    Receipt forwarded to{" "}
-                    <span className="text-white/60 font-mono lower-case">
-                      {" "}
-                      your email
-                    </span>
-                  </p> */}
+                  {completedBooking?.invoiceId && (
+                    <button
+                      type="button"
+                      disabled={isDownloading}
+                      onClick={handleDownloadInvoice}
+                      className="w-full py-3 text-[#9CA3AF] text-xs font-bold flex items-center justify-center gap-2 hover:text-white transition-colors disabled:opacity-50"
+                    >
+                      <Download size={16} />
+                      {isDownloading ? "Downloading…" : "Download Invoice (PDF)"}
+                    </button>
+                  )}
 
                   <p className="text-center text-[10px] text-[#4B5563] mt-5 uppercase tracking-[0.2em] font-medium">
-                    Booking summary & receipt sent to inbox
+                    {completedBooking?.invoiceNumber
+                      ? `Invoice ${completedBooking.invoiceNumber}`
+                      : "Booking summary & receipt sent to inbox"}
                   </p>
                 </div>
               </div>

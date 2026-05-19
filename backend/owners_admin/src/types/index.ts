@@ -131,6 +131,15 @@ export interface PaymentPublic {
   created_at: Date;
 }
 
+export interface ParkingZoneSubZone {
+  id: string;
+  parking_name: string;
+  hourly_rate: number;
+  available_spots: number;
+  total_spots: number;
+  spot_id: string;
+}
+
 export interface ParkingZonePublic {
   id: string;
   parking_name: string;
@@ -140,6 +149,7 @@ export interface ParkingZonePublic {
   available_spots: number;
   total_spots: number;
   spot_id: string;
+  sub_zones?: ParkingZoneSubZone[];
 }
 
 export interface ParkingZoneRow extends ParkingZonePublic {}
@@ -162,6 +172,12 @@ export interface CustomerBookingResponse {
   receiptNumber: string;
   amount: number;
   total: number;
+  bookingReference?: string;
+  parkingPlanId?: string;
+  transactionId?: string;
+  transactionReference?: string;
+  invoiceId?: string;
+  invoiceNumber?: string;
 }
 
 export interface CreatePaymentBody {

@@ -45,9 +45,16 @@ export interface PaymentIntentResponse {
 }
 
 export interface BookingResponse {
-  id: string;
-  status: string;
-  message: string;
+  bookingId: string;
+  paymentId: string;
+  receiptNumber: string;
+  amount: number;
+  total: number;
+  bookingReference?: string;
+  transactionId?: string;
+  transactionReference?: string;
+  invoiceId?: string;
+  invoiceNumber?: string;
 }
 
 export interface BookingSummary {
@@ -110,66 +117,60 @@ export interface PenaltyDisputePayload {
   proofImage?: string | null;
 }
 
+const DEFAULT_PARKING_IMAGE =
+  "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=1200&q=80";
+
+function sanitizeParkingImageUrl(url: string | undefined | null): string {
+  if (!url?.trim()) return DEFAULT_PARKING_IMAGE;
+  const trimmed = url.trim();
+  if (/photo-15\d{10,}000000000/i.test(trimmed) || trimmed.includes("1510000000000")) {
+    return DEFAULT_PARKING_IMAGE;
+  }
+  return trimmed;
+}
+
 class CustomerService {
   async getParkingZoneById(zoneId: string): Promise<ParkingDetails> {
     const response = await axiosInstance.get(API_ENDPOINTS.CUSTOMER.PARKING_ZONE(zoneId));
     const data = response.data?.data;
 
+    if (!data) {
+      throw new Error("Parking zone not found");
+    }
+
+    const subZones = Array.isArray(data.sub_zones) ? data.sub_zones : [];
+    const zones: ParkingZone[] | undefined =
+      subZones.length > 0
+        ? [
+            {
+              zoneId: data.id ?? zoneId,
+              zoneName: data.parking_name ?? "Main",
+              hourlyRate: Number(data.hourly_rate ?? 0),
+              availableSpots: Number(data.available_spots ?? 0),
+              totalSpots: Number(data.total_spots ?? 0),
+              spotId: data.spot_id ?? "",
+            },
+            ...subZones.map((z: Record<string, unknown>) => ({
+              zoneId: String(z.id),
+              zoneName: String(z.parking_name ?? "Zone"),
+              hourlyRate: Number(z.hourly_rate ?? 0),
+              availableSpots: Number(z.available_spots ?? 0),
+              totalSpots: Number(z.total_spots ?? 0),
+              spotId: String(z.spot_id ?? ""),
+            })),
+          ]
+        : undefined;
+
     return {
-      zoneId,
-
-      parkingName: "Central Parking Tower",
-
-      address: "123 Commerce St, Downtown Toronto, ON",
-
-      image:
-        "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&q=80",
-
-      hourlyRate: 4.5,
-
-      availableSpots: 10,
-
-      totalSpots: 10,
-
-      spotId: "A-102",
-
-      zones: [
-        {
-          zoneId: "ZONE-A",
-          zoneName: "Basement A",
-          hourlyRate: 4.5,
-          availableSpots: 10,
-          totalSpots: 15,
-          spotId: "A-102",
-        },
-
-        {
-          zoneId: "ZONE-B",
-          zoneName: "VIP Floor",
-          hourlyRate: 8,
-          availableSpots: 4,
-          totalSpots: 10,
-          spotId: "VIP-09",
-        },
-
-        {
-          zoneId: "ZONE-C",
-          zoneName: "Open Terrace",
-          hourlyRate: 3,
-          availableSpots: 20,
-          totalSpots: 25,
-          spotId: "OT-22",
-        },
-
-        {
-          zoneId: "ZONE-D",
-          zoneName: "Covered Parking",
-          hourlyRate: 3,
-          availableSpots: 20,
-          totalSpots: 25,
-          spotId: "CP-05",
-        },
-      ],
+      zoneId: data.id ?? zoneId,
+      parkingName: data.parking_name ?? "Parking Zone",
+      address: data.address ?? "",
+      image: sanitizeParkingImageUrl(data.image_url),
+      hourlyRate: Number(data.hourly_rate ?? 0),
+      availableSpots: Number(data.available_spots ?? 0),
+      totalSpots: Number(data.total_spots ?? 0),
+      spotId: data.spot_id ?? "",
+      zones,
     };
   }
 
@@ -260,12 +261,19 @@ class CustomerService {
     };
   }
 
-  async createPaymentIntent(amount: number): Promise<PaymentIntentResponse> {
+  /** Amount in CAD dollars (e.g. 6.50). Backend converts to cents for Stripe. */
+  async createPaymentIntent(amountInDollars: number): Promise<PaymentIntentResponse> {
     const response = await axiosInstance.post(API_ENDPOINTS.CUSTOMER.PAYMENT_INTENT, {
-      amount,
+      amount: amountInDollars,
     });
 
-    return response.data?.data as PaymentIntentResponse;
+    const data = response.data?.data;
+    return {
+      id: data?.id ?? "",
+      clientSecret: data?.clientSecret ?? "",
+      amount: data?.amount ?? 0,
+      status: data?.status ?? "requires_payment_method",
+    };
   }
 
   async getStripeConfig(): Promise<{ stripePublishableKey: string }> {
@@ -290,6 +298,28 @@ class CustomerService {
     });
 
     return response.data?.data as BookingResponse;
+  }
+
+  async downloadInvoice(invoiceId: string): Promise<void> {
+    const response = await axiosInstance.get(
+      API_ENDPOINTS.CUSTOMER.INVOICE_DOWNLOAD(invoiceId),
+      { responseType: "blob" },
+    );
+
+    const blob = new Blob([response.data], { type: "application/pdf" });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `invoice-${invoiceId.slice(0, 8)}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  }
+
+  async processDummyPayment(): Promise<boolean> {
+    await new Promise((resolve) => setTimeout(resolve, 800));
+    return true;
   }
 
   private penalties: PenaltyDetails[] = [

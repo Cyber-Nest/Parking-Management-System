@@ -17,6 +17,7 @@ import pricingRoutes from './routes/pricing.routes';
 import userRoutes from './routes/user.routes';
 import roleRoutes from './routes/role.routes';
 import customerRoutes from './routes/customer.routes';
+import parkingZoneRoutes from './routes/parkingZone.routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.middleware';
 
 dotenv.config();
@@ -26,6 +27,8 @@ const app = express();
 const corsAllowList = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
+  'http://localhost:3001',
+  'http://127.0.0.1:3001',
   'http://localhost:5173',
   env.frontendUrl,
   ...(process.env.CORS_ORIGINS ?? '')
@@ -56,6 +59,7 @@ app.use('/api/admin/auth', adminAuthRoutes);
 app.use('/api/admin/tickets', ticketRoutes);
 app.use('/api/admin/payments', paymentRoutes);
 app.use('/api/admin/parking-plans', parkingPlanRoutes);
+app.use('/api/admin/parking-zones', parkingZoneRoutes);
 app.use('/api/admin/officers', officerRoutes);
 app.use('/api/admin/sessions', sessionRoutes);
 app.use('/api/admin/settings', settingsRoutes);
