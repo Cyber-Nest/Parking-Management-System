@@ -220,7 +220,7 @@ export default function LandingPage() {
               ) : (
                 <>
                   <h1
-                    className="text-5xl md:text-7xl lg:text-8xl font-medium tracking-tight leading-[1.1]"
+                    className="text-5xl md:text-4xl lg:text-6xl font-medium tracking-tight leading-[1.1]"
                     style={{ fontFamily: "serif" }}
                   >
                     {parkingData?.parkingName
@@ -323,7 +323,7 @@ export default function LandingPage() {
                 </div>
 
                 {/* Availability */}
-                <div className="bg-[#1A1A1A] p-5 rounded-2xl border border-white/5 flex items-center gap-4">
+                {/* <div className="bg-[#1A1A1A] p-5 rounded-2xl border border-white/5 flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl bg-[#2D7BFF]/10 flex items-center justify-center">
                     <ShieldCheck className="text-[#2D7BFF]" size={24} />
                   </div>
@@ -337,7 +337,7 @@ export default function LandingPage() {
                       {selectedZone?.availableSpots ?? parkingData?.availableSpots}/{selectedZone?.totalSpots ?? parkingData?.totalSpots}
                     </p>
                   </div>
-                </div>
+                </div> */}
               </div>
             )}
 
