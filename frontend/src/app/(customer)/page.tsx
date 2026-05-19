@@ -95,7 +95,8 @@ export default function LandingPage() {
       try {
         setLoading(true);
 
-        const zoneId = searchParams.get("zoneId") || "ZONE-101";
+        const zoneId =
+          searchParams.get("zoneId") || process.env.NEXT_PUBLIC_DEFAULT_ZONE_ID || "ZONE-201";
 
         const response = await customerService.getParkingZoneById(zoneId);
 
@@ -188,12 +189,14 @@ export default function LandingPage() {
             ) : (
               <>
                 <img
-                  src={
-                    parkingData?.image ||
-                    "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&q=80"
-                  }
-                  alt="Premium Parking"
+                  src={parkingData?.image}
+                  alt={parkingData?.parkingName ?? "Premium Parking"}
                   className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-70"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src =
+                      "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=1200&q=80";
+                  }}
                 />
 
                 <div className="absolute inset-0 bg-gradient-to-t from-[#0D0D0D] via-transparent to-transparent" />
@@ -314,13 +317,13 @@ export default function LandingPage() {
                     </p>
 
                     <p className="text-2xl lg:text-3xl font-bold font-mono">
-                      ${parkingData?.hourlyRate?.toFixed(2)}
+                      ${(selectedZone?.hourlyRate ?? parkingData?.hourlyRate ?? 0).toFixed(2)}
                     </p>
                   </div>
                 </div>
 
                 {/* Availability */}
-                {/* <div className="bg-[#1A1A1A] p-5 rounded-2xl border border-white/5 flex items-center gap-4">
+                <div className="bg-[#1A1A1A] p-5 rounded-2xl border border-white/5 flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl bg-[#2D7BFF]/10 flex items-center justify-center">
                     <ShieldCheck className="text-[#2D7BFF]" size={24} />
                   </div>
@@ -331,10 +334,10 @@ export default function LandingPage() {
                     </p>
 
                     <p className="text-2xl lg:text-3xl font-bold font-mono uppercase text-white/90">
-                      {selectedZone?.availableSpots}/{selectedZone?.totalSpots}
+                      {selectedZone?.availableSpots ?? parkingData?.availableSpots}/{selectedZone?.totalSpots ?? parkingData?.totalSpots}
                     </p>
                   </div>
-                </div> */}
+                </div>
               </div>
             )}
 

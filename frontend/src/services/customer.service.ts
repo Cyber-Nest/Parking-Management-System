@@ -1,3 +1,6 @@
+﻿import axiosInstance from "@/lib/axios";
+import { API_ENDPOINTS } from "./api";
+
 export interface ParkingZone {
   zoneId: string;
   zoneName: string;
@@ -33,6 +36,26 @@ export interface DurationOption {
   value: string;
   price: number;
   minutes: number;
+}
+
+export interface PaymentIntentResponse {
+  id: string;
+  clientSecret: string;
+  amount: number;
+  status: string;
+}
+
+export interface BookingResponse {
+  bookingId: string;
+  paymentId: string;
+  receiptNumber: string;
+  amount: number;
+  total: number;
+  bookingReference?: string;
+  transactionId?: string;
+  transactionReference?: string;
+  invoiceId?: string;
+  invoiceNumber?: string;
 }
 
 export interface BookingSummary {
@@ -96,73 +119,68 @@ export interface PenaltyDisputePayload {
   proofImage?: string | null;
 }
 
+const DEFAULT_PARKING_IMAGE =
+  "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=1200&q=80";
+
+function sanitizeParkingImageUrl(url: string | undefined | null): string {
+  if (!url?.trim()) return DEFAULT_PARKING_IMAGE;
+  const trimmed = url.trim();
+  if (/photo-15\d{10,}000000000/i.test(trimmed) || trimmed.includes("1510000000000")) {
+    return DEFAULT_PARKING_IMAGE;
+  }
+  return trimmed;
+}
+
 class CustomerService {
   async getParkingZoneById(zoneId: string): Promise<ParkingDetails> {
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    const response = await axiosInstance.get(API_ENDPOINTS.CUSTOMER.PARKING_ZONE(zoneId));
+    const data = response.data?.data;
+
+    if (!data) {
+      throw new Error("Parking zone not found");
+    }
+
+    const subZones = Array.isArray(data.sub_zones) ? data.sub_zones : [];
+    const zones: ParkingZone[] | undefined =
+      subZones.length > 0
+        ? [
+            {
+              zoneId: data.id ?? zoneId,
+              zoneName: data.parking_name ?? "Main",
+              hourlyRate: Number(data.hourly_rate ?? 0),
+              availableSpots: Number(data.available_spots ?? 0),
+              totalSpots: Number(data.total_spots ?? 0),
+              spotId: data.spot_id ?? "",
+            },
+            ...subZones.map((z: Record<string, unknown>) => ({
+              zoneId: String(z.id),
+              zoneName: String(z.parking_name ?? "Zone"),
+              hourlyRate: Number(z.hourly_rate ?? 0),
+              availableSpots: Number(z.available_spots ?? 0),
+              totalSpots: Number(z.total_spots ?? 0),
+              spotId: String(z.spot_id ?? ""),
+            })),
+          ]
+        : undefined;
 
     return {
-      zoneId,
-
-      parkingName: "Central Parking Tower",
-
-      address: "123 Commerce St, Downtown Toronto, ON",
-
-      image:
-        "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&q=80",
-
-      hourlyRate: 4.5,
-
-      availableSpots: 10,
-
-      totalSpots: 10,
-
-      spotId: "A-102",
-
-      zones: [
-        {
-          zoneId: "ZONE-A",
-          zoneName: "Basement A",
-          hourlyRate: 4.5,
-          availableSpots: 10,
-          totalSpots: 15,
-          spotId: "A-102",
-        },
-
-        {
-          zoneId: "ZONE-B",
-          zoneName: "VIP Floor",
-          hourlyRate: 8,
-          availableSpots: 4,
-          totalSpots: 10,
-          spotId: "VIP-09",
-        },
-
-        {
-          zoneId: "ZONE-C",
-          zoneName: "Open Terrace",
-          hourlyRate: 3,
-          availableSpots: 20,
-          totalSpots: 25,
-          spotId: "OT-22",
-        },
-
-        {
-          zoneId: "ZONE-D",
-          zoneName: "Covered Parking",
-          hourlyRate: 3,
-          availableSpots: 20,
-          totalSpots: 25,
-          spotId: "CP-05",
-        },
-      ],
+      zoneId: data.id ?? zoneId,
+      parkingName: data.parking_name ?? "Parking Zone",
+      address: data.address ?? "",
+      image: sanitizeParkingImageUrl(data.image_url),
+      hourlyRate: Number(data.hourly_rate ?? 0),
+      availableSpots: Number(data.available_spots ?? 0),
+      totalSpots: Number(data.total_spots ?? 0),
+      spotId: data.spot_id ?? "",
+      zones,
     };
   }
 
   getDurationOptions(): DurationOption[] {
     return [
       {
-        label: "1H",
-        value: "1h",
+        label: '1H',
+        value: '1h',
         price: 4.5,
         minutes: 60,
         type: "short",
@@ -241,7 +259,6 @@ class CustomerService {
 
   generateBookingSummary(payload: CompleteBookingPayload): BookingSummary {
     const now = new Date();
-
     const endDate = new Date(
       now.getTime() + payload.selectedDuration.minutes * 60 * 1000,
     );
@@ -254,26 +271,95 @@ class CustomerService {
       subtotal,
       serviceFee,
       total,
-
       startTime: now.toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
+        hour: '2-digit',
+        minute: '2-digit',
       }),
-
       endTime: endDate.toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
+        hour: '2-digit',
+        minute: '2-digit',
       }),
-
       duration: payload.selectedDuration.label,
-
       transactionId: `PS-${Math.floor(100000 + Math.random() * 900000)}`,
     };
   }
 
-  async processDummyPayment(): Promise<boolean> {
-    await new Promise((resolve) => setTimeout(resolve, 500));
+  /** Amount in CAD dollars (e.g. 6.50). Backend converts to cents for Stripe. */
+  async createPaymentIntent(amountInDollars: number): Promise<PaymentIntentResponse> {
+    const response = await axiosInstance.post(API_ENDPOINTS.CUSTOMER.PAYMENT_INTENT, {
+      amount: amountInDollars,
+    });
 
+    const data = response.data?.data;
+    return {
+      id: data?.id ?? "",
+      clientSecret: data?.clientSecret ?? "",
+      amount: data?.amount ?? 0,
+      status: data?.status ?? "requires_payment_method",
+    };
+  }
+
+  async getStripeConfig(): Promise<{ stripePublishableKey: string }> {
+    const response = await axiosInstance.get(API_ENDPOINTS.CUSTOMER.CONFIG);
+    return response.data?.data as { stripePublishableKey: string };
+  }
+
+  async submitBooking(
+    payload: CompleteBookingPayload,
+    stripePaymentIntentId: string,
+  ): Promise<BookingResponse> {
+    const response = await axiosInstance.post(API_ENDPOINTS.CUSTOMER.BOOKINGS, {
+      zoneId: payload.parkingDetails.zoneId,
+      email: payload.vehicleDetails.email,
+      vehicleModel: payload.vehicleDetails.vehicleModel,
+      plateNumber: payload.vehicleDetails.plateNumber,
+      carColor: payload.vehicleDetails.carColor,
+      durationLabel: payload.selectedDuration.label,
+      durationMinutes: payload.selectedDuration.minutes,
+      price: payload.selectedDuration.price,
+      stripePaymentIntentId,
+    });
+
+    return response.data?.data as BookingResponse;
+  }
+
+  async getBookingWithInvoice(bookingId: string): Promise<{
+    invoice?: { id: string; invoice_number?: string };
+    invoiceId?: string;
+  } | null> {
+    const response = await axiosInstance.get(
+      API_ENDPOINTS.CUSTOMER.BOOKING_BY_ID(bookingId),
+    );
+    const data = response.data?.data as {
+      booking?: { id: string };
+      invoice?: { id: string; invoice_number?: string };
+    } | null;
+    if (!data) return null;
+    return {
+      invoice: data.invoice,
+      invoiceId: data.invoice?.id,
+    };
+  }
+
+  async downloadInvoice(invoiceId: string): Promise<void> {
+    const response = await axiosInstance.get(
+      API_ENDPOINTS.CUSTOMER.INVOICE_DOWNLOAD(invoiceId),
+      { responseType: "blob" },
+    );
+
+    const blob = new Blob([response.data], { type: "application/pdf" });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `invoice-${invoiceId.slice(0, 8)}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  }
+
+  async processDummyPayment(): Promise<boolean> {
+    await new Promise((resolve) => setTimeout(resolve, 800));
     return true;
   }
 

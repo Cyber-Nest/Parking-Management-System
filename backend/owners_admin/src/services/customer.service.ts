@@ -1,0 +1,252 @@
+import Stripe from 'stripe';
+import { env } from '../config/env';
+import { PaymentRepository } from '../repositories/payment.repository';
+import { SessionRepository } from '../repositories/session.repository';
+import { ParkingPlanRepository } from '../repositories/parkingPlan.repository';
+import { ParkingZoneRepository } from '../repositories/parkingZone.repository';
+import { bookingService } from './booking.service';
+import { transactionService } from './transaction.service';
+import { invoiceService } from './invoice.service';
+import {
+  CustomerBookingPayload,
+  CustomerBookingResponse,
+  ParkingZonePublic,
+} from '../types';
+import { sanitizeParkingImageUrl } from '../utils/parkingImages';
+
+const parkingZoneRepo = new ParkingZoneRepository();
+const parkingPlanRepo = new ParkingPlanRepository();
+const sessionRepo = new SessionRepository();
+const paymentRepo = new PaymentRepository();
+const stripe = new Stripe(env.stripe.secretKey, { apiVersion: '2022-11-15' });
+
+const formatDateTime = (date: Date): string =>
+  date.toISOString().slice(0, 19).replace('T', ' ');
+
+const SERVICE_FEE = 2;
+
+export class CustomerService {
+  async getParkingZoneById(zoneId: string): Promise<ParkingZonePublic> {
+    const zone = await parkingZoneRepo.findById(zoneId);
+    if (!zone) {
+      throw new Error('Parking zone not found');
+    }
+
+    const subZones = await parkingZoneRepo.findCustomerSubZones(zone.id, 6);
+
+    return {
+      id: zone.id,
+      parking_name: zone.parking_name,
+      address: zone.address,
+      image_url: sanitizeParkingImageUrl(zone.image_url),
+      hourly_rate: zone.hourly_rate,
+      available_spots: zone.available_spots,
+      total_spots: zone.total_spots,
+      spot_id: zone.spot_id,
+      sub_zones: subZones.map((z) => ({
+        id: z.id,
+        parking_name: z.parking_name,
+        hourly_rate: z.hourly_rate,
+        available_spots: z.available_spots,
+        total_spots: z.total_spots,
+        spot_id: z.spot_id,
+      })),
+    };
+  }
+
+  /** Amount is in CAD dollars (e.g. 6.50 for $6.50). */
+  async createPaymentIntent(amount: number): Promise<{ clientSecret: string; amount: number; currency: string }> {
+    if (!env.stripe.secretKey) {
+      throw new Error('Stripe is not configured. Please set STRIPE_SECRET_KEY in backend .env');
+    }
+
+    try {
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: Math.round(amount * 100),
+        currency: 'cad',
+        payment_method_types: ['card'],
+        description: 'ParkSmart parking booking',
+        metadata: {
+          source: 'customer_booking',
+        },
+      });
+
+      if (!paymentIntent.client_secret) {
+        throw new Error('Unable to create payment intent');
+      }
+
+      return {
+        clientSecret: paymentIntent.client_secret,
+        amount: paymentIntent.amount,
+        currency: paymentIntent.currency ?? 'cad',
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown Stripe error';
+      throw new Error(`Stripe payment intent creation failed: ${message}`);
+    }
+  }
+
+  async getStripeConfig(): Promise<{ stripePublishableKey: string }> {
+    if (!env.stripe.publishableKey) {
+      throw new Error('Stripe publishable key is not configured. Please set STRIPE_PUBLISHABLE_KEY in backend .env');
+    }
+
+    return {
+      stripePublishableKey: env.stripe.publishableKey,
+    };
+  }
+
+  async createBooking(payload: CustomerBookingPayload): Promise<CustomerBookingResponse> {
+    const zone = await parkingZoneRepo.findById(payload.zoneId);
+    if (!zone) {
+      throw new Error('Parking zone not found');
+    }
+    if (zone.available_spots <= 0) {
+      throw new Error('No available spots in the selected parking zone');
+    }
+    if (!payload.stripePaymentIntentId) {
+      throw new Error('Stripe payment intent ID is required');
+    }
+
+    const paymentIntent = await stripe.paymentIntents.retrieve(payload.stripePaymentIntentId);
+
+    if (paymentIntent.status !== 'succeeded') {
+      throw new Error('Stripe payment intent is not completed');
+    }
+
+    const startTime = new Date();
+    const endTime = new Date(startTime.getTime() + payload.durationMinutes * 60000);
+    const paidAt = formatDateTime(new Date());
+
+    const basePrice = Number(payload.price);
+    const serviceFee = SERVICE_FEE;
+    const taxAmount = 0;
+    const totalAmount = basePrice + serviceFee;
+
+    const matchingPlan =
+      (await parkingPlanRepo.findForBooking(payload.durationMinutes, payload.price)) ??
+      (await parkingPlanRepo.findByPriceAndDuration(payload.price, payload.durationMinutes));
+
+    const planId = matchingPlan?.id ?? null;
+    const planName = matchingPlan?.name ?? payload.durationLabel;
+
+    const sessionId = await sessionRepo.create({
+      licensePlate: payload.plateNumber,
+      planId,
+      planName,
+      startTime: formatDateTime(startTime),
+      endTime: formatDateTime(endTime),
+      durationMinutes: payload.durationMinutes,
+      status: 'active',
+      notes: `Vehicle: ${payload.vehicleModel} / ${payload.carColor}`,
+    });
+
+    const paymentId = await paymentRepo.create({
+      sessionId,
+      licensePlate: payload.plateNumber,
+      amount: totalAmount,
+      paymentMethod: 'credit_card',
+      paymentType: 'parking',
+      status: 'success',
+      transactionRef: payload.stripePaymentIntentId,
+      paidAt,
+    });
+
+    const booking = await bookingService.createBooking({
+      parkingZoneId: zone.id,
+      parkingName: zone.parking_name,
+      parkingLocation: zone.address,
+      customerEmail: payload.email,
+      vehicleModel: payload.vehicleModel,
+      vehiclePlateNumber: payload.plateNumber,
+      vehicleColor: payload.carColor,
+      startTime,
+      endTime,
+      durationMinutes: payload.durationMinutes,
+      durationLabel: payload.durationLabel,
+      parkingPlanId: planId ?? undefined,
+      hourlyRate: Number(zone.hourly_rate),
+      basePrice,
+      taxAmount,
+      serviceFee,
+      totalPrice: totalAmount,
+      spotId: zone.spot_id,
+    });
+
+    await bookingService.updateBooking(booking.id, {
+      stripe_payment_intent_id: payload.stripePaymentIntentId,
+    });
+
+    const transaction = await transactionService.createTransaction({
+      amount: totalAmount,
+      paymentMethod: 'stripe',
+      transactionType: 'parking_booking',
+      bookingId: booking.id,
+      userEmail: payload.email,
+      stripePaymentIntentId: payload.stripePaymentIntentId,
+    });
+
+    await transactionService.completeTransaction(transaction.id);
+
+    let invoice: Awaited<ReturnType<typeof invoiceService.createInvoice>> | null = null;
+    try {
+      invoice = await invoiceService.createInvoice({
+        customerEmail: payload.email,
+        vehiclePlateNumber: payload.plateNumber,
+        vehicleModel: payload.vehicleModel,
+        vehicleColor: payload.carColor,
+        itemDescription: `Parking at ${zone.parking_name} (${payload.durationLabel})`,
+        itemType: 'parking_booking',
+        quantity: 1,
+        unitPrice: basePrice,
+        subtotal: basePrice,
+        taxAmount,
+        serviceFee,
+        totalAmount,
+        bookingId: booking.id,
+        transactionId: transaction.id,
+        parkingZone: zone.parking_name,
+        parkingLocation: zone.address,
+        startTime,
+        endTime,
+        durationMinutes: payload.durationMinutes,
+      });
+
+      if (invoice?.id) {
+        await invoiceService.markAsPaid(invoice.id, totalAmount);
+      }
+    } catch (invoiceError) {
+      console.error('[CustomerService] Invoice/PDF step failed (booking still saved):', invoiceError);
+    }
+
+    await bookingService.confirmBooking(booking.id, transaction.id);
+    await parkingZoneRepo.decrementAvailableSpots(zone.id);
+
+    const receiptNumber = `RCP-${Date.now()}-${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
+
+    return {
+      bookingId: booking.id,
+      paymentId,
+      receiptNumber,
+      amount: totalAmount,
+      total: totalAmount,
+      bookingReference: booking.booking_reference,
+      parkingPlanId: planId ?? undefined,
+      transactionId: transaction.id,
+      transactionReference: transaction.transaction_reference,
+      invoiceId: invoice?.id,
+      invoiceNumber: invoice?.invoice_number,
+    };
+  }
+
+  async getBookingWithInvoice(bookingId: string) {
+    const booking = await bookingService.getBooking(bookingId);
+    if (!booking) {
+      return null;
+    }
+    const invoice = await invoiceService.getInvoiceByBookingId(bookingId);
+    return { booking, invoice };
+  }
+}
+
+export const customerService = new CustomerService();

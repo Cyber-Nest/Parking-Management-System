@@ -33,6 +33,40 @@ export class ParkingPlanRepository {
     return rows[0] ?? null;
   }
 
+  async findByPriceAndDuration(price: number, duration: number): Promise<ParkingPlanRow | null> {
+    const rows = await queryRows<ParkingPlanRow>(
+      `SELECT id, name, price, duration, plan_type, tax_percent, status, created_at, updated_at
+       FROM parking_plans
+       WHERE price = ? AND duration = ?
+       LIMIT 1`,
+      [price, duration]
+    );
+    return rows[0] ?? null;
+  }
+
+  /** Match customer booking duration to an active plan (exact duration, then closest price). */
+  async findForBooking(durationMinutes: number, price?: number): Promise<ParkingPlanRow | null> {
+    const exactDuration = await queryRows<ParkingPlanRow>(
+      `SELECT id, name, price, duration, plan_type, tax_percent, status, created_at, updated_at
+       FROM parking_plans
+       WHERE duration = ? AND status = 'Active'
+       ORDER BY ABS(price - ?) ASC
+       LIMIT 1`,
+      [durationMinutes, price ?? 0],
+    );
+    if (exactDuration[0]) return exactDuration[0];
+
+    const closestDuration = await queryRows<ParkingPlanRow>(
+      `SELECT id, name, price, duration, plan_type, tax_percent, status, created_at, updated_at
+       FROM parking_plans
+       WHERE status = 'Active'
+       ORDER BY ABS(duration - ?) ASC, ABS(price - ?) ASC
+       LIMIT 1`,
+      [durationMinutes, price ?? 0],
+    );
+    return closestDuration[0] ?? null;
+  }
+
   async create(params: {
     name: string;
     price: number;

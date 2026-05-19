@@ -6,6 +6,7 @@ export interface ParkingSession {
   plate: string;
   vehicle: string;
   plan: string;
+  planId: string | null;
   startTime: string;
   endTime: string;
   expiryTime: string;
@@ -58,7 +59,8 @@ export const parkingService = {
       const endRaw = s.end_time ?? s.endTime ?? startRaw;
       const status = String(s.status ?? "active");
       const plate = String(s.license_plate ?? s.licensePlate ?? s.plate ?? "-");
-      const plan = String(s.plan_name ?? s.planName ?? s.plan ?? "2 Hours");
+      const plan = String(s.plan_name ?? s.planName ?? s.plan ?? "Unassigned");
+      const planId = s.plan_id ?? s.planId ?? null;
       const durationMinutes = safeNum(s.duration_minutes ?? s.durationMinutes ?? 0);
       const amount = `$${safeNum(s.amount ?? 0).toFixed(2)}`;
       const start = new Date(startRaw);
@@ -72,6 +74,7 @@ export const parkingService = {
         plate,
         vehicle: String(s.vehicle ?? "Car"),
         plan,
+        planId: planId ? String(planId) : null,
         startTime: start.toISOString(),
         endTime: expiry.toISOString(),
         expiryTime: expiry.toISOString(),

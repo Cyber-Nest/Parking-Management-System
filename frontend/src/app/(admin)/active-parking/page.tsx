@@ -363,6 +363,9 @@ export default function ActiveParkingSessionsPage() {
                         <div className="font-bold text-[var(--color-primary)]">
                           {row.id}
                         </div>
+                        <div className="mt-1 text-[10px] text-[var(--color-text-muted)] font-mono">
+                          Plan ID: {row.planId ?? "—"}
+                        </div>
                         <div className="mt-1">
                           <PlanBadge plan={row.plan} />
                         </div>

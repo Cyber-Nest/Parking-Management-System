@@ -40,6 +40,9 @@ export interface BookingSummary {
   endTime: string;
   duration: string;
   transactionId: string;
+  invoiceId?: string;
+  invoiceNumber?: string;
+  bookingId?: string;
 }
 
 interface ParkingBookingContextType {

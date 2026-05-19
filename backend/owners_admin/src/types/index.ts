@@ -131,6 +131,55 @@ export interface PaymentPublic {
   created_at: Date;
 }
 
+export interface ParkingZoneSubZone {
+  id: string;
+  parking_name: string;
+  hourly_rate: number;
+  available_spots: number;
+  total_spots: number;
+  spot_id: string;
+}
+
+export interface ParkingZonePublic {
+  id: string;
+  parking_name: string;
+  address: string;
+  image_url: string;
+  hourly_rate: number;
+  available_spots: number;
+  total_spots: number;
+  spot_id: string;
+  sub_zones?: ParkingZoneSubZone[];
+}
+
+export interface ParkingZoneRow extends ParkingZonePublic {}
+
+export interface CustomerBookingPayload {
+  zoneId: string;
+  email: string;
+  vehicleModel: string;
+  plateNumber: string;
+  carColor: string;
+  durationLabel: string;
+  durationMinutes: number;
+  price: number;
+  stripePaymentIntentId: string;
+}
+
+export interface CustomerBookingResponse {
+  bookingId: string;
+  paymentId: string;
+  receiptNumber: string;
+  amount: number;
+  total: number;
+  bookingReference?: string;
+  parkingPlanId?: string;
+  transactionId?: string;
+  transactionReference?: string;
+  invoiceId?: string;
+  invoiceNumber?: string;
+}
+
 export interface CreatePaymentBody {
   session_id?: string;
   ticket_id?: string;

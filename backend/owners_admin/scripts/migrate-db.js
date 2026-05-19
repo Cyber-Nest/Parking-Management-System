@@ -44,6 +44,12 @@ const run = async () => {
   await addColumn('parking_plans', 'status', "`status` ENUM('Active','Inactive') NOT NULL DEFAULT 'Active' AFTER `tax_percent`");
 
   await addColumn('parking_sessions', 'location_name', '`location_name` VARCHAR(150) NULL AFTER `plan_name`');
+  await addColumn('bookings', 'parking_plan_id', '`parking_plan_id` CHAR(36) NULL AFTER `duration_label`');
+  await addColumn(
+    'parking_zones',
+    'status',
+    "`status` ENUM('active','inactive') NOT NULL DEFAULT 'active' AFTER `spot_id`",
+  );
 
   await addColumn('penalty_rules', 'description', '`description` TEXT NULL AFTER `grace_minutes`');
 

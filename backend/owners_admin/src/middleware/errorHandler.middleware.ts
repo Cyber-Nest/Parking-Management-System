@@ -10,7 +10,8 @@ export const errorHandler = (
     _next: NextFunction
 ): void => {
     console.error('[GlobalErrorHandler]', err.stack ?? err.message);
-    res.status(500).json({ success: false, message: 'Internal server error' });
+    const message = process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message;
+    res.status(500).json({ success: false, message });
 };
 
 // src/middleware/errorHandler.middleware.ts
