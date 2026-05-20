@@ -16,7 +16,7 @@ import {
 
 import { StatCard } from "@/components/common/StatCard";
 import { TableSkeleton } from "@/components/common/TableSkeleton";
-import { Toast } from "@/components/common/Toast";
+import toast from "react-hot-toast";
 import { ActionDropdown } from "@/components/active-parking/ActionDropdown";
 import { SessionDetailsDrawer } from "@/components/active-parking/SessionDetailsDrawer";
 
@@ -84,21 +84,12 @@ export default function ActiveParkingSessionsPage() {
   const [planFilter, setPlanFilter] = useState("All Plans");
   const [statusFilter, setStatusFilter] = useState("All Status");
 
-  // Toast state
-  const [toast, setToast] = useState<{
-    message: string;
-    type: "success" | "error" | "info";
-    isOpen: boolean;
-  }>({
-    message: "",
-    type: "success",
-    isOpen: false,
-  });
-
-  const itemsPerPage = 10; // 10 items per page table
+  const itemsPerPage = 10;
 
   const showToast = (message: string, type: "success" | "error" | "info") => {
-    setToast({ message, type, isOpen: true });
+    if (type === "success") toast.success(message);
+    else if (type === "error") toast.error(message);
+    else toast(message, { icon: "ℹ️" });
   };
 
   // Fetch Data
@@ -191,6 +182,7 @@ export default function ActiveParkingSessionsPage() {
       }
       return item;
     });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setSessions(updated as any);
     showToast(`Session ${session.id} has been cancelled`, "success");
   };
@@ -215,6 +207,7 @@ export default function ActiveParkingSessionsPage() {
       }
       return item;
     });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     setSessions(updated as any);
     showToast(`Issue marked for session ${session.id}`, "info");
   };
@@ -232,15 +225,6 @@ export default function ActiveParkingSessionsPage() {
       <div className="min-h-screen px-4 bg-[var(--color-bg)]">
         {/* Header */}
         <header className="flex items-center justify-between mb-8">
-          {/* <div>
-            <h1 className="text-2xl font-black tracking-tight">
-              Active Parking{" "}
-              <span className="text-[var(--color-primary)]">Sessions</span>
-            </h1>
-            <p className="text-sm text-[var(--color-text-secondary)] mt-1">
-              Manage and track all currently running parking sessions
-            </p>
-          </div> */}
           <div>
             <h1 className="text-xl md:text-3xl font-black tracking-tight text-[var(--color-text-primary)]">
               Active Parking{" "}
@@ -259,27 +243,21 @@ export default function ActiveParkingSessionsPage() {
             icon={<Car size={22} className="text-emerald-500" />}
             title="Total Active"
             value={stats.totalActive}
-            trend="12 from yesterday"
-            trendUp
           />
           <StatCard
             icon={<Clock size={22} className="text-orange-400" />}
             title="Expiring Soon"
             value={stats.expiringSoon}
-            trend="High Volume"
           />
           <StatCard
             icon={<Flag size={22} className="text-red-400" />}
             title="Unpaid / Issues"
             value={stats.unpaidIssues}
-            trend="2 from yesterday"
           />
           <StatCard
             icon={<Wallet size={22} className="text-[var(--color-primary)]" />}
             title="Today's Revenue"
             value={stats.todayRevenue}
-            trend="18.5% last week"
-            trendUp
           />
         </div>
 
@@ -306,6 +284,7 @@ export default function ActiveParkingSessionsPage() {
             <div className="hidden lg:block w-[1px] h-8 bg-[var(--color-border)] mx-1" />
 
             <div className="flex flex-wrap items-center gap-2">
+              {/* Plan Filter */}
               <select
                 value={planFilter}
                 onChange={(e) => {
@@ -315,10 +294,10 @@ export default function ActiveParkingSessionsPage() {
                 className="input w-auto min-w-[130px] text-xs font-bold bg-[var(--color-surface-soft)] cursor-pointer"
               >
                 <option>All Plans</option>
-                <option>1 Hour</option>
-                <option>2 Hours</option>
-                <option>3 Hours</option>
-                <option>1 Day</option>
+                <option>Hourly Basic</option>
+                <option>Half Day</option>
+                <option>Weekly Pass</option>
+                <option>Full Day</option>
               </select>
 
               <select
@@ -335,6 +314,7 @@ export default function ActiveParkingSessionsPage() {
                 <option>Failed</option>
               </select>
 
+              {/* Reset Filters Button */}
               <button
                 onClick={handleResetFilters}
                 className="p-2.5 border border-[var(--color-border)] rounded-[var(--radius-md)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] transition-colors"
@@ -382,6 +362,9 @@ export default function ActiveParkingSessionsPage() {
                       <td className="px-6 py-4">
                         <div className="font-bold text-[var(--color-primary)]">
                           {row.id}
+                        </div>
+                        <div className="mt-1 text-[10px] text-[var(--color-text-muted)] font-mono">
+                          Plan ID: {row.planId ?? "—"}
                         </div>
                         <div className="mt-1">
                           <PlanBadge plan={row.plan} />
@@ -514,14 +497,6 @@ export default function ActiveParkingSessionsPage() {
         isOpen={isDetailsDrawerOpen}
         onClose={() => setIsDetailsDrawerOpen(false)}
         session={selectedSession}
-      />
-
-      {/* Toast Notification */}
-      <Toast
-        message={toast.message}
-        type={toast.type}
-        isOpen={toast.isOpen}
-        onClose={() => setToast((prev) => ({ ...prev, isOpen: false }))}
       />
     </>
   );

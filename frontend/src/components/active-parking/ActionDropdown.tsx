@@ -11,20 +11,27 @@ interface ActionDropdownProps {
   onExtend: (session: ParkingSession) => void;
   onCancel: (session: ParkingSession) => void;
   onIssue: (session: ParkingSession) => void;
+  disabled?: boolean;
 }
 
 const MenuItem = ({
   icon,
   label,
   onClick,
+  danger = false,
 }: {
   icon: React.ReactNode;
   label: string;
   onClick: () => void;
+  danger?: boolean;
 }) => (
   <button
     onClick={onClick}
-    className="w-full px-4 py-3 flex items-center gap-3 text-sm font-semibold hover:bg-[var(--color-surface-soft)] transition-all"
+    className={`w-full px-4 py-3 flex items-center gap-3 text-sm font-semibold transition-all hover:bg-[var(--color-surface-soft)] ${
+      danger
+        ? "text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20"
+        : "text-[var(--color-text-primary)]"
+    }`}
   >
     {icon}
     {label}
@@ -37,6 +44,7 @@ export const ActionDropdown = ({
   onExtend,
   onCancel,
   onIssue,
+  disabled = false,
 }: ActionDropdownProps) => {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -54,10 +62,18 @@ export const ActionDropdown = ({
   return (
     <div className="relative flex justify-center" ref={menuRef}>
       <button
-        onClick={() => setOpen(!open)}
-        className="w-10 h-10 rounded-xl border border-[var(--color-border)] flex items-center justify-center hover:bg-[var(--color-surface-soft)] transition-all"
+        onClick={() => !disabled && setOpen(!open)}
+        disabled={disabled}
+        className={`w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-xl border border-[var(--color-border)] flex items-center justify-center transition-all ${
+          disabled
+            ? "opacity-40 cursor-not-allowed"
+            : "hover:bg-[var(--color-surface-soft)] active:scale-95"
+        }`}
       >
-        <MoreVertical size={18} />
+        <MoreVertical
+          size={16}
+          className="sm:w-[17px] sm:h-[17px] md:w-[18px] md:h-[18px]"
+        />
       </button>
 
       <AnimatePresence>
@@ -66,10 +82,10 @@ export const ActionDropdown = ({
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 8 }}
-            className="absolute right-0 top-12 z-50 w-52 bg-white border border-[var(--color-border)] rounded-2xl shadow-xl overflow-hidden"
+            className="absolute right-0 top-10 sm:top-12 z-50 w-48 sm:w-52 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-2xl shadow-xl overflow-hidden"
           >
             <MenuItem
-              icon={<Eye size={15} />}
+              icon={<Eye size={14} className="sm:w-[15px] sm:h-[15px]" />}
               label="View Details"
               onClick={() => {
                 onView(session);
@@ -77,7 +93,7 @@ export const ActionDropdown = ({
               }}
             />
             <MenuItem
-              icon={<RefreshCw size={15} />}
+              icon={<RefreshCw size={14} className="sm:w-[15px] sm:h-[15px]" />}
               label="Extend Session"
               onClick={() => {
                 onExtend(session);
@@ -85,15 +101,16 @@ export const ActionDropdown = ({
               }}
             />
             <MenuItem
-              icon={<Ban size={15} />}
+              icon={<Ban size={14} className="sm:w-[15px] sm:h-[15px]" />}
               label="Cancel Session"
               onClick={() => {
                 onCancel(session);
                 setOpen(false);
               }}
+              danger
             />
             <MenuItem
-              icon={<Flag size={15} />}
+              icon={<Flag size={14} className="sm:w-[15px] sm:h-[15px]" />}
               label="Mark Issue"
               onClick={() => {
                 onIssue(session);

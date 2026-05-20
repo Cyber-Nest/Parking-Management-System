@@ -14,6 +14,8 @@ import { DashboardStatsSkeleton } from "@/components/dashboard/DashboardStatsSke
 //Services
 import { dashboardService } from "@/services/dashboard.service";
 import type { StatCard, TableRow } from "@/services/dashboard.service";
+import toast from "react-hot-toast";
+
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<"parking" | "penalties">(
     "parking",
@@ -27,6 +29,22 @@ export default function DashboardPage() {
 
   const router = useRouter();
   const itemsPerPage = 10; //10 items per page for table
+
+  const currentAllData = useMemo(() => {
+    return activeTab === "parking" ? allParkingData : allPenaltyData;
+  }, [activeTab, allParkingData, allPenaltyData]);
+
+  const totalPages = Math.max(1, Math.ceil(currentAllData.length / itemsPerPage));
+
+  const paginatedTableData = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return currentAllData.slice(start, start + itemsPerPage);
+  }, [currentAllData, currentPage]);
+
+  const handleTabChange = (tab: "parking" | "penalties") => {
+    setActiveTab(tab);
+    setCurrentPage(1);
+  };
 
   //data fetching
   useEffect(() => {
@@ -47,6 +65,7 @@ export default function DashboardPage() {
       } catch (err) {
         console.error(err);
         setError("Failed to load dashboard data.");
+        toast.error("Failed to load dashboard data.");
       } finally {
         setLoading(false);
       }
@@ -54,23 +73,6 @@ export default function DashboardPage() {
 
     fetchDashboardData();
   }, []);
-
-  //table pagination
-  const currentAllData = useMemo(() => {
-    return activeTab === "parking" ? allParkingData : allPenaltyData;
-  }, [activeTab, allParkingData, allPenaltyData]);
-
-  const totalPages = Math.ceil(currentAllData.length / itemsPerPage);
-
-  const paginatedTableData = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return currentAllData.slice(start, start + itemsPerPage);
-  }, [currentAllData, currentPage]);
-
-  // Reset page when tab changes
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [activeTab]);
 
   return (
     <div className="px-4 md:px-4 space-y-8 bg-[var(--color-bg)] min-h-screen max-w-[1600px] mx-auto">
@@ -112,27 +114,25 @@ export default function DashboardPage() {
       <DashboardCharts />
 
       {/* Tabs Table Section */}
-      <div className="bg-white rounded-3xl border border-[var(--color-border)] shadow-[var(--shadow-card)] overflow-hidden">
+      <div className="bg-[var(--color-surface)] rounded-2xl sm:rounded-3xl border border-[var(--color-border)] shadow-[var(--shadow-card)] overflow-hidden">
         {/* Top Header */}
-        <div className="p-6 border-b border-gray-50 flex flex-wrap justify-between items-center gap-4">
-          <div className="flex bg-gray-100 p-1.5 rounded-2xl">
+        <div className="p-4 sm:p-6 border-b border-[var(--color-border)] flex flex-wrap justify-between items-center gap-4">
+          <div className="flex bg-[var(--color-surface-soft)] p-1 rounded-2xl">
             <button
-              onClick={() => setActiveTab("parking")}
-              className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${
-                activeTab === "parking"
-                  ? "bg-white shadow-sm text-[var(--color-primary)]"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
+              onClick={() => handleTabChange("parking")}
+              className={`px-4 sm:px-6 py-1.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all ${activeTab === "parking"
+                ? "bg-[var(--color-surface)] shadow-sm text-[var(--color-primary)]"
+                : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+                }`}
             >
               Recent Parking Sessions
             </button>
             <button
-              onClick={() => setActiveTab("penalties")}
-              className={`px-6 py-2 rounded-xl text-xs font-bold transition-all ${
-                activeTab === "penalties"
-                  ? "bg-white shadow-sm text-[var(--color-primary)]"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
+              onClick={() => handleTabChange("penalties")}
+              className={`px-4 sm:px-6 py-1.5 sm:py-2 rounded-xl text-[11px] sm:text-xs font-bold transition-all ${activeTab === "penalties"
+                ? "bg-[var(--color-surface)] shadow-sm text-[var(--color-primary)]"
+                : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
+                }`}
             >
               Recent Penalties
             </button>
@@ -146,38 +146,105 @@ export default function DashboardPage() {
                 router.push("/penalty-tickets");
               }
             }}
-            className="text-[var(--color-primary)] text-xs font-black uppercase tracking-widest flex items-center gap-1 hover:opacity-80 transition-opacity"
+            className="text-[var(--color-primary)] text-[10px] sm:text-xs font-black uppercase tracking-widest flex items-center gap-1 hover:opacity-80 transition-opacity"
           >
             View All <ChevronRight size={14} />
           </button>
         </div>
 
-        {/* Table */}
-        <div className="overflow-x-hidden">
+        {/* Mobile Card View (< 768px) */}
+        <div className="block md:hidden divide-y divide-[var(--color-border)]">
+          {loading ? (
+            <TableSkeleton rows={4} cols={5} variant="card" />
+          ) : paginatedTableData.length === 0 ? (
+            <div className="text-center py-16 text-sm font-semibold text-[var(--color-text-muted)]">
+              No records found.
+            </div>
+          ) : (
+            <AnimatePresence mode="wait">
+              {paginatedTableData.map((row, i) => (
+                <motion.div
+                  key={`${activeTab}-${row.id}`}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: i * 0.03 }}
+                  className="p-4 space-y-3 hover:bg-[var(--color-surface-soft)]/50 transition-colors"
+                >
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <p className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
+                        Plate Number
+                      </p>
+                      <p className="font-black text-[var(--color-text-primary)] text-base">
+                        {row.plate}
+                      </p>
+                    </div>
+                    <span
+                      className={`px-2.5 py-1 rounded-full text-[9px] font-black uppercase tracking-tight ${row.statusColor}`}
+                    >
+                      {row.status}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 pt-1">
+                    <div>
+                      <p className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
+                        {activeTab === "parking" ? "Start Time" : "Violation"}
+                      </p>
+                      <p className="text-sm font-semibold text-[var(--color-text-secondary)] break-words">
+                        {row.col2}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
+                        {activeTab === "parking" ? "Expiry Time" : "Amount"}
+                      </p>
+                      <p className="text-sm font-semibold text-[var(--color-text-secondary)] break-words">
+                        {row.col3}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-1">
+                    <p className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-wider">
+                      {activeTab === "parking" ? "Amount" : "Date"}
+                    </p>
+                    <p className="font-black text-[var(--color-text-primary)]">
+                      {row.col5}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          )}
+        </div>
+
+        {/* Desktop Table View (≥ 768px) */}
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left border-collapse min-w-[700px]">
-            <thead className="bg-gray-50/50">
-              <tr className="text-[10px] uppercase font-black text-gray-400 tracking-widest">
-                <th className="px-8 py-5">Plate Number</th>
-                <th className="px-8 py-5">
+            <thead className="bg-[var(--color-surface-soft)]">
+              <tr className="text-[10px] uppercase font-black text-[var(--color-text-muted)] tracking-widest">
+                <th className="px-6 sm:px-8 py-4 sm:py-5">Plate Number</th>
+                <th className="px-6 sm:px-8 py-4 sm:py-5">
                   {activeTab === "parking" ? "Start Time" : "Violation"}
                 </th>
-                <th className="px-8 py-5">
+                <th className="px-6 sm:px-8 py-4 sm:py-5">
                   {activeTab === "parking" ? "Expiry Time" : "Amount"}
                 </th>
-                <th className="px-8 py-5">Status</th>
-                <th className="px-8 py-5">
+                <th className="px-6 sm:px-8 py-4 sm:py-5">Status</th>
+                <th className="px-6 sm:px-8 py-4 sm:py-5">
                   {activeTab === "parking" ? "Amount" : "Date"}
                 </th>
               </tr>
             </thead>
-            <tbody className="text-sm divide-y divide-gray-50">
+            <tbody className="text-sm divide-y divide-[var(--color-border)]">
               {loading ? (
                 <TableSkeleton rows={4} cols={5} />
               ) : paginatedTableData.length === 0 ? (
                 <tr>
                   <td
                     colSpan={5}
-                    className="text-center py-16 text-sm font-semibold text-gray-400"
+                    className="text-center py-16 text-sm font-semibold text-[var(--color-text-muted)]"
                   >
                     No records found.
                   </td>
@@ -190,25 +257,25 @@ export default function DashboardPage() {
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.03 }}
-                      className="hover:bg-gray-50/50 transition-colors group"
+                      className="hover:bg-[var(--color-surface-soft)]/50 transition-colors group"
                     >
-                      <td className="px-8 py-4 font-black text-[var(--color-text-primary)]">
+                      <td className="px-6 sm:px-8 py-4 font-black text-[var(--color-text-primary)]">
                         {row.plate}
                       </td>
-                      <td className="px-8 py-4 font-semibold text-[var(--color-text-secondary)]">
+                      <td className="px-6 sm:px-8 py-4 font-semibold text-[var(--color-text-secondary)]">
                         {row.col2}
                       </td>
-                      <td className="px-8 py-4 font-semibold text-[var(--color-text-secondary)]">
+                      <td className="px-6 sm:px-8 py-4 font-semibold text-[var(--color-text-secondary)]">
                         {row.col3}
                       </td>
-                      <td className="px-8 py-4">
+                      <td className="px-6 sm:px-8 py-4">
                         <span
-                          className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tight ${row.statusColor}`}
+                          className={`px-2.5 sm:px-3 py-1 rounded-full text-[9px] sm:text-[10px] font-black uppercase tracking-tight ${row.statusColor}`}
                         >
-                          {row.status}
+                          {String(row.status)}
                         </span>
                       </td>
-                      <td className="px-8 py-4 font-black text-[var(--color-text-primary)]">
+                      <td className="px-6 sm:px-8 py-4 font-black text-[var(--color-text-primary)]">
                         {row.col5}
                       </td>
                     </motion.tr>
@@ -221,14 +288,14 @@ export default function DashboardPage() {
 
         {/* Pagination */}
         {!loading && currentAllData.length > itemsPerPage && (
-          <div className="px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-gray-100 bg-gray-50/30">
-            <p className="text-[12px] font-medium text-gray-500">
+          <div className="px-4 sm:px-8 py-4 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-[var(--color-border)] bg-[var(--color-surface-soft)]/30">
+            <p className="text-[11px] sm:text-[12px] font-medium text-[var(--color-text-secondary)]">
               Showing{" "}
-              <span className="font-bold text-gray-700">
+              <span className="font-bold text-[var(--color-text-primary)]">
                 {(currentPage - 1) * itemsPerPage + 1}
               </span>{" "}
               to{" "}
-              <span className="font-bold text-gray-700">
+              <span className="font-bold text-[var(--color-text-primary)]">
                 {Math.min(currentPage * itemsPerPage, currentAllData.length)}
               </span>{" "}
               of {currentAllData.length} records
@@ -237,7 +304,7 @@ export default function DashboardPage() {
               <button
                 disabled={currentPage === 1}
                 onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
-                className="p-2 rounded-lg hover:bg-white border border-gray-200 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                className="p-2 rounded-lg hover:bg-[var(--color-surface)] border border-[var(--color-border)] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <ChevronRight className="rotate-180" size={16} />
               </button>
@@ -248,25 +315,23 @@ export default function DashboardPage() {
                 <button
                   key={page}
                   onClick={() => setCurrentPage(page)}
-                  className={`w-9 h-9 flex items-center justify-center rounded-lg text-xs font-bold transition-all ${
-                    currentPage === page
-                      ? "bg-[var(--color-primary)] text-white shadow-md shadow-[var(--color-primary)]/20"
-                      : "hover:bg-white text-gray-600"
-                  }`}
+                  className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg text-xs font-bold transition-all ${currentPage === page
+                    ? "bg-[var(--color-primary)] text-white shadow-md shadow-[var(--color-primary)]/20"
+                    : "hover:bg-[var(--color-surface)] text-[var(--color-text-secondary)]"
+                    }`}
                 >
                   {page}
                 </button>
               ))}
               {totalPages > 5 && (
                 <>
-                  <span className="text-gray-400">...</span>
+                  <span className="text-[var(--color-text-muted)]">...</span>
                   <button
                     onClick={() => setCurrentPage(totalPages)}
-                    className={`w-9 h-9 flex items-center justify-center rounded-lg text-xs font-bold transition-all ${
-                      currentPage === totalPages
-                        ? "bg-[var(--color-primary)] text-white shadow-md shadow-[var(--color-primary)]/20"
-                        : "hover:bg-white text-gray-600"
-                    }`}
+                    className={`w-8 h-8 sm:w-9 sm:h-9 flex items-center justify-center rounded-lg text-xs font-bold transition-all ${currentPage === totalPages
+                      ? "bg-[var(--color-primary)] text-white shadow-md shadow-[var(--color-primary)]/20"
+                      : "hover:bg-[var(--color-surface)] text-[var(--color-text-secondary)]"
+                      }`}
                   >
                     {totalPages}
                   </button>
@@ -277,7 +342,7 @@ export default function DashboardPage() {
                 onClick={() =>
                   setCurrentPage((prev) => Math.min(prev + 1, totalPages))
                 }
-                className="p-2 rounded-lg hover:bg-white border border-gray-200 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                className="p-2 rounded-lg hover:bg-[var(--color-surface)] border border-[var(--color-border)] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <ChevronRight size={16} />
               </button>

@@ -1,8 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Sidebar from "@/components/layout/Sidebar";
 import Topbar from "@/components/layout/Topbar";
+import { getTokenValue } from "@/lib/axios";
 
 export default function AdminLayout({
   children,
@@ -10,6 +12,14 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    const token = getTokenValue("token");
+    if (!token) {
+      router.push("/login");
+    }
+  }, [router]);
 
   return (
     <div className="flex h-screen bg-[var(--color-bg)]">

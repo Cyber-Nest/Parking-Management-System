@@ -4,8 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { motion } from "framer-motion";
-import { Eye, EyeOff, Lock, Mail, Loader2 } from "lucide-react";
-import { loginUser } from "@/services/auth.service";
+import { Eye, EyeOff, Lock, Mail, Loader2 } from "lucide-react"; import { loginUser } from "@/services/auth.service";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,24 +13,9 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  // const handleLogin = async (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   setIsLoading(true);
-
-  //   setTimeout(() => {
-  //     if (email === "admin@dummy.com" && password === "12345678") {
-  //       document.cookie = "auth=true; path=/";
-  //       toast.success("Welcome back, Admin!");
-  //       router.push("/dashboard");
-  //     } else {
-  //       toast.error("Invalid email or password");
-  //       setIsLoading(false);
-  //     }
-  //   }, 1000);
-  // };
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
 
     try {
       setIsLoading(true);
@@ -43,13 +27,48 @@ export default function LoginPage() {
 
       toast.success(data.message || "Login successful");
 
+      const accessToken = data?.data?.accessToken;
+      const refreshToken = data?.data?.refreshToken;
+
+      if (accessToken) {
+        document.cookie = `token=${encodeURIComponent(accessToken)}; path=/; samesite=lax`;
+        window.localStorage.setItem("token", accessToken);
+      }
+      if (refreshToken) {
+        document.cookie = `refreshToken=${encodeURIComponent(refreshToken)}; path=/; samesite=lax`;
+        window.localStorage.setItem("refreshToken", refreshToken);
+      }
+
       router.push("/dashboard");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Login failed");
     } finally {
       setIsLoading(false);
     }
   };
+
+  // uncomment the line no 8
+  // const handleLogin = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+
+  //   try {
+  //     setIsLoading(true);
+
+  //     const data = await loginUser({
+  //       email,
+  //       password,
+  //     });
+
+  //     toast.success(data.message || "Login successful");
+
+  //     router.push("/dashboard");
+  //   } catch (error: any) {
+  //     toast.error(error?.response?.data?.message || "Login failed");
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-[var(--color-bg)] relative overflow-hidden">

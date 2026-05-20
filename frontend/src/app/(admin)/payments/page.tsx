@@ -9,13 +9,15 @@ import {
   Car,
   AlertTriangle,
   Clock,
+  Calendar,
 } from "lucide-react";
 
 import { StatCard } from "@/components/common/StatCard";
 import { TableSkeleton } from "@/components/common/TableSkeleton";
-import { Toast } from "@/components/common/Toast";
+import toast from "react-hot-toast";
 import { PaymentActionDropdown } from "@/components/payment/PaymentActionDropdown";
 import { PaymentDetailsDrawer } from "@/components/payment/PaymentDetailsDrawer";
+import { PaymentReceiptDrawer } from "@/components/payment/PaymentReceiptDrawer";
 
 import {
   paymentService,
@@ -24,13 +26,35 @@ import {
 } from "@/services/payment.service";
 
 const TYPE_TABS = ["All Types", "Parking", "Penalty", "Extension", "Refund"];
-const PERIOD_TABS = ["Today", "Yesterday", "This Week", "This Month"];
+const PERIOD_TABS = ["Today", "Yesterday", "This Week", "This Month", "Custom Range"];
 
-const MethodBadge = ({ method }: { method: string }) => (
-  <span className="text-xs font-semibold text-[var(--color-text-secondary)]">
-    {method}
-  </span>
-);
+// Payment method options
+const PAYMENT_METHODS = [
+  "All Methods",
+  "Visa",
+  "Mastercard",
+  "Debit Card",
+  "Credit Card",
+  "Stripe",
+];
+
+const MethodBadge = ({ method }: { method: string }) => {
+  const getMethodColor = (method: string) => {
+    switch(method.toLowerCase()) {
+      case 'visa': return 'text-blue-600 bg-blue-50';
+      case 'mastercard': return 'text-red-600 bg-red-50';
+      case 'debit card': return 'text-green-600 bg-green-50';
+      case 'credit card': return 'text-purple-600 bg-purple-50';
+      default: return 'text-[var(--color-text-secondary)] bg-gray-50';
+    }
+  };
+  
+  return (
+    <span className={`text-xs font-semibold px-2 py-1 rounded-full ${getMethodColor(method)}`}>
+      {method}
+    </span>
+  );
+};
 
 const StatusBadge = ({ status }: { status: string }) => {
   const styles: Record<string, string> = {
@@ -64,6 +88,42 @@ const TypeBadge = ({ type }: { type: string }) => {
   );
 };
 
+// Helper function to check if date is today
+const isToday = (dateStr: string) => {
+  const paymentDate = new Date(dateStr);
+  const today = new Date();
+  return paymentDate.toDateString() === today.toDateString();
+};
+
+// Helper function to check if date is yesterday
+const isYesterday = (dateStr: string) => {
+  const paymentDate = new Date(dateStr);
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  return paymentDate.toDateString() === yesterday.toDateString();
+};
+
+// Helper function to check if date is within current week
+const isThisWeek = (dateStr: string) => {
+  const paymentDate = new Date(dateStr);
+  const today = new Date();
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() - today.getDay());
+  startOfWeek.setHours(0, 0, 0, 0);
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 6);
+  endOfWeek.setHours(23, 59, 59, 999);
+  return paymentDate >= startOfWeek && paymentDate <= endOfWeek;
+};
+
+// Helper function to check if date is within current month
+const isThisMonth = (dateStr: string) => {
+  const paymentDate = new Date(dateStr);
+  const today = new Date();
+  return paymentDate.getMonth() === today.getMonth() && 
+         paymentDate.getFullYear() === today.getFullYear();
+};
+
 export default function PaymentsPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [stats, setStats] = useState<PaymentStats>({
@@ -73,7 +133,7 @@ export default function PaymentsPage() {
     pendingFailed: "$0",
   });
   const [loading, setLoading] = useState(true);
-  const [activePeriod, setActivePeriod] = useState("Today");
+  const [activePeriod, setActivePeriod] = useState("Yesterday");
   const [activeType, setActiveType] = useState("All Types");
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All Status");
@@ -81,22 +141,19 @@ export default function PaymentsPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null);
   const [isDetailsDrawerOpen, setIsDetailsDrawerOpen] = useState(false);
+  
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
 
-  // Toast state
-  const [toast, setToast] = useState<{
-    message: string;
-    type: "success" | "error" | "info";
-    isOpen: boolean;
-  }>({
-    message: "",
-    type: "success",
-    isOpen: false,
-  });
+  const [receiptPaymentId, setReceiptPaymentId] = useState<string | null>(null);
+  const [receiptOpen, setReceiptOpen] = useState(false);
 
-  const itemsPerPage = 10; // 10 items per page
+  const itemsPerPage = 10;
 
   const showToast = (message: string, type: "success" | "error" | "info") => {
-    setToast({ message, type, isOpen: true });
+    if (type === "success") toast.success(message);
+    else if (type === "error") toast.error(message);
+    else toast(message, { icon: 'ℹ️' });
   };
 
   // Fetch Data
@@ -120,7 +177,33 @@ export default function PaymentsPage() {
     fetchData();
   }, []);
 
-  // Filtered Payments
+  // Filter by Period (Date Range)
+  const filterByPeriod = (payment: Payment) => {
+    const paymentDate = new Date(payment.date);
+    
+    switch(activePeriod) {
+      case "Today":
+        return isToday(payment.date);
+      case "Yesterday":
+        return isYesterday(payment.date);
+      case "This Week":
+        return isThisWeek(payment.date);
+      case "This Month":
+        return isThisMonth(payment.date);
+      case "Custom Range":
+        if (customStartDate && customEndDate) {
+          const start = new Date(customStartDate);
+          const end = new Date(customEndDate);
+          end.setHours(23, 59, 59, 999);
+          return paymentDate >= start && paymentDate <= end;
+        }
+        return true; // If dates not selected, show all
+      default:
+        return true;
+    }
+  };
+
+  // Filtered Payments with all filters applied
   const filteredPayments = useMemo(() => {
     return payments.filter((payment) => {
       const matchesSearch =
@@ -132,9 +215,11 @@ export default function PaymentsPage() {
         statusFilter === "All Status" ? true : payment.status === statusFilter;
       const matchesMethod =
         methodFilter === "All Methods" ? true : payment.method === methodFilter;
-      return matchesSearch && matchesType && matchesStatus && matchesMethod;
+      const matchesPeriod = filterByPeriod(payment);
+      
+      return matchesSearch && matchesType && matchesStatus && matchesMethod && matchesPeriod;
     });
-  }, [payments, search, activeType, statusFilter, methodFilter]);
+  }, [payments, search, activeType, statusFilter, methodFilter, activePeriod, customStartDate, customEndDate]);
 
   // Pagination
   const totalPages = Math.ceil(filteredPayments.length / itemsPerPage);
@@ -150,8 +235,8 @@ export default function PaymentsPage() {
   };
 
   const handleReceipt = (payment: Payment) => {
-    console.log("Generate Receipt:", payment);
-    showToast(`Receipt generated for ${payment.id}`, "success");
+    setReceiptPaymentId(payment.id);
+    setReceiptOpen(true);
   };
 
   const handleRefund = (payment: Payment) => {
@@ -182,8 +267,20 @@ export default function PaymentsPage() {
     setMethodFilter("All Methods");
     setActiveType("All Types");
     setActivePeriod("Today");
+    setCustomStartDate("");
+    setCustomEndDate("");
     setCurrentPage(1);
     showToast("All filters cleared", "info");
+  };
+
+  const handlePeriodChange = (period: string) => {
+    setActivePeriod(period);
+    setCurrentPage(1);
+    // Reset custom dates when switching away from Custom Range
+    if (period !== "Custom Range") {
+      setCustomStartDate("");
+      setCustomEndDate("");
+    }
   };
 
   return (
@@ -191,14 +288,6 @@ export default function PaymentsPage() {
       <div className="min-h-screen px-2 md:px-4 lg:px-4 bg-[var(--color-bg)]">
         {/* Header */}
         <header className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4 ">
-          {/* <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              Pay<span className="text-[var(--color-primary)]">ments</span>
-            </h1>
-            <p className="text-[var(--color-text-secondary)] text-sm">
-              View and manage all payments
-            </p>
-          </div> */}
           <div>
             <h1 className="text-xl md:text-3xl font-black tracking-tight text-[var(--color-text-primary)]">
               Pay<span className="text-[var(--color-primary)]">ments</span>
@@ -249,7 +338,7 @@ export default function PaymentsPage() {
                 {PERIOD_TABS.map((tab) => (
                   <button
                     key={tab}
-                    onClick={() => setActivePeriod(tab)}
+                    onClick={() => handlePeriodChange(tab)}
                     className={`px-4 py-2 text-xs font-semibold rounded-[var(--radius-sm)] whitespace-nowrap transition-all ${
                       activePeriod === tab
                         ? "bg-white text-[var(--color-primary)] shadow-sm"
@@ -280,6 +369,48 @@ export default function PaymentsPage() {
                 ))}
               </div>
             </div>
+
+            {/* Custom Range Picker */}
+            {activePeriod === "Custom Range" && (
+              <div className="flex flex-wrap items-center gap-3 p-3 bg-[var(--color-bg)] rounded-[var(--radius-md)] border border-[var(--color-border)]">
+                <Calendar size={18} className="text-[var(--color-primary)]" />
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-semibold text-[var(--color-text-secondary)]">From:</label>
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => {
+                      setCustomStartDate(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="input text-sm px-3 py-1.5"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-xs font-semibold text-[var(--color-text-secondary)]">To:</label>
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => {
+                      setCustomEndDate(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="input text-sm px-3 py-1.5"
+                  />
+                </div>
+                {(customStartDate || customEndDate) && (
+                  <button
+                    onClick={() => {
+                      setCustomStartDate("");
+                      setCustomEndDate("");
+                    }}
+                    className="text-xs text-red-500 hover:text-red-600 font-semibold"
+                  >
+                    Clear Dates
+                  </button>
+                )}
+              </div>
+            )}
 
             {/* Search & Filters */}
             <div className="flex flex-wrap items-end gap-3 border-t border-[var(--color-bg)] pt-4">
@@ -332,10 +463,11 @@ export default function PaymentsPage() {
                   }}
                   className="input w-auto min-w-[150px] text-xs font-medium bg-[var(--color-surface-soft)]"
                 >
-                  <option>All Methods</option>
-                  <option>Card</option>
-                  <option>Cash</option>
-                  <option>Stripe</option>
+                  {PAYMENT_METHODS.map((method) => (
+                    <option key={method} value={method}>
+                      {method}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -467,7 +599,7 @@ export default function PaymentsPage() {
                 ),
               )}
               <button
-                disabled={currentPage === totalPages}
+                disabled={currentPage === totalPages || totalPages === 0}
                 onClick={() =>
                   setCurrentPage((prev) => Math.min(prev + 1, totalPages))
                 }
@@ -486,13 +618,13 @@ export default function PaymentsPage() {
         onClose={() => setIsDetailsDrawerOpen(false)}
         payment={selectedPayment}
       />
-
-      {/* Toast Notification */}
-      <Toast
-        message={toast.message}
-        type={toast.type}
-        isOpen={toast.isOpen}
-        onClose={() => setToast((prev) => ({ ...prev, isOpen: false }))}
+      <PaymentReceiptDrawer
+        isOpen={receiptOpen}
+        onClose={() => {
+          setReceiptOpen(false);
+          setReceiptPaymentId(null);
+        }}
+        paymentId={receiptPaymentId}
       />
     </>
   );

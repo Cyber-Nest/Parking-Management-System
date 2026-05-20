@@ -13,6 +13,7 @@ import {
   Filter,
   TrendingUp,
   TrendingDown,
+  X,
 } from "lucide-react";
 
 import { StatCard } from "@/components/common/StatCard";
@@ -27,6 +28,15 @@ import {
   PenaltyTicket,
   PenaltyStats,
 } from "@/services/penalty.service";
+import {
+  markTicketPaid,
+  cancelTicket,
+  addTicketNote,
+  getTicketPrint,
+} from "@/services/tickets.service";
+import { EditTicketDrawer } from "@/components/penalty/EditTicketDrawer";
+import toast from "react-hot-toast";
+import { printKeyValuePayload } from "@/lib/printPayload";
 
 const PERIOD_TABS = [
   "Today",
@@ -35,6 +45,57 @@ const PERIOD_TABS = [
   "This Month",
   "Custom Period",
 ];
+
+const apiErrorMessage = (e: unknown, fallback: string): string => {
+  if (typeof e === "object" && e !== null && "response" in e) {
+    const data = (e as { response?: { data?: { message?: unknown } } }).response?.data;
+    const m = data?.message;
+    if (typeof m === "string" && m.trim()) return m;
+  }
+  return fallback;
+};
+
+// Helper functions for date filtering
+const isToday = (dateStr: string) => {
+  const ticketDate = new Date(dateStr);
+  const today = new Date();
+  return ticketDate.toDateString() === today.toDateString();
+};
+
+const isYesterday = (dateStr: string) => {
+  const ticketDate = new Date(dateStr);
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  return ticketDate.toDateString() === yesterday.toDateString();
+};
+
+const isThisWeek = (dateStr: string) => {
+  const ticketDate = new Date(dateStr);
+  const today = new Date();
+  const startOfWeek = new Date(today);
+  startOfWeek.setDate(today.getDate() - today.getDay());
+  startOfWeek.setHours(0, 0, 0, 0);
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 6);
+  endOfWeek.setHours(23, 59, 59, 999);
+  return ticketDate >= startOfWeek && ticketDate <= endOfWeek;
+};
+
+const isThisMonth = (dateStr: string) => {
+  const ticketDate = new Date(dateStr);
+  const today = new Date();
+  return ticketDate.getMonth() === today.getMonth() && 
+         ticketDate.getFullYear() === today.getFullYear();
+};
+
+const isInDateRange = (dateStr: string, startDate: Date, endDate: Date) => {
+  const ticketDate = new Date(dateStr);
+  const start = new Date(startDate);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(endDate);
+  end.setHours(23, 59, 59, 999);
+  return ticketDate >= start && ticketDate <= end;
+};
 
 export default function PenaltyTicketsPage() {
   const [tickets, setTickets] = useState<PenaltyTicket[]>([]);
@@ -45,8 +106,12 @@ export default function PenaltyTicketsPage() {
     totalPenaltyAmount: "$0",
   });
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("Today");
+  const [activeTab, setActiveTab] = useState("Yesterday");
   const [showCustomDate, setShowCustomDate] = useState(false);
+  
+  const [customStartDate, setCustomStartDate] = useState("");
+  const [customEndDate, setCustomEndDate] = useState("");
+  
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All Status");
   const [officerFilter, setOfficerFilter] = useState("All Officers");
@@ -60,21 +125,29 @@ export default function PenaltyTicketsPage() {
   const [noteTicket, setNoteTicket] = useState<PenaltyTicket | null>(null);
   const [photoTicket, setPhotoTicket] = useState<PenaltyTicket | null>(null);
 
+  const [editTicket, setEditTicket] = useState<PenaltyTicket | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+
   const itemsPerPage = 10;
+
+  const refreshTickets = async () => {
+    const [statsRes, ticketsRes] = await Promise.all([
+      penaltyService.getPenaltyStats(),
+      penaltyService.getPenaltyTickets({ limit: 200, page: 1 }),
+    ]);
+    setStats(statsRes);
+    setTickets(ticketsRes);
+  };
 
   // Fetch Data
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [statsRes, ticketsRes] = await Promise.all([
-          penaltyService.getPenaltyStats(),
-          penaltyService.getPenaltyTickets(),
-        ]);
-        setStats(statsRes);
-        setTickets(ticketsRes);
+        await refreshTickets();
       } catch (error) {
         console.error(error);
+        toast.error("Failed to fetch data");
       } finally {
         setLoading(false);
       }
@@ -82,7 +155,32 @@ export default function PenaltyTicketsPage() {
     fetchData();
   }, []);
 
-  // Filtered Tickets
+  // Filter by Period (Date Range)
+  const filterByPeriod = (ticket: PenaltyTicket) => {
+    const issueDateTime = `${ticket.issueDate} ${ticket.issueTime}`;
+    
+    switch(activeTab) {
+      case "Today":
+        return isToday(ticket.issueDate);
+      case "Yesterday":
+        return isYesterday(ticket.issueDate);
+      case "This Week":
+        return isThisWeek(ticket.issueDate);
+      case "This Month":
+        return isThisMonth(ticket.issueDate);
+      case "Custom Period":
+        if (customStartDate && customEndDate) {
+          const start = new Date(customStartDate);
+          const end = new Date(customEndDate);
+          return isInDateRange(ticket.issueDate, start, end);
+        }
+        return true; // If dates not selected, show all
+      default:
+        return true;
+    }
+  };
+
+  // Filtered Tickets with all filters applied
   const filteredTickets = useMemo(() => {
     return tickets.filter((ticket) => {
       const matchesSearch =
@@ -94,9 +192,11 @@ export default function PenaltyTicketsPage() {
         officerFilter === "All Officers"
           ? true
           : ticket.officer === officerFilter;
-      return matchesSearch && matchesStatus && matchesOfficer;
+      const matchesPeriod = filterByPeriod(ticket);
+      
+      return matchesSearch && matchesStatus && matchesOfficer && matchesPeriod;
     });
-  }, [tickets, search, statusFilter, officerFilter]);
+  }, [tickets, search, statusFilter, officerFilter, activeTab, customStartDate, customEndDate]);
 
   // Pagination
   const totalPages = Math.ceil(filteredTickets.length / itemsPerPage);
@@ -109,6 +209,12 @@ export default function PenaltyTicketsPage() {
   const handleTabClick = (tab: string) => {
     setActiveTab(tab);
     setShowCustomDate(tab === "Custom Period");
+    setCurrentPage(1);
+    // Reset custom dates when switching away from Custom Period
+    if (tab !== "Custom Period") {
+      setCustomStartDate("");
+      setCustomEndDate("");
+    }
   };
 
   const handleViewDetails = (ticket: PenaltyTicket) => {
@@ -121,51 +227,42 @@ export default function PenaltyTicketsPage() {
     setIsPhotoGalleryOpen(true);
   };
 
-  const handleReprint = (ticket: PenaltyTicket) => {
-    console.log("Generate ticket PDF:", ticket.id);
-    alert(`Reprinting ticket: ${ticket.id}`);
+  const handleReprint = async (ticket: PenaltyTicket) => {
+    try {
+      const data = (await getTicketPrint(ticket.id)) as Record<string, unknown>;
+      printKeyValuePayload("Penalty ticket", data);
+      toast.success("Print dialog opened");
+    } catch (e) {
+      console.error(e);
+      toast.error(apiErrorMessage(e, "Could not load ticket for printing"));
+    }
   };
 
-  const handleMarkPaid = (ticket: PenaltyTicket) => {
-    const updated = tickets.map((item) => {
-      if (item.id === ticket.id) {
-        return {
-          ...item,
-          status: "Paid" as const,
-          paymentStatus: "Paid",
-          paymentMethod: "Cash",
-          paymentId: "PAY-" + Date.now(),
-          transactionReference:
-            "txn_" + Math.random().toString(36).substring(2, 8),
-          paidAt: new Date().toLocaleString(),
-        };
-      }
-      return item;
-    });
-    setTickets(updated as any);
-    alert(`Ticket ${ticket.id} marked as paid`);
+  const handleMarkPaid = async (ticket: PenaltyTicket) => {
+    try {
+      await markTicketPaid(ticket.id, { payment_method: "visa" });
+      toast.success(`Ticket ${ticket.ticketNo || ticket.id} marked as paid`);
+      await refreshTickets();
+    } catch (e) {
+      console.error(e);
+      toast.error(apiErrorMessage(e, "Could not mark ticket paid"));
+    }
   };
 
-  const handleCancel = (ticket: PenaltyTicket) => {
-    const updated = tickets.map((item) => {
-      if (item.id === ticket.id) {
-        return {
-          ...item,
-          status: "Cancelled" as const,
-          cancelledBy: "Admin",
-          cancelledAt: new Date().toLocaleString(),
-          cancelReason: "Cancelled manually by admin.",
-        };
-      }
-      return item;
-    });
-    setTickets(updated as any);
-    alert(`Ticket ${ticket.id} has been cancelled`);
+  const handleCancel = async (ticket: PenaltyTicket) => {
+    try {
+      await cancelTicket(ticket.id);
+      toast.success(`Ticket ${ticket.ticketNo || ticket.id} cancelled`);
+      await refreshTickets();
+    } catch (e) {
+      console.error(e);
+      toast.error(apiErrorMessage(e, "Could not cancel ticket"));
+    }
   };
 
   const handleEdit = (ticket: PenaltyTicket) => {
-    console.log("Edit ticket:", ticket.id);
-    alert(`Edit ticket: ${ticket.id} - This feature coming soon`);
+    setEditTicket(ticket);
+    setIsEditOpen(true);
   };
 
   const handleAddNote = (ticket: PenaltyTicket) => {
@@ -173,27 +270,17 @@ export default function PenaltyTicketsPage() {
     setIsNoteDrawerOpen(true);
   };
 
-  const handleSaveNote = (noteText: string) => {
-    if (noteTicket) {
-      const updated = tickets.map((item) => {
-        if (item.id === noteTicket.id) {
-          return {
-            ...item,
-            notes: [
-              ...item.notes,
-              {
-                id: Date.now().toString(),
-                note: noteText,
-                createdBy: "Admin",
-                createdAt: new Date().toLocaleString(),
-              },
-            ],
-          };
-        }
-        return item;
-      });
-      setTickets(updated);
-      alert("Note added successfully");
+  const handleSaveNote = async (noteText: string) => {
+    if (!noteTicket) return;
+    try {
+      await addTicketNote(noteTicket.id, noteText);
+      toast.success("Note saved");
+      setNoteTicket(null);
+      await refreshTickets();
+    } catch (e) {
+      console.error(e);
+      toast.error(apiErrorMessage(e, "Could not save note"));
+      throw e;
     }
   };
 
@@ -204,23 +291,22 @@ export default function PenaltyTicketsPage() {
     setCurrentPage(1);
     setActiveTab("Today");
     setShowCustomDate(false);
+    setCustomStartDate("");
+    setCustomEndDate("");
+    toast("All filters cleared");
   };
+
+  // Get unique officers from tickets for filter dropdown
+  const uniqueOfficers = useMemo(() => {
+    const officers = new Set(tickets.map(ticket => ticket.officer));
+    return ["All Officers", ...Array.from(officers)];
+  }, [tickets]);
 
   return (
     <>
       <div className="min-h-screen px-2 md:px-4 lg:px-4 bg-[var(--color-bg)]">
         {/* Header */}
         <header className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-          {/* <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              Penalty{" "}
-              <span className="text-[var(--color-primary)]">Tickets</span>
-            </h1>
-            <p className="text-[var(--color-text-secondary)] text-sm">
-              Manage and track all issued penalty tickets
-            </p>
-          </div> */}
-
           <div>
             <h1 className="text-xl md:text-3xl font-black tracking-tight text-[var(--color-text-primary)]">
               Penalty{" "}
@@ -239,8 +325,6 @@ export default function PenaltyTicketsPage() {
             icon={<Ticket size={22} className="text-[var(--color-info)]" />}
             title="Total Tickets"
             value={stats.totalTickets}
-            trend="12 from yesterday"
-            trendUp
           />
           <StatCard
             icon={
@@ -264,8 +348,6 @@ export default function PenaltyTicketsPage() {
             }
             title="Total Penalty Amount"
             value={stats.totalPenaltyAmount}
-            trend="18.5% last week"
-            trendUp
           />
         </div>
 
@@ -314,9 +396,11 @@ export default function PenaltyTicketsPage() {
                   }}
                   className="input w-auto min-w-[140px] text-xs font-medium bg-[var(--color-surface-soft)]"
                 >
-                  <option>All Officers</option>
-                  <option>John Smith</option>
-                  <option>Adam Milner</option>
+                  {uniqueOfficers.map((officer) => (
+                    <option key={officer} value={officer}>
+                      {officer}
+                    </option>
+                  ))}
                 </select>
               </div>
             </div>
@@ -332,7 +416,13 @@ export default function PenaltyTicketsPage() {
                     />
                     <input
                       type="date"
+                      value={customStartDate}
+                      onChange={(e) => {
+                        setCustomStartDate(e.target.value);
+                        setCurrentPage(1);
+                      }}
                       className="input pl-9 text-xs w-[150px]"
+                      placeholder="Start Date"
                     />
                   </div>
                   <span className="text-[var(--color-text-muted)] text-xs font-bold">
@@ -345,9 +435,26 @@ export default function PenaltyTicketsPage() {
                     />
                     <input
                       type="date"
+                      value={customEndDate}
+                      onChange={(e) => {
+                        setCustomEndDate(e.target.value);
+                        setCurrentPage(1);
+                      }}
                       className="input pl-9 text-xs w-[150px]"
+                      placeholder="End Date"
                     />
                   </div>
+                  {(customStartDate || customEndDate) && (
+                    <button
+                      onClick={() => {
+                        setCustomStartDate("");
+                        setCustomEndDate("");
+                      }}
+                      className="p-1.5 rounded-lg hover:bg-red-50 text-red-500 transition-colors"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
                 </div>
               )}
 
@@ -405,7 +512,7 @@ export default function PenaltyTicketsPage() {
                       colSpan={9}
                       className="text-center py-16 text-sm font-semibold text-gray-400"
                     >
-                      No tickets found.
+                      No tickets found for the selected period.
                     </td>
                   </tr>
                 ) : (
@@ -415,7 +522,7 @@ export default function PenaltyTicketsPage() {
                       className="hover:bg-[var(--color-surface-soft)]/50 transition-colors"
                     >
                       <td className="px-6 py-4 font-bold text-[var(--color-primary)]">
-                        {ticket.id}
+                        {ticket.ticketNo || ticket.id}
                       </td>
                       <td className="px-6 py-4 font-bold text-[var(--color-text-primary)]">
                         {ticket.plate}
@@ -424,10 +531,10 @@ export default function PenaltyTicketsPage() {
                         <span className="px-2.5 py-1 rounded-md bg-orange-50 text-[var(--color-accent)] text-[11px] font-bold border border-orange-100">
                           {ticket.violationType}
                         </span>
-                      </td>
+                       </td>
                       <td className="px-6 py-4 font-medium text-[var(--color-text-secondary)]">
                         {ticket.location}
-                      </td>
+                       </td>
                       <td className="px-6 py-4">
                         <div>
                           <div className="font-bold text-[var(--color-text-primary)]">
@@ -437,10 +544,10 @@ export default function PenaltyTicketsPage() {
                             {ticket.officerId}
                           </div>
                         </div>
-                      </td>
+                       </td>
                       <td className="px-6 py-4 font-black text-sm">
                         {ticket.amount}
-                      </td>
+                       </td>
                       <td className="px-6 py-4">
                         <span
                           className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-tight ${
@@ -453,7 +560,7 @@ export default function PenaltyTicketsPage() {
                         >
                           {ticket.status}
                         </span>
-                      </td>
+                       </td>
                       <td className="px-6 py-4">
                         <div className="font-medium text-[var(--color-text-primary)]">
                           {ticket.issueDate}
@@ -461,7 +568,7 @@ export default function PenaltyTicketsPage() {
                         <div className="text-[11px] text-[var(--color-text-muted)] font-bold">
                           {ticket.issueTime}
                         </div>
-                      </td>
+                       </td>
                       <td className="px-6 py-4">
                         <TicketActionDropdown
                           ticket={ticket}
@@ -473,7 +580,7 @@ export default function PenaltyTicketsPage() {
                           onEdit={handleEdit}
                           onAddNote={handleAddNote}
                         />
-                      </td>
+                       </td>
                     </tr>
                   ))
                 )}
@@ -518,7 +625,7 @@ export default function PenaltyTicketsPage() {
                 ),
               )}
               <button
-                disabled={currentPage === totalPages}
+                disabled={currentPage === totalPages || totalPages === 0}
                 onClick={() =>
                   setCurrentPage((prev) => Math.min(prev + 1, totalPages))
                 }
@@ -539,7 +646,10 @@ export default function PenaltyTicketsPage() {
       />
       <AddNoteDrawer
         isOpen={isNoteDrawerOpen}
-        onClose={() => setIsNoteDrawerOpen(false)}
+        onClose={() => {
+          setIsNoteDrawerOpen(false);
+          setNoteTicket(null);
+        }}
         onSave={handleSaveNote}
       />
       <PhotoGalleryDrawer
@@ -547,6 +657,15 @@ export default function PenaltyTicketsPage() {
         onClose={() => setIsPhotoGalleryOpen(false)}
         photos={photoTicket?.evidencePhotos || []}
         ticketId={photoTicket?.id || ""}
+      />
+      <EditTicketDrawer
+        isOpen={isEditOpen}
+        onClose={() => {
+          setIsEditOpen(false);
+          setEditTicket(null);
+        }}
+        ticket={editTicket}
+        onSaved={() => void refreshTickets()}
       />
     </>
   );

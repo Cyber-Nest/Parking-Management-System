@@ -27,6 +27,7 @@ import {
   ParkingItem,
   PenaltyItem,
 } from "@/services/chart.service";
+import toast from "react-hot-toast";
 
 export default function DashboardCharts() {
   const [revFilter, setRevFilter] = useState<RevenueFilter>("1 Month");
@@ -62,6 +63,7 @@ export default function DashboardCharts() {
       } catch (error) {
         console.error(error);
         setError("Failed to load charts.");
+        toast.error("Failed to load charts.");
       } finally {
         setLoading(false);
       }
@@ -262,23 +264,20 @@ export default function DashboardCharts() {
               </div>
 
               {/* Legends */}
-              <div className="w-full mt-4 space-y-2">
+              <div className="w-full mt-4 flex flex-wrap items-center gap-4 text-[11px] font-bold">
                 {penaltyData.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="flex justify-between items-center text-[11px] font-bold"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-2.5 h-2.5 rounded-full"
-                        style={{ backgroundColor: item.color }}
-                      />
-                      <span className="text-[var(--color-text-secondary)]">
-                        {item.name}
-                      </span>
-                    </div>
-                    <span className="text-[var(--color-text-primary)]">
-                      ${item.value}.00
+                  <div key={idx} className="flex items-center gap-1">
+                    <div
+                      className="w-2.5 h-2.5 rounded-full"
+                      style={{ backgroundColor: item.color }}
+                    />
+
+                    <span className="text-[var(--color-text-secondary)]">
+                      {item.name}
+                    </span>
+
+                    <span className="text-[10px] text-[var(--color-text-muted)]">
+                      (${item.value}.00)
                     </span>
                   </div>
                 ))}
