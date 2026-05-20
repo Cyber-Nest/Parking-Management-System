@@ -2,16 +2,16 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 
-import { ArrowLeft, Clock, ShieldCheck, AlertTriangle } from "lucide-react";
-
-import Link from "next/link";
+import { Clock, AlertTriangle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 
 import { customerService, DurationOption } from "@/services/customer.service";
+import { useParkingBooking } from "@/contexts/CustomerParkingContext";
 
 export default function ExtendBookingPage() {
   const router = useRouter();
+  const { setExtensionDetails } = useParkingBooking();
 
   const durations = customerService
     .getDurationOptions()
@@ -82,35 +82,16 @@ export default function ExtendBookingPage() {
   ) as DurationOption;
 
   const handleExtendBooking = async () => {
-    try {
-      setIsProcessing(true);
-
-      await customerService.extendBooking(bookingData.bookingId, {
-        durationLabel: selectedDuration.label,
-        durationMinutes: selectedDuration.minutes,
-        amount: selectedDuration.price,
-      });
-
-      toast.success("Parking extended successfully", {
-        style: {
-          background: "#0B0B0B",
-          border: "1px solid rgba(190,242,100,0.2)",
-          color: "#fff",
-          borderRadius: "18px",
-          padding: "14px 16px",
-        },
-      });
-
-      setTimeout(() => {
-        router.replace("/");
-      }, 2000);
-    } catch (error) {
-      console.error(error);
-
-      toast.error("Extension failed");
-    } finally {
-      setIsProcessing(false);
-    }
+    setIsProcessing(true);
+    setExtensionDetails({
+      bookingId: bookingData.bookingId,
+      parkingName: bookingData.parkingName,
+      zoneName: bookingData.zoneName,
+      durationLabel: selectedDuration.label,
+      durationMinutes: selectedDuration.minutes,
+      amount: selectedDuration.price,
+    });
+    router.push("/payment?mode=extension");
   };
 
   return (

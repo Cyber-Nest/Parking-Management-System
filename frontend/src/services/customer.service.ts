@@ -31,7 +31,7 @@ export interface VehicleDetails {
 }
 
 export interface DurationOption {
-  type: string;
+  type?: string;
   label: string;
   value: string;
   price: number;
@@ -355,6 +355,13 @@ class CustomerService {
     };
   }
 
+  async getBookingById(bookingId: string): Promise<CustomerBookingDetails | null> {
+    const response = await axiosInstance.get(
+      API_ENDPOINTS.CUSTOMER.BOOKING_BY_ID(bookingId),
+    );
+    return response.data?.data?.booking ?? null;
+  }
+
   async getBookingByReference(reference: string): Promise<CustomerBookingDetails | null> {
     const response = await axiosInstance.get(
       API_ENDPOINTS.CUSTOMER.BOOKING_BY_REFERENCE(reference),
@@ -368,6 +375,7 @@ class CustomerService {
       durationLabel: string;
       durationMinutes: number;
       amount: number;
+      stripePaymentIntentId: string;
     },
   ): Promise<CustomerBookingDetails> {
     const response = await axiosInstance.patch(
@@ -376,6 +384,7 @@ class CustomerService {
         durationLabel: payload.durationLabel,
         durationMinutes: payload.durationMinutes,
         amount: payload.amount,
+        stripePaymentIntentId: payload.stripePaymentIntentId,
       },
     );
     return response.data?.data as CustomerBookingDetails;

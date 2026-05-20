@@ -17,7 +17,11 @@ export declare class TicketService {
     }): Promise<{
         id: string;
     }>;
+    /** Flat payload for admin print / reprint (same pattern as payment receipt). */
+    getPrintPayload(t: TicketPublic): Record<string, unknown>;
     getById(id: string): Promise<TicketPublic>;
+    getByTicketNumber(ticketNumber: string): Promise<TicketPublic>;
+    disputeTicket(ticketNumber: string, disputeMessage: string): Promise<TicketPublic>;
     updateTicket(id: string, body: {
         license_plate?: string;
         amount?: number;
@@ -30,6 +34,7 @@ export declare class TicketService {
     markPaid(id: string, body?: {
         payment_method?: string;
         transaction_ref?: string;
+        customer_email?: string;
     }): Promise<{
         payment_id: string;
     }>;

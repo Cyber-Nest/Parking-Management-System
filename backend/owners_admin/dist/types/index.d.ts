@@ -110,6 +110,51 @@ export interface PaymentPublic {
     paid_at: Date | null;
     created_at: Date;
 }
+export interface ParkingZoneSubZone {
+    id: string;
+    parking_name: string;
+    hourly_rate: number;
+    available_spots: number;
+    total_spots: number;
+    spot_id: string;
+}
+export interface ParkingZonePublic {
+    id: string;
+    parking_name: string;
+    address: string;
+    image_url: string;
+    hourly_rate: number;
+    available_spots: number;
+    total_spots: number;
+    spot_id: string;
+    sub_zones?: ParkingZoneSubZone[];
+}
+export interface ParkingZoneRow extends ParkingZonePublic {
+}
+export interface CustomerBookingPayload {
+    zoneId: string;
+    email: string;
+    vehicleModel: string;
+    plateNumber: string;
+    carColor: string;
+    durationLabel: string;
+    durationMinutes: number;
+    price: number;
+    stripePaymentIntentId: string;
+}
+export interface CustomerBookingResponse {
+    bookingId: string;
+    paymentId: string;
+    receiptNumber: string;
+    amount: number;
+    total: number;
+    bookingReference?: string;
+    parkingPlanId?: string;
+    transactionId?: string;
+    transactionReference?: string;
+    invoiceId?: string;
+    invoiceNumber?: string;
+}
 export interface CreatePaymentBody {
     session_id?: string;
     ticket_id?: string;
@@ -156,12 +201,16 @@ export interface PaginatedResponse<T> {
 export interface AuthenticatedRequest extends Request {
     user: JwtPayload;
 }
-export type EmailType = 'payment_receipt' | 'penalty_notice' | 'dispute_response' | 'password_reset' | 'session_expiry_warning' | 'session_started' | 'officer_created';
+export type EmailType = 'payment_receipt' | 'penalty_notice' | 'dispute_response' | 'password_reset' | 'session_expiry_warning' | 'session_started' | 'officer_created' | 'extension_receipt' | 'penalty_payment';
 export interface SendEmailOptions {
     to: string;
     subject: string;
     html: string;
     emailType: EmailType;
     relatedId?: string;
+    attachments?: Array<{
+        filename: string;
+        path: string;
+    }>;
 }
 //# sourceMappingURL=index.d.ts.map

@@ -5,7 +5,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.notFoundHandler = exports.errorHandler = void 0;
 const errorHandler = (err, _req, res, _next) => {
     console.error('[GlobalErrorHandler]', err.stack ?? err.message);
-    res.status(500).json({ success: false, message: 'Internal server error' });
+    const message = process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message;
+    res.status(500).json({ success: false, message });
 };
 exports.errorHandler = errorHandler;
 // src/middleware/errorHandler.middleware.ts

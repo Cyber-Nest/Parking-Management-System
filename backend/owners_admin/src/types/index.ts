@@ -231,9 +231,13 @@ export interface AuthenticatedRequest extends Request {
 export type EmailType =
   | 'payment_receipt' | 'penalty_notice' | 'dispute_response'
   | 'password_reset' | 'session_expiry_warning' | 'session_started'
-  | 'officer_created';
+  | 'officer_created' | 'extension_receipt' | 'penalty_payment';
 
 export interface SendEmailOptions {
-  to: string; subject: string; html: string;
-  emailType: EmailType; relatedId?: string;
+  to: string;
+  subject: string;
+  html: string;
+  emailType: EmailType;
+  relatedId?: string;
+  attachments?: Array<{ filename: string; path: string }>;
 }

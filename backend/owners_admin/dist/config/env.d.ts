@@ -22,6 +22,10 @@ export declare const env: {
         readonly pass: string;
         readonly from: string;
     };
+    readonly stripe: {
+        readonly secretKey: string;
+        readonly publishableKey: string;
+    };
     readonly frontendUrl: string;
     readonly bcryptSaltRounds: number;
 };

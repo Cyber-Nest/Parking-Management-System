@@ -1,0 +1,18 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const customer_controller_1 = require("../controllers/customer.controller");
+const router = (0, express_1.Router)();
+router.get('/parking-zones/:id', customer_controller_1.getParkingZoneById);
+router.get('/config', customer_controller_1.getStripeConfig);
+router.post('/payment-intents', customer_controller_1.createPaymentIntent);
+router.post('/bookings', customer_controller_1.createBooking);
+router.get('/bookings/:id', customer_controller_1.getCustomerBooking);
+router.get('/bookings/reference/:reference', customer_controller_1.getCustomerBookingByReference);
+router.patch('/bookings/:id/extend', customer_controller_1.extendCustomerBooking);
+router.get('/penalties/:id', customer_controller_1.getPenaltyByTicketNumber);
+router.patch('/penalties/:id/pay', customer_controller_1.payPenaltyTicket);
+router.post('/penalties/:id/dispute', customer_controller_1.disputePenaltyTicket);
+router.get('/invoices/:id/download', customer_controller_1.downloadCustomerInvoice);
+exports.default = router;
+//# sourceMappingURL=customer.routes.js.map

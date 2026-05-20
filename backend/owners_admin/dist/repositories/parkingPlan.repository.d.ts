@@ -12,6 +12,9 @@ export interface ParkingPlanRow {
 export declare class ParkingPlanRepository {
     list(): Promise<ParkingPlanRow[]>;
     findById(id: string): Promise<ParkingPlanRow | null>;
+    findByPriceAndDuration(price: number, duration: number): Promise<ParkingPlanRow | null>;
+    /** Match customer booking duration to an active plan (exact duration, then closest price). */
+    findForBooking(durationMinutes: number, price?: number): Promise<ParkingPlanRow | null>;
     create(params: {
         name: string;
         price: number;

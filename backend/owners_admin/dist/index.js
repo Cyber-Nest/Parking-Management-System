@@ -21,12 +21,16 @@ const tax_routes_1 = __importDefault(require("./routes/tax.routes"));
 const pricing_routes_1 = __importDefault(require("./routes/pricing.routes"));
 const user_routes_1 = __importDefault(require("./routes/user.routes"));
 const role_routes_1 = __importDefault(require("./routes/role.routes"));
+const customer_routes_1 = __importDefault(require("./routes/customer.routes"));
+const parkingZone_routes_1 = __importDefault(require("./routes/parkingZone.routes"));
 const errorHandler_middleware_1 = require("./middleware/errorHandler.middleware");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const corsAllowList = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
+    'http://localhost:3001',
+    'http://127.0.0.1:3001',
     'http://localhost:5173',
     env_1.env.frontendUrl,
     ...(process.env.CORS_ORIGINS ?? '')
@@ -52,6 +56,7 @@ app.use('/api/admin/auth', adminAuth_routes_1.default);
 app.use('/api/admin/tickets', ticket_routes_1.default);
 app.use('/api/admin/payments', payment_routes_1.default);
 app.use('/api/admin/parking-plans', parkingPlan_routes_1.default);
+app.use('/api/admin/parking-zones', parkingZone_routes_1.default);
 app.use('/api/admin/officers', officer_routes_1.default);
 app.use('/api/admin/sessions', session_routes_1.default);
 app.use('/api/admin/settings', settings_routes_1.default);
@@ -61,6 +66,7 @@ app.use('/api/admin/taxes', tax_routes_1.default);
 app.use('/api/admin/pricings', pricing_routes_1.default);
 app.use('/api/admin/users', user_routes_1.default);
 app.use('/api/admin/roles', role_routes_1.default);
+app.use('/api/customer', customer_routes_1.default);
 app.use(errorHandler_middleware_1.notFoundHandler);
 app.use(errorHandler_middleware_1.errorHandler);
 const startServer = async () => {

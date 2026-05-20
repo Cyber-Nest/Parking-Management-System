@@ -6,7 +6,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.env = void 0;
 // src/config/env.ts
 const dotenv_1 = __importDefault(require("dotenv"));
-dotenv_1.default.config();
+const path_1 = __importDefault(require("path"));
+dotenv_1.default.config({ path: path_1.default.resolve(__dirname, '../../.env') });
 const required = (key) => {
     const value = process.env[key];
     if (!value)
@@ -38,7 +39,14 @@ exports.env = {
         pass: optional('SMTP_PASS', ''),
         from: optional('EMAIL_FROM', 'ParkSmart <no-reply@parksmart.com>'),
     },
+    stripe: {
+        secretKey: optional('STRIPE_SECRET_KEY', ''),
+        publishableKey: optional('STRIPE_PUBLISHABLE_KEY', ''),
+    },
     frontendUrl: optional('FRONTEND_URL', 'http://localhost:3000'),
-    bcryptSaltRounds: parseInt(optional('BCRYPT_SALT_ROUNDS', '12'), 10),
+    bcryptSaltRounds: (() => {
+        const n = parseInt(optional('BCRYPT_SALT_ROUNDS', '12'), 10);
+        return Number.isFinite(n) && n >= 4 ? Math.min(15, n) : 12;
+    })(),
 };
 //# sourceMappingURL=env.js.map

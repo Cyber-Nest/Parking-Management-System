@@ -146,9 +146,9 @@ export const getCustomerBookingByReference = async (req: Request, res: Response)
 export const extendCustomerBooking = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
-    const { durationLabel, durationMinutes, amount } = req.body;
+    const { durationLabel, durationMinutes, amount, stripePaymentIntentId } = req.body;
 
-    if (!durationLabel || durationMinutes === undefined || amount === undefined) {
+    if (!durationLabel || durationMinutes === undefined || amount === undefined || !stripePaymentIntentId) {
       res.status(400).json({ success: false, message: 'Missing required fields for booking extension' });
       return;
     }
@@ -157,6 +157,7 @@ export const extendCustomerBooking = async (req: Request, res: Response): Promis
       durationLabel,
       durationMinutes: Number(durationMinutes),
       amount: Number(amount),
+      stripePaymentIntentId,
     });
 
     res.status(200).json({ success: true, message: 'Booking extended successfully', data: booking });
@@ -180,10 +181,13 @@ export const getPenaltyByTicketNumber = async (req: Request, res: Response): Pro
 export const payPenaltyTicket = async (req: Request, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
+    const { email } = req.body; // Get email from request body
+    
     const ticket = await ticketService.getByTicketNumber(id);
     const data = await ticketService.markPaid(ticket.id, {
       payment_method: 'stripe',
       transaction_ref: `CUST-${Date.now()}`,
+      customer_email: email, // Pass customer email for email notification
     });
     res.status(200).json({ success: true, message: 'Penalty paid successfully', data });
   } catch (err) {

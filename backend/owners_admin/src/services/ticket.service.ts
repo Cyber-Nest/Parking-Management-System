@@ -2,6 +2,8 @@ import { CreateTicketBody, PaginatedResponse, TicketPublic, TicketStatus } from 
 import { TicketRepository } from '../repositories/ticket.repository';
 import { PaymentRepository } from '../repositories/payment.repository';
 import { NotFoundError, ValidationError } from './commonErrors';
+import { sendEmail, penaltyPaymentTemplate } from '../utils/email';
+import { env } from '../config/env';
 
 const ticketRepo = new TicketRepository();
 const paymentRepo = new PaymentRepository();
@@ -191,13 +193,14 @@ export class TicketService {
     await ticketRepo.setStatus(id, 'cancelled');
   }
 
-  async markPaid(id: string, body?: { payment_method?: string; transaction_ref?: string }): Promise<{ payment_id: string }> {
+  async markPaid(id: string, body?: { payment_method?: string; transaction_ref?: string; customer_email?: string }): Promise<{ payment_id: string }> {
     const t = await ticketRepo.findById(id);
     if (!t) throw new NotFoundError('Ticket not found');
     if (t.status !== 'unpaid' && t.status !== 'disputed') {
       throw new ValidationError('Only unpaid or disputed tickets can be marked paid');
     }
     const method = (body?.payment_method as any) || 'visa';
+    const paidAtStr = new Date().toISOString().slice(0, 19).replace('T', ' ');
     const paymentId = await paymentRepo.create({
       ticketId: id,
       licensePlate: t.license_plate,
@@ -206,9 +209,37 @@ export class TicketService {
       paymentType: 'penalty',
       status: 'success',
       transactionRef: body?.transaction_ref ?? `ADMIN-${Date.now()}`,
-      paidAt: new Date().toISOString().slice(0, 19).replace('T', ' '),
+      paidAt: paidAtStr,
     });
     await ticketRepo.setStatus(id, 'paid', { paymentId });
+
+    // Send penalty payment confirmation email if customer email is available
+    if (body?.customer_email) {
+      try {
+        const emailHtml = penaltyPaymentTemplate({
+          customerEmail: body.customer_email,
+          licensePlate: t.license_plate,
+          ticketNumber: t.ticket_number,
+          amount: Number(t.amount),
+          paymentMethod: method.toUpperCase(),
+          paidAt: new Date(paidAtStr).toLocaleString(),
+          reason: t.reason,
+        });
+
+        await sendEmail({
+          to: body.customer_email,
+          subject: `ParkSmart Penalty Payment Confirmed - Ticket #${t.ticket_number}`,
+          html: emailHtml,
+          emailType: 'penalty_payment',
+          relatedId: id,
+        });
+
+        console.log(`[TicketService] Penalty payment confirmation sent to ${body.customer_email}`);
+      } catch (emailError) {
+        console.error('[TicketService] Failed to send penalty payment email:', emailError);
+      }
+    }
+
     return { payment_id: paymentId };
   }
 }
