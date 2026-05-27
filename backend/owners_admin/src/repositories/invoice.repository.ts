@@ -155,6 +155,14 @@ export class InvoiceRepository {
     return rows[0] ?? null;
   }
 
+  async findByPenaltyId(penaltyId: string) {
+    const rows = await queryRows<InvoiceRow>(
+      'SELECT * FROM invoices WHERE penalty_id = ? ORDER BY invoice_date DESC LIMIT 1',
+      [penaltyId],
+    );
+    return rows[0] ?? null;
+  }
+
   async findByStatus(status: string, limit = 50, offset = 0) {
     const countRows = await queryRows<{ total: number }>(
       'SELECT COUNT(*) AS total FROM invoices WHERE status = ?',

@@ -63,6 +63,12 @@ class InvoiceService {
     async getInvoice(id) {
         return await invoice_repository_1.invoiceRepository.findInvoiceById(id);
     }
+    async getInvoiceByTransactionId(transactionId) {
+        return await invoice_repository_1.invoiceRepository.findByTransactionId(transactionId);
+    }
+    async getInvoiceByPenaltyId(penaltyId) {
+        return await invoice_repository_1.invoiceRepository.findByPenaltyId(penaltyId);
+    }
     async getInvoiceByNumber(invoiceNumber) {
         return await invoice_repository_1.invoiceRepository.findByNumber(invoiceNumber);
     }

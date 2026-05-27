@@ -34,6 +34,7 @@ export declare class InvoiceRepository {
     }>;
     findByBookingId(bookingId: string): Promise<InvoiceRow>;
     findByTransactionId(transactionId: string): Promise<InvoiceRow>;
+    findByPenaltyId(penaltyId: string): Promise<InvoiceRow>;
     findByStatus(status: string, limit?: number, offset?: number): Promise<{
         count: number;
         rows: unknown[];

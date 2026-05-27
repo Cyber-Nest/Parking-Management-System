@@ -17,6 +17,7 @@ import { useParams, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 
 import { customerService, PenaltyDetails } from "@/services/customer.service";
+import { uploadFileToCloudinary } from "@/lib/upload-media";
 
 export default function PenaltyDisputePage() {
   const params = useParams();
@@ -34,6 +35,7 @@ export default function PenaltyDisputePage() {
     fullName: "",
     email: "",
     phone: "",
+    address: "",
     explanation: "",
     proofImage: null as string | null,
   });
@@ -63,28 +65,27 @@ export default function PenaltyDisputePage() {
     }
   };
 
-  // handle image upload
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    const preview = URL.createObjectURL(file);
-    setProofPreview(preview);
-
-    setFormData((prev) => ({
-      ...prev,
-      proofImage: preview,
-    }));
+    try {
+      const url = await uploadFileToCloudinary(
+        file,
+        `parksmart/disputes/${penalty?.penaltyId ?? "unknown"}`,
+        "Dispute proof",
+      );
+      setProofPreview(url);
+      setFormData((prev) => ({ ...prev, proofImage: url }));
+      toast.success("Proof image uploaded");
+    } catch {
+      toast.error("Failed to upload proof image");
+    }
   };
 
   // handle remove image
   const handleRemoveImage = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-
-    if (proofPreview) {
-      URL.revokeObjectURL(proofPreview);
-    }
 
     setProofPreview(null);
     setFormData((prev) => ({
@@ -104,6 +105,7 @@ export default function PenaltyDisputePage() {
         !formData.fullName ||
         !formData.email ||
         !formData.phone ||
+        !formData.address ||
         !formData.explanation
       ) {
         toast.error("Please complete all required fields", {
@@ -192,6 +194,9 @@ export default function PenaltyDisputePage() {
             <p className="text-xs text-[#9CA3AF] leading-relaxed mt-3 px-2">
               Your claim request is safe with us. Our administrative team will
               review the case details and contact you shortly.
+            </p>
+            <p className="text-xs text-[#9CA3AF] leading-relaxed mt-3 px-2">
+              You will receive response on your appeal request within 2 weeks.
             </p>
 
             <div className="mt-6 rounded-2xl border border-white/5 bg-black/40 p-4 text-left">
@@ -358,6 +363,19 @@ export default function PenaltyDisputePage() {
               </div>
 
               <div className="space-y-4">
+                {/* Ticket Number */}
+                <div className="space-y-1.5">
+                  <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold">
+                    Ticket Number
+                  </label>
+                  <input
+                    type="text"
+                    value={penalty.penaltyId}
+                    disabled
+                    className="w-full bg-[#0F0F0F] border border-white/10 rounded-xl py-3.5 px-4 text-sm text-[#9CA3AF] cursor-not-allowed"
+                  />
+                </div>
+
                 {/* Full Name */}
                 <div className="space-y-1.5">
                   <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold">
@@ -431,6 +449,25 @@ export default function PenaltyDisputePage() {
                       className="w-full bg-[#111111] border border-white/5 rounded-xl py-3.5 pl-11 pr-4 text-sm focus:border-[#C6F432]/40 focus:outline-none transition-all placeholder:text-[#374151]"
                     />
                   </div>
+                </div>
+
+                {/* Address */}
+                <div className="space-y-1.5">
+                  <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold">
+                    Parking / Incident Address
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder="Enter the parking or violation location address"
+                    value={formData.address}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        address: e.target.value,
+                      }))
+                    }
+                    className="w-full rounded-xl bg-[#111111] border border-white/5 p-4 text-sm outline-none resize-none focus:border-[#C6F432]/40 focus:outline-none transition-all placeholder:text-[#374151] leading-relaxed"
+                  />
                 </div>
 
                 {/* Explanation */}

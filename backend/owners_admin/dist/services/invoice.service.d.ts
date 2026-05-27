@@ -28,6 +28,8 @@ export declare class InvoiceService {
     constructor();
     createInvoice(dto: CreateInvoiceDTO): Promise<import("../repositories/invoice.repository").InvoiceRow>;
     getInvoice(id: string): Promise<import("../repositories/invoice.repository").InvoiceRow>;
+    getInvoiceByTransactionId(transactionId: string): Promise<import("../repositories/invoice.repository").InvoiceRow>;
+    getInvoiceByPenaltyId(penaltyId: string): Promise<import("../repositories/invoice.repository").InvoiceRow>;
     getInvoiceByNumber(invoiceNumber: string): Promise<import("../repositories/invoice.repository").InvoiceRow>;
     getInvoicesByEmail(email: string, page?: number, limit?: number): Promise<{
         count: number;

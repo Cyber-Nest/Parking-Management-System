@@ -1,5 +1,8 @@
 import { CreateTicketBody, PaginatedResponse, TicketPublic, TicketStatus } from '../types';
 export declare class TicketService {
+    private getOrCreatePenaltyInvoice;
+    private sendPenaltyPaymentEmail;
+    ensurePenaltyReceipt(ticketId: string, customerEmail?: string): Promise<import("../repositories/invoice.repository").InvoiceRow | null>;
     list(query: Record<string, string | undefined>): Promise<PaginatedResponse<TicketPublic>>;
     summary(): Promise<{
         totalToday: number;
@@ -37,6 +40,8 @@ export declare class TicketService {
         customer_email?: string;
     }): Promise<{
         payment_id: string;
+        invoice_id?: string;
+        invoice_number?: string;
     }>;
 }
 //# sourceMappingURL=ticket.service.d.ts.map

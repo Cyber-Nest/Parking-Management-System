@@ -43,6 +43,8 @@ export interface PenaltyPaymentData {
     paymentMethod: string;
     paidAt: string;
     reason: string;
+    receiptUrl?: string;
+    invoiceNumber?: string;
 }
 export declare const penaltyPaymentTemplate: (data: PenaltyPaymentData) => string;
 //# sourceMappingURL=email.d.ts.map

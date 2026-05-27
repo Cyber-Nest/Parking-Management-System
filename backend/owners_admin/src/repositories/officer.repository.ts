@@ -106,6 +106,39 @@ export class OfficerRepository {
     return rows[0] ?? null;
   }
 
+  async findByEmail(email: string): Promise<{ id: string; full_name: string; email: string; password_hash: string; status?: string } | null> {
+    const rows = await queryRows<any>(
+      `SELECT id, full_name, email, password_hash, status FROM officers WHERE email = ? LIMIT 1`,
+      [email.toLowerCase().trim()]
+    );
+
+    console.log('findByEmail result:', rows[0]); // Debug log
+    return rows[0] ?? null;
+  }
+
+  async saveResetToken(id: string, tokenHash: string, expiresAt: Date): Promise<void> {
+    await execute(
+      `UPDATE officers SET reset_token = ?, reset_token_expires_at = ? WHERE id = ?`,
+      [tokenHash, expiresAt, id]
+    );
+  }
+
+  async findByResetToken(tokenHash: string, officerId: string): Promise<{ id: string } | null> {
+    const rows = await queryRows<any>(
+      `SELECT id FROM officers WHERE id = ? AND reset_token = ? AND reset_token_expires_at > NOW() LIMIT 1`,
+      [officerId, tokenHash]
+    );
+    return rows[0] ?? null;
+  }
+
+  async updatePassword(id: string, passwordHash: string): Promise<void> {
+    await execute(`UPDATE officers SET password_hash = ?, reset_token = NULL, reset_token_expires_at = NULL WHERE id = ?`, [passwordHash, id]);
+  }
+
+  async updateLastLogin(id: string): Promise<void> {
+    await execute(`UPDATE officers SET last_login_at = NOW() WHERE id = ?`, [id]);
+  }
+
   async summary(): Promise<{
     totalOfficers: number;
     activeOfficers: number;

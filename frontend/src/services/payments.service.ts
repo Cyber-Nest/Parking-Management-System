@@ -10,7 +10,18 @@ export type PaymentMethod =
   | "apple_pay"
   | "visa"
   | "mastercard"
-  | "amex";
+  | "amex"
+  | "cash";
+
+export const PAYMENT_METHOD_OPTIONS: { value: PaymentMethod; label: string }[] = [
+  { value: "cash", label: "Cash" },
+  { value: "credit_card", label: "Credit Card" },
+  { value: "debit_card", label: "Debit Card" },
+  { value: "visa", label: "Visa" },
+  { value: "mastercard", label: "Mastercard" },
+  { value: "amex", label: "Amex" },
+  { value: "apple_pay", label: "Apple Pay" },
+];
 
 export interface PaymentListParams {
   page?: number;

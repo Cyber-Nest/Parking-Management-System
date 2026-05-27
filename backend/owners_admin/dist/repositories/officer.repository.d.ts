@@ -26,6 +26,19 @@ export declare class OfficerRepository {
         total: number;
     }>;
     findById(id: string): Promise<OfficerRow | null>;
+    findByEmail(email: string): Promise<{
+        id: string;
+        full_name: string;
+        email: string;
+        password_hash: string;
+        status?: string;
+    } | null>;
+    saveResetToken(id: string, tokenHash: string, expiresAt: Date): Promise<void>;
+    findByResetToken(tokenHash: string, officerId: string): Promise<{
+        id: string;
+    } | null>;
+    updatePassword(id: string, passwordHash: string): Promise<void>;
+    updateLastLogin(id: string): Promise<void>;
     summary(): Promise<{
         totalOfficers: number;
         activeOfficers: number;

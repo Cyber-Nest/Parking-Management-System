@@ -77,6 +77,10 @@ class InvoiceRepository {
         const rows = await (0, database_1.queryRows)('SELECT * FROM invoices WHERE transaction_id = ? LIMIT 1', [transactionId]);
         return rows[0] ?? null;
     }
+    async findByPenaltyId(penaltyId) {
+        const rows = await (0, database_1.queryRows)('SELECT * FROM invoices WHERE penalty_id = ? ORDER BY invoice_date DESC LIMIT 1', [penaltyId]);
+        return rows[0] ?? null;
+    }
     async findByStatus(status, limit = 50, offset = 0) {
         const countRows = await (0, database_1.queryRows)('SELECT COUNT(*) AS total FROM invoices WHERE status = ?', [status]);
         const rows = await (0, database_1.queryRows)(`SELECT * FROM invoices WHERE status = ?

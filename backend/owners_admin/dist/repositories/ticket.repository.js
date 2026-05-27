@@ -7,6 +7,13 @@ exports.TicketRepository = void 0;
 const crypto_1 = __importDefault(require("crypto"));
 const database_1 = require("../config/database");
 class TicketRepository {
+    async nextTicketNumber() {
+        const rows = await (0, database_1.queryRows)(`SELECT MAX(CAST(SUBSTRING(ticket_number, 5) AS UNSIGNED)) AS max_number
+       FROM penalty_tickets
+       WHERE ticket_number REGEXP '^TKT-[0-9]+$'`);
+        const next = Number(rows[0]?.max_number ?? 0) + 1;
+        return `TKT-${String(next).padStart(3, '0')}`;
+    }
     buildWhere(filters) {
         const conditions = [];
         const values = [];
@@ -78,7 +85,7 @@ class TicketRepository {
     }
     async create(params) {
         const id = crypto_1.default.randomUUID();
-        const ticketNumber = `TKT-${Date.now()}`;
+        const ticketNumber = await this.nextTicketNumber();
         await (0, database_1.execute)(`INSERT INTO penalty_tickets
       (id, ticket_number, officer_id, officer_name, session_id, license_plate, amount, reason, status, date_issued, due_date, remarks, note)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?)`, [

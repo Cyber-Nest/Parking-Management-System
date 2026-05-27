@@ -458,6 +458,8 @@ export interface PenaltyPaymentData {
   paymentMethod: string;
   paidAt: string;
   reason: string;
+  receiptUrl?: string;
+  invoiceNumber?: string;
 }
 
 export const penaltyPaymentTemplate = (data: PenaltyPaymentData): string => {
@@ -509,6 +511,14 @@ export const penaltyPaymentTemplate = (data: PenaltyPaymentData): string => {
                     <p style="margin:6px 0 0;color:#1a1a2e;font-size:14px;font-weight:bold">${data.licensePlate}</p>
                   </td>
                 </tr>
+                ${data.invoiceNumber ? `
+                <tr>
+                  <td colspan="2" style="padding:12px 0;border-bottom:1px solid #e5e5e5">
+                    <p style="margin:0;color:#666;font-size:12px;text-transform:uppercase;letter-spacing:0.5px">Receipt #</p>
+                    <p style="margin:6px 0 0;color:#1a1a2e;font-size:14px;font-weight:bold">${data.invoiceNumber}</p>
+                  </td>
+                </tr>
+                ` : ''}
                 <tr>
                   <td style="padding:12px 0;border-bottom:1px solid #e5e5e5">
                     <p style="margin:0;color:#666;font-size:12px;text-transform:uppercase;letter-spacing:0.5px">Amount Paid</p>
@@ -525,6 +535,15 @@ export const penaltyPaymentTemplate = (data: PenaltyPaymentData): string => {
                     <p style="margin:6px 0 0;color:#1a1a2e;font-size:14px">${data.reason}</p>
                   </td>
                 </tr>
+                ${data.receiptUrl ? `
+                <tr>
+                  <td colspan="2" style="padding:20px 0 0 0;text-align:center">
+                    <a href="${data.receiptUrl}" style="display:inline-block;padding:14px 24px;background:#006B5E;color:#ffffff;text-decoration:none;border-radius:8px;font-size:14px;font-weight:bold">
+                      Download Receipt
+                    </a>
+                  </td>
+                </tr>
+                ` : ''}
                 <tr>
                   <td colspan="2" style="padding:12px 0">
                     <p style="margin:0;color:#666;font-size:12px;text-transform:uppercase;letter-spacing:0.5px">Date Paid</p>

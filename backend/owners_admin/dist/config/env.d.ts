@@ -27,6 +27,13 @@ export declare const env: {
         readonly publishableKey: string;
     };
     readonly frontendUrl: string;
+    readonly cloudinary: {
+        readonly url: string;
+        readonly cloudName: string;
+        readonly apiKey: string;
+        readonly apiSecret: string;
+        readonly defaultFolder: string;
+    };
     readonly bcryptSaltRounds: number;
 };
 //# sourceMappingURL=env.d.ts.map

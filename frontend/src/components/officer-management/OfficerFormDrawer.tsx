@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import { Officer } from "@/services/officer.service";
 import { useState } from "react";
+import toast from "react-hot-toast";
+import { uploadFileToCloudinary } from "@/lib/upload-media";
 
 export interface OfficerFormData {
   countryCode: string;
@@ -109,17 +111,20 @@ export const OfficerFormDrawer = ({
     formData.profilePhoto || null,
   );
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      // Basic validation hint
-      if (file.size > 2 * 1024 * 1024) {
-        alert("File size exceeds 2MB");
-        return;
-      }
-      const preview = URL.createObjectURL(file);
-      setPhotoPreview(preview);
-      onFormChange("profilePhoto", preview);
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File size exceeds 5MB");
+      return;
+    }
+    try {
+      const url = await uploadFileToCloudinary(file, "parksmart/officers", "Officer profile");
+      setPhotoPreview(url);
+      onFormChange("profilePhoto", url);
+      toast.success("Profile photo uploaded");
+    } catch {
+      toast.error("Failed to upload profile photo");
     }
   };
 

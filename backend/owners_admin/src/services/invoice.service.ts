@@ -93,6 +93,14 @@ export class InvoiceService {
     return await invoiceRepository.findInvoiceById(id);
   }
 
+  async getInvoiceByTransactionId(transactionId: string) {
+    return await invoiceRepository.findByTransactionId(transactionId);
+  }
+
+  async getInvoiceByPenaltyId(penaltyId: string) {
+    return await invoiceRepository.findByPenaltyId(penaltyId);
+  }
+
   async getInvoiceByNumber(invoiceNumber: string) {
     return await invoiceRepository.findByNumber(invoiceNumber);
   }

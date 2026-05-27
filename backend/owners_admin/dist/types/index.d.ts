@@ -3,7 +3,7 @@ export type RoleName = 'owner' | 'inspector' | 'user';
 export type UserType = 'admin' | 'officer' | 'user';
 export type TicketStatus = 'unpaid' | 'paid' | 'cancelled' | 'disputed' | 'resolved';
 export type PaymentStatus = 'pending' | 'success' | 'failed' | 'refunded';
-export type PaymentMethod = 'credit_card' | 'debit_card' | 'apple_pay' | 'visa' | 'mastercard' | 'amex';
+export type PaymentMethod = 'credit_card' | 'debit_card' | 'apple_pay' | 'visa' | 'mastercard' | 'amex' | 'cash';
 export type PaymentType = 'parking' | 'penalty' | 'extension';
 export type SessionStatus = 'active' | 'expired' | 'extended' | 'cancelled';
 export type OfficerStatus = 'active' | 'inactive' | 'suspended';
@@ -84,6 +84,7 @@ export interface TicketPublic {
     dispute_raised: boolean;
     photos: string[];
     location_name?: string | null;
+    payment_id?: string | null;
 }
 export interface CreateTicketBody {
     license_plate: string;

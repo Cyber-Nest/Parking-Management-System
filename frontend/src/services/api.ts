@@ -68,10 +68,48 @@ export const API_ENDPOINTS = {
     BOOKING_BY_REFERENCE: (reference: string) => `/customer/bookings/reference/${reference}`,
     BOOKING_EXTEND: (id: string) => `/customer/bookings/${id}/extend`,
     PENALTY: (id: string) => `/customer/penalties/${id}`,
+    PENALTY_RECEIPT: (id: string) => `/customer/penalties/${id}/receipt`,
     PENALTY_PAY: (id: string) => `/customer/penalties/${id}/pay`,
     PENALTY_DISPUTE: (id: string) => `/customer/penalties/${id}/dispute`,
+    INVOICE: (id: string) => `/customer/invoices/${id}`,
     INVOICE_DOWNLOAD: (id: string) => `/customer/invoices/${id}/download`,
     CONFIG: "/customer/config",
+  },
+
+  MEDIA: {
+    UPLOAD: "/media/upload",
+  },
+
+  OFFICER: {
+    DASHBOARD: "/officer/dashboard",
+    SCAN: "/officer/scan",
+    TICKETS: "/officer/tickets",
+    TICKET_BY_ID: (id: string) => `/officer/tickets/${id}`,
+    TICKET_PRINT: (id: string) => `/officer/tickets/${id}/print`,
+    TICKET_PAY: (id: string) => `/officer/tickets/${id}/pay`,
+    TICKET_EVIDENCE: (id: string) => `/officer/tickets/${id}/evidence`,
+    TICKET_REVIEW: (id: string) => `/officer/tickets/${id}/review`,
+    SESSIONS: "/officer/sessions",
+    EVIDENCE: "/officer/evidence",
+    EVIDENCE_BY_ID: (id: string) => `/officer/evidence/${id}`,
+    PHOTOS: "/officer/photos",
+    MANUAL_ENTRY: "/officer/manual-entry",
+    VEHICLE_HISTORY: (plate: string) => `/officer/vehicles/${encodeURIComponent(plate)}/history`,
+    SYNC: "/officer/sync",
+    PROFILE: "/officer/me/profile",
+    SETTINGS: "/officer/me/settings",
+    SHIFT: "/officer/me/shift",
+    SHIFT_START: "/officer/me/shift/start",
+    SHIFT_END: "/officer/me/shift/end",
+    OFFLINE_RECORDS: "/officer/offline-records",
+    OFFLINE_SYNC: "/officer/offline-records/sync",
+  },
+
+  OFFICER_AUTH: {
+    LOGIN: "/officer/auth/login",
+    FORGOT_PASSWORD: "/officer/auth/forgot-password",
+    RESET_PASSWORD: "/officer/auth/reset-password",
+    REFRESH: "/officer/auth/refresh",
   },
 
   ROLES: {

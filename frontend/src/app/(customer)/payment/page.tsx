@@ -323,19 +323,6 @@ function CheckoutForm({
                   <div className="w-full h-full bg-[#C6F432] rounded-full" />
                 </div>
               </div>
-
-              <div className="bg-[#1A1A1A] opacity-40 border border-white/5 p-4 rounded-2xl flex items-center justify-between grayscale cursor-not-allowed">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center">
-                    <img
-                      src="https://img.icons8.com/color/48/google-logo.png"
-                      className="w-5 h-5"
-                      alt="GPay"
-                    />
-                  </div>
-                  <p className="text-sm font-bold">Google Pay</p>
-                </div>
-              </div>
             </div>
 
             <div className="bg-[#1A1A1A] rounded-[28px] p-5 border border-white/5 space-y-4 shadow-xl">

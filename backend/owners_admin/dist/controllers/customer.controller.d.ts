@@ -17,4 +17,6 @@ export declare const getPenaltyByTicketNumber: (req: Request, res: Response) => 
 export declare const payPenaltyTicket: (req: Request, res: Response) => Promise<void>;
 export declare const disputePenaltyTicket: (req: Request, res: Response) => Promise<void>;
 export declare const downloadCustomerInvoice: (req: Request, res: Response) => Promise<void>;
+export declare const downloadPenaltyReceipt: (req: Request, res: Response) => Promise<void>;
+export declare const getCustomerInvoice: (req: Request, res: Response) => Promise<void>;
 //# sourceMappingURL=customer.controller.d.ts.map

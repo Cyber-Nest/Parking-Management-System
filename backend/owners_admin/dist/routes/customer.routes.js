@@ -11,8 +11,10 @@ router.get('/bookings/:id', customer_controller_1.getCustomerBooking);
 router.get('/bookings/reference/:reference', customer_controller_1.getCustomerBookingByReference);
 router.patch('/bookings/:id/extend', customer_controller_1.extendCustomerBooking);
 router.get('/penalties/:id', customer_controller_1.getPenaltyByTicketNumber);
+router.get('/penalties/:id/receipt', customer_controller_1.downloadPenaltyReceipt);
 router.patch('/penalties/:id/pay', customer_controller_1.payPenaltyTicket);
 router.post('/penalties/:id/dispute', customer_controller_1.disputePenaltyTicket);
+router.get('/invoices/:id', customer_controller_1.getCustomerInvoice);
 router.get('/invoices/:id/download', customer_controller_1.downloadCustomerInvoice);
 exports.default = router;
 //# sourceMappingURL=customer.routes.js.map

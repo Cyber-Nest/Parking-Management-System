@@ -36,6 +36,7 @@ export interface TicketRow {
     notes?: string | null;
 }
 export declare class TicketRepository {
+    private nextTicketNumber;
     private buildWhere;
     list(filters: TicketListFilters): Promise<{
         items: TicketRow[];

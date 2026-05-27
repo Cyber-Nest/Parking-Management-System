@@ -1,6 +1,17 @@
 import { parkingZoneRepository } from '../repositories/parkingZone.repository';
-import { DEFAULT_PARKING_IMAGE } from '../utils/parkingImages';
+import { DEFAULT_PARKING_IMAGE, sanitizeParkingImageUrl } from '../utils/parkingImages';
 import { NotFoundError, ValidationError } from './commonErrors';
+import { ensureCloudinaryUrl, isCloudinaryUrl } from './cloudinary.service';
+
+async function resolveZoneImageUrl(raw: unknown): Promise<string> {
+  const value = String(raw ?? '').trim();
+  if (!value) return DEFAULT_PARKING_IMAGE;
+  if (isCloudinaryUrl(value)) return value;
+  if (/^data:image\//i.test(value)) {
+    return ensureCloudinaryUrl(value, { folder: 'parksmart/zones' });
+  }
+  return sanitizeParkingImageUrl(value);
+}
 
 export class ParkingZoneService {
   async list(query: Record<string, string | undefined>) {
@@ -26,10 +37,12 @@ export class ParkingZoneService {
     const spotId = String(body.spot_id ?? body.spotId ?? `SPOT-${Date.now().toString(36).slice(2, 8).toUpperCase()}`);
     const status = body.status === 'inactive' || body.isActive === false ? 'inactive' : 'active';
 
+    const image_url = await resolveZoneImageUrl(body.image_url ?? body.imageUrl ?? DEFAULT_PARKING_IMAGE);
+
     const id = await parkingZoneRepository.create({
       parking_name: parkingName,
       address,
-      image_url: String(body.image_url ?? body.imageUrl ?? DEFAULT_PARKING_IMAGE),
+      image_url,
       hourly_rate: Number.isFinite(hourlyRate) ? hourlyRate : 4.5,
       available_spots: Number.isFinite(availableSpots) ? availableSpots : 10,
       total_spots: Number.isFinite(totalSpots) ? totalSpots : 10,
@@ -44,10 +57,15 @@ export class ParkingZoneService {
     const existing = await parkingZoneRepository.findById(id);
     if (!existing) throw new NotFoundError('Parking zone not found');
 
+    let image_url: string | undefined;
+    if (body.image_url !== undefined || body.imageUrl !== undefined) {
+      image_url = await resolveZoneImageUrl(body.image_url ?? body.imageUrl);
+    }
+
     const affected = await parkingZoneRepository.update(id, {
       parking_name: body.parking_name !== undefined ? String(body.parking_name) : body.name !== undefined ? String(body.name) : undefined,
       address: body.address !== undefined ? String(body.address) : undefined,
-      image_url: body.image_url !== undefined ? String(body.image_url) : undefined,
+      image_url,
       hourly_rate: body.hourly_rate !== undefined ? Number(body.hourly_rate) : body.hourlyRate !== undefined ? Number(body.hourlyRate) : undefined,
       available_spots: body.available_spots !== undefined ? Number(body.available_spots) : undefined,
       total_spots: body.total_spots !== undefined ? Number(body.total_spots) : undefined,
