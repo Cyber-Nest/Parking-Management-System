@@ -239,7 +239,7 @@ export const disputePenaltyTicket = async (req: Request, res: Response): Promise
     res.status(200).json({ success: true, message: 'Penalty dispute submitted', data });
   } catch (err) {
     console.error('[CustomerController] disputePenaltyTicket error:', err);
-    res.status(500).json({ success: false, message: String(err instanceof Error ? err.message : 'Failed to submit dispute') });
+    handleError(err, res, 'Failed to submit dispute');
   }
 };
 

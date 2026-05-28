@@ -18,6 +18,7 @@ import toast from "react-hot-toast";
 
 import { customerService, PenaltyDetails } from "@/services/customer.service";
 import { uploadFileToCloudinary } from "@/lib/upload-media";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 export default function PenaltyDisputePage() {
   const params = useParams();
@@ -145,7 +146,7 @@ export default function PenaltyDisputePage() {
       }, 10000);
     } catch (error) {
       console.error(error);
-      toast.error("Something went wrong");
+      toast.error(getApiErrorMessage(error, "Something went wrong"));
     } finally {
       setSubmitting(false);
     }
@@ -171,6 +172,40 @@ export default function PenaltyDisputePage() {
   }
 
   if (!penalty) return null;
+
+  const isPaidPenalty = (penalty.status as "pending" | "paid" | "disputed") === "paid";
+  if (isPaidPenalty) {
+    return (
+      <div className="min-h-screen bg-[#0D0D0D] text-white p-6 flex items-center justify-center">
+        <div className="w-full max-w-3xl rounded-[32px] border border-white/10 bg-[#121212] p-10 shadow-2xl">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <ShieldAlert size={48} className="text-[#C6F432]" />
+            <h1 className="text-3xl font-semibold">Dispute Not Allowed</h1>
+            <p className="text-sm text-[#9CA3AF] max-w-xl">
+              This ticket has already been paid and cannot be appealed through the dispute form.
+            </p>
+            <p className="text-sm text-[#9CA3AF] max-w-xl">
+              If you believe this is incorrect, please contact support or review your payment record.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 mt-6">
+              <Link
+                href={`/penalty-payment/${penalty.penaltyId}`}
+                className="rounded-full bg-[#C6F432] px-6 py-3 text-sm font-semibold text-black"
+              >
+                View payment details
+              </Link>
+              <Link
+                href="/"
+                className="rounded-full border border-white/10 px-6 py-3 text-sm font-semibold text-white hover:bg-white/5"
+              >
+                Back to home
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // success message UI
   if (submitted) {
@@ -264,6 +299,39 @@ export default function PenaltyDisputePage() {
       </label>
     </div>
   );
+
+  if (penalty?.status === "paid") {
+    return (
+      <div className="min-h-screen bg-[#0D0D0D] text-white p-6 flex items-center justify-center">
+        <div className="w-full max-w-3xl rounded-[32px] border border-white/10 bg-[#121212] p-10 shadow-2xl">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <ShieldAlert size={48} className="text-[#C6F432]" />
+            <h1 className="text-3xl font-semibold">Dispute Not Allowed</h1>
+            <p className="text-sm text-[#9CA3AF] max-w-xl">
+              This ticket has already been paid and cannot be appealed through the dispute form.
+            </p>
+            <p className="text-sm text-[#9CA3AF] max-w-xl">
+              If you believe this is incorrect, please contact support or review your payment record.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 mt-6">
+              <Link
+                href={`/penalty-payment/${penalty.penaltyId}`}
+                className="rounded-full bg-[#C6F432] px-6 py-3 text-sm font-semibold text-black"
+              >
+                View payment details
+              </Link>
+              <Link
+                href="/"
+                className="rounded-full border border-white/10 px-6 py-3 text-sm font-semibold text-white hover:bg-white/5"
+              >
+                Back to home
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen bg-[#0D0D0D] text-white overflow-y-auto scrollbar-hide">

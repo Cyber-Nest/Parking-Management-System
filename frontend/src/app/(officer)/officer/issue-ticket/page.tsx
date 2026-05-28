@@ -216,7 +216,7 @@ export default function OfficerIssueTicketPage() {
   };
 
   const qrUrl = encodeURIComponent(
-    `http://localhost:3000/pay/${printPayload?.ticketNumber ?? issuedTicket?.ticket_number ?? "TICKET"}`,
+    `http://localhost:3000/qr`,
   );
 
   return (
