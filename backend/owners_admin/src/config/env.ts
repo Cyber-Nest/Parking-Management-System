@@ -45,6 +45,15 @@ export const env = {
   },
 
   frontendUrl:      optional('FRONTEND_URL', 'http://localhost:3000'),
+
+  cloudinary: {
+    url: optional('CLOUDINARY_URL', ''),
+    cloudName: optional('CLOUDINARY_CLOUD_NAME', ''),
+    apiKey: optional('CLOUDINARY_API_KEY', ''),
+    apiSecret: optional('CLOUDINARY_API_SECRET', ''),
+    defaultFolder: optional('CLOUDINARY_FOLDER', 'parksmart'),
+  },
+
   bcryptSaltRounds: (() => {
     const n = parseInt(optional('BCRYPT_SALT_ROUNDS', '12'), 10);
     return Number.isFinite(n) && n >= 4 ? Math.min(15, n) : 12;

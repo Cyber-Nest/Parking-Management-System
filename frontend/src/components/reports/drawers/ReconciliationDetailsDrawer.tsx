@@ -126,46 +126,76 @@ export const ReconciliationDetailsDrawer = ({
     }
   }, [isOpen, itemId]);
 
-  const printDetails = () => {
-    if (!details) {
-      toast.error("Nothing to print yet");
-      return;
-    }
-    const w = window.open("", "_blank");
-    if (!w) {
-      toast.error("Pop-up blocked — allow pop-ups to print this slip");
-      return;
-    }
-    const rows: [string, string][] = [
-      ["Posting date", details.date],
-      ["Bank reference", details.bankReference],
-      ["Status", details.status],
-      ["Gross collected", `$${details.totalCollected.toLocaleString()}`],
-      ["Card payments", `$${details.cardAmount.toLocaleString()}`],
-      ["Other channels", `$${details.otherAmount.toLocaleString()}`],
-      ["Refunds", `-$${Math.abs(details.refunds).toLocaleString()}`],
-      ["Corrections / adjustments", `$${details.adjustment.toLocaleString()}`],
-      ["Deposited", `$${details.deposited.toLocaleString()}`],
-      ["Net expected", `$${details.netExpected.toLocaleString(undefined, { minimumFractionDigits: 2 })}`],
-      ["Variance", `$${details.variance.toFixed(2)}`],
-    ];
-    const bodyRows = rows
-      .map(
-        ([k, v]) =>
-          `<tr><td style="padding:8px;border:1px solid #ccc;font-weight:600;width:40%">${escapeHtml(k)}</td><td style="padding:8px;border:1px solid #ccc">${escapeHtml(String(v))}</td></tr>`,
-      )
-      .join("");
-    w.document.write(`<!DOCTYPE html><html><head><title>Reconciliation slip</title>
-      <style>body{font-family:system-ui,sans-serif;padding:24px;color:#111} h1{font-size:18px;margin:0 0 16px}</style>
-      </head><body><h1>Payment reconciliation — detail</h1>
-      <table style="border-collapse:collapse;width:100%;max-width:640px">${bodyRows}</table>
-      ${details.notes ? `<p style="margin-top:16px;font-size:12px"><strong>Notes:</strong> ${escapeHtml(details.notes)}</p>` : ""}
-      </body></html>`);
-    w.document.close();
-    w.focus();
-    w.print();
-    w.close();
-  };
+ const printDetails = () => {
+  if (!details) {
+    toast.error("Nothing to print yet");
+    return;
+  }
+  const w = window.open("", "_blank");
+  if (!w) {
+    toast.error("Pop-up blocked — allow pop-ups to print this slip");
+    return;
+  }
+  const body = `
+    <html>
+      <head>
+        <style>
+          /* Add your custom styles here */
+          body {
+            font-family: Arial, sans-serif;
+            padding: 24px;
+            color: #333;
+          }
+          h1 {
+            font-size: 18px;
+            margin: 0 0 16px;
+          }
+          table {
+            border-collapse: collapse;
+            width: 100%;
+            max-width: 640px;
+          }
+          th, td {
+            padding: 8px;
+            border: 1px solid #ccc;
+          }
+          th {
+            font-weight: 600;
+            width: 40%;
+          }
+          p {
+            margin-top: 16px;
+            font-size: 12px;
+          }
+        </style>
+      </head>
+      <body>
+        <h1>Payment reconciliation — detail</h1>
+        <table>
+          <tr>
+            <th>Posting date</th>
+            <td>${details.date}</td>
+          </tr>
+          <tr>
+            <th>Bank reference</th>
+            <td>${details.bankReference}</td>
+          </tr>
+          <tr>
+            <th>Status</th>
+            <td>${details.status}</td>
+          </tr>
+          <!-- Add more rows here -->
+        </table>
+        ${details.notes ? `<p><strong>Notes:</strong> ${details.notes}</p>` : ""}
+      </body>
+    </html>
+  `;
+  w.document.write(body);
+  w.document.close();
+  w.focus();
+  w.print();
+  w.close();
+};
 
   const downloadPeriodPdf = async () => {
     try {

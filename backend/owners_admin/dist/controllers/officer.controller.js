@@ -44,7 +44,12 @@ const listOfficers = async (req, res) => {
 exports.listOfficers = listOfficers;
 const createOfficer = async (req, res) => {
     try {
-        const data = await officerService.create(req.user.id, req.body);
+        const authReq = req;
+        if (!authReq.user?.id) {
+            res.status(401).json({ success: false, message: 'Unauthorized' });
+            return;
+        }
+        const data = await officerService.create(authReq.user.id, authReq.body ?? {});
         res.status(201).json({ success: true, message: 'Officer created', data });
     }
     catch (err) {

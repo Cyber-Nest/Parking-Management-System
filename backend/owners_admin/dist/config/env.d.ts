@@ -22,7 +22,18 @@ export declare const env: {
         readonly pass: string;
         readonly from: string;
     };
+    readonly stripe: {
+        readonly secretKey: string;
+        readonly publishableKey: string;
+    };
     readonly frontendUrl: string;
+    readonly cloudinary: {
+        readonly url: string;
+        readonly cloudName: string;
+        readonly apiKey: string;
+        readonly apiSecret: string;
+        readonly defaultFolder: string;
+    };
     readonly bcryptSaltRounds: number;
 };
 //# sourceMappingURL=env.d.ts.map

@@ -17,6 +17,7 @@ export declare class AdminRepository {
         passwordHash: string;
         fullName: string;
         roleId: string;
+        isActive?: boolean;
     }): Promise<string>;
 }
 export declare class AuthTokenRepository {

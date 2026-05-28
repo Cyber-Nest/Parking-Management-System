@@ -1,13 +1,12 @@
-import { Role } from '../models/role.model';
 export declare class RoleService {
     list(query: Record<string, string | undefined>): Promise<{
         items: {
-            id: any;
-            name: any;
-            description: any;
+            id: string;
+            name: string;
+            description: string | null;
             permissions: unknown;
-            created_at: any;
-            updated_at: any;
+            created_at: string;
+            updated_at: string;
         }[];
         total: number;
         page: number;
@@ -18,12 +17,16 @@ export declare class RoleService {
         name: string;
         description?: string;
         permissions?: string | object;
-    }): Promise<Role>;
+    }): Promise<{
+        id: `${string}-${string}-${string}-${string}-${string}`;
+    }>;
     update(id: string, body: {
         name?: string;
         description?: string;
         permissions?: string | object;
-    }): Promise<Role>;
+    }): Promise<{
+        id: string;
+    }>;
     remove(id: string): Promise<void>;
 }
 //# sourceMappingURL=role.service.d.ts.map

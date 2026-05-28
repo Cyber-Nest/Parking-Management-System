@@ -1,0 +1,19 @@
+import { Request, Response } from 'express';
+export declare const getOfficerDashboard: (req: Request, res: Response) => Promise<void>;
+export declare const scanPlate: (req: Request, res: Response) => Promise<void>;
+export declare const listOfficerTickets: (req: Request, res: Response) => Promise<void>;
+export declare const listOfficerSessions: (req: Request, res: Response) => Promise<void>;
+export declare const listOfficerEvidence: (req: Request, res: Response) => Promise<void>;
+export declare const uploadOfficerPhoto: (req: Request, res: Response) => Promise<void>;
+export declare const captureOfficerEvidence: (req: Request, res: Response) => Promise<void>;
+export declare const updateOfficerEvidence: (req: Request, res: Response) => Promise<void>;
+export declare const deleteOfficerEvidence: (req: Request, res: Response) => Promise<void>;
+export declare const createOfficerManualEntry: (req: Request, res: Response) => Promise<void>;
+export declare const getOfficerVehicleHistory: (req: Request, res: Response) => Promise<void>;
+export declare const createOfficerTicket: (req: Request, res: Response) => Promise<void>;
+export declare const payOfficerTicket: (req: Request, res: Response) => Promise<void>;
+export declare const reviewOfficerTicket: (req: Request, res: Response) => Promise<void>;
+export declare const addOfficerTicketEvidence: (req: Request, res: Response) => Promise<void>;
+export declare const createOfficerSync: (req: Request, res: Response) => Promise<void>;
+export declare const getOfficerTicketPrint: (req: Request, res: Response) => Promise<void>;
+//# sourceMappingURL=enforcement.controller.d.ts.map

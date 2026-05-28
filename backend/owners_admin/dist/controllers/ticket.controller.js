@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.addTicketNote = exports.cancelTicket = exports.markTicketPaid = exports.updateTicket = exports.getTicketById = exports.createTicket = exports.getTicketSummary = exports.listTickets = void 0;
+exports.addTicketNote = exports.cancelTicket = exports.markTicketPaid = exports.updateTicket = exports.getTicketPrint = exports.getTicketById = exports.createTicket = exports.getTicketSummary = exports.listTickets = void 0;
 const ticket_service_1 = require("../services/ticket.service");
 const commonErrors_1 = require("../services/commonErrors");
 const ticketService = new ticket_service_1.TicketService();
@@ -52,6 +52,17 @@ const getTicketById = async (req, res) => {
     }
 };
 exports.getTicketById = getTicketById;
+const getTicketPrint = async (req, res) => {
+    try {
+        const ticket = await ticketService.getById(req.params.id);
+        const data = ticketService.getPrintPayload(ticket);
+        res.status(200).json({ success: true, message: 'Ticket print data', data });
+    }
+    catch (err) {
+        handleError(err, res);
+    }
+};
+exports.getTicketPrint = getTicketPrint;
 const updateTicket = async (req, res) => {
     try {
         const data = await ticketService.updateTicket(req.params.id, req.body);

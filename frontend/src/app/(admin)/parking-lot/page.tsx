@@ -762,9 +762,9 @@ export default function MyParkingLotPage() {
       setParkingOwner(owner);
       try {
         const zoneRows = await listParkingZones();
-        setZones(zoneRows.length > 0 ? zoneRows.map(mapZoneToUi) : owner.zones ?? []);
+        setZones(zoneRows.length > 0 ? zoneRows.map(mapZoneToUi) : owner?.zones ?? []);
       } catch {
-        setZones(owner.zones ?? []);
+        setZones(owner?.zones ?? []);
       }
     } catch (error) {
       console.error(error);

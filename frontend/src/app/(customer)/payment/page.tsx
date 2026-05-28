@@ -19,13 +19,13 @@ import {
 } from "lucide-react";
 
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import toast from "react-hot-toast";
 
 import { customerService, BookingResponse } from "@/services/customer.service";
 import {
   BookingSummary,
   DurationDetails,
+  ExtensionDetails,
   ParkingDetails,
   useParkingBooking,
   VehicleDetails,
@@ -38,6 +38,7 @@ interface CheckoutFormProps {
   vehicleDetails: VehicleDetails | null;
   selectedDuration: DurationDetails | null;
   bookingSummary: BookingSummary | null;
+  extensionDetails: ExtensionDetails | null;
   clearBooking: () => void;
   onComplete: () => void;
 }
@@ -47,6 +48,7 @@ function CheckoutForm({
   vehicleDetails,
   selectedDuration,
   bookingSummary,
+  extensionDetails,
   clearBooking,
   onComplete,
 }: CheckoutFormProps) {
@@ -59,10 +61,13 @@ function CheckoutForm({
   const [stripeError, setStripeError] = useState<string | null>(null);
   const [completedBooking, setCompletedBooking] = useState<BookingResponse | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
+  const isExtensionCheckout = Boolean(extensionDetails);
+  const checkoutTotal = extensionDetails?.amount ?? bookingSummary?.total ?? 0;
 
   useEffect(() => {
     if (
       !showSuccess &&
+      !isExtensionCheckout &&
       (!parkingDetails ||
         !vehicleDetails ||
         !selectedDuration ||
@@ -89,6 +94,7 @@ function CheckoutForm({
     vehicleDetails,
     selectedDuration,
     bookingSummary,
+    isExtensionCheckout,
     router,
   ]);
 
@@ -125,7 +131,7 @@ function CheckoutForm({
       setStripeError(null);
 
       // Create payment intent with the backend
-      if (!bookingSummary) {
+      if (!bookingSummary && !extensionDetails) {
         toast.error("Booking summary missing", {
           style: {
             background: "#0B0B0B",
@@ -141,7 +147,7 @@ function CheckoutForm({
       }
 
       const paymentIntentResponse = await customerService.createPaymentIntent(
-        bookingSummary.total,
+        checkoutTotal,
       );
 
       // Confirm payment with Stripe
@@ -172,6 +178,29 @@ function CheckoutForm({
 
       if (!result.paymentIntent || result.paymentIntent.status !== "succeeded") {
         toast.error("Payment did not complete successfully.");
+        return;
+      }
+
+      if (extensionDetails) {
+        await customerService.extendBooking(extensionDetails.bookingId, {
+          durationLabel: extensionDetails.durationLabel,
+          durationMinutes: extensionDetails.durationMinutes,
+          amount: extensionDetails.amount,
+          stripePaymentIntentId: result.paymentIntent.id,
+        });
+
+        setCompletedBooking({
+          bookingId: extensionDetails.bookingId,
+          paymentId: result.paymentIntent.id,
+          receiptNumber: result.paymentIntent.id,
+          amount: extensionDetails.amount,
+          total: extensionDetails.amount,
+          bookingReference: extensionDetails.bookingReference,
+          transactionReference: result.paymentIntent.id,
+        });
+        setShowSuccess(true);
+        toast.success("Payment successful. Parking extended.");
+        onComplete();
         return;
       }
 
@@ -294,19 +323,6 @@ function CheckoutForm({
                   <div className="w-full h-full bg-[#C6F432] rounded-full" />
                 </div>
               </div>
-
-              <div className="bg-[#1A1A1A] opacity-40 border border-white/5 p-4 rounded-2xl flex items-center justify-between grayscale cursor-not-allowed">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-white/5 rounded-xl flex items-center justify-center">
-                    <img
-                      src="https://img.icons8.com/color/48/google-logo.png"
-                      className="w-5 h-5"
-                      alt="GPay"
-                    />
-                  </div>
-                  <p className="text-sm font-bold">Google Pay</p>
-                </div>
-              </div>
             </div>
 
             <div className="bg-[#1A1A1A] rounded-[28px] p-5 border border-white/5 space-y-4 shadow-xl">
@@ -349,27 +365,33 @@ function CheckoutForm({
           <div className="space-y-6">
             <div className="bg-[#1A1A1A] rounded-[28px] p-6 border border-white/5 space-y-4 shadow-xl">
               <div className="flex justify-between text-xs text-[#9CA3AF]">
-                Base Fare ({parkingDetails?.parkingName})
+                {extensionDetails
+                  ? `Extension (${extensionDetails.parkingName})`
+                  : `Base Fare (${parkingDetails?.parkingName})`}
                 <span className="text-white font-mono">
-                  ${bookingSummary?.subtotal.toFixed(2)}
+                  ${(extensionDetails?.amount ?? bookingSummary?.subtotal ?? 0).toFixed(2)}
                 </span>
               </div>
-              <div className="flex justify-between text-xs text-[#9CA3AF]">
-                <span>Service Fee</span>
-                <span className="text-white font-mono">
-                  ${bookingSummary?.serviceFee.toFixed(2)}
-                </span>
-              </div>
+              {!extensionDetails ? (
+                <div className="flex justify-between text-xs text-[#9CA3AF]">
+                  <span>Service Fee</span>
+                  <span className="text-white font-mono">
+                    ${(bookingSummary?.serviceFee ?? 0).toFixed(2)}
+                  </span>
+                </div>
+              ) : null}
               <div className="h-px bg-white/5 my-1" />
               <div className="flex justify-between items-end">
                 <div>
                   <p className="text-[#4B5563] text-[9px] uppercase font-black tracking-widest">
                     Grand Total
                   </p>
-                  <p className="text-lg font-bold">Ready to park</p>
+                  <p className="text-lg font-bold">
+                    {extensionDetails ? `Extend for ${extensionDetails.durationLabel}` : "Ready to park"}
+                  </p>
                 </div>
                 <p className="text-[#C6F432] text-3xl lg:text-4xl font-black font-mono tracking-tighter">
-                  ${bookingSummary?.total.toFixed(2)}
+                  ${checkoutTotal.toFixed(2)}
                 </p>
               </div>
             </div>
@@ -409,30 +431,33 @@ function CheckoutForm({
                   <CheckCircle2 className="text-[#C6F432]" size={32} />
                 </div>
                 <h3 className="text-2xl mb-1" style={{ fontFamily: "serif" }}>
-                  Booking Confirmed
+                  {extensionDetails ? "Parking Extended" : "Booking Confirmed"}
                 </h3>
                 <p className="text-[#9CA3AF] text-xs px-4 leading-relaxed">
-                  Your parking zone is now reserved. Collect digital receipt from
-                  your mail.
+                  {extensionDetails
+                    ? "Your parking time has been extended. Collect digital receipt from your mail."
+                    : "Your parking zone is now reserved. Collect digital receipt from your mail."}
                 </p>
                 <div className="w-full bg-black/40 rounded-2xl p-5 mt-6 space-y-3 text-left border border-white/5">
                   <div className="grid grid-cols-2 gap-4 pb-3 border-b border-white/5">
                     <div>
                       <span className="text-[8px] uppercase text-[#4B5563] font-black block mb-1">
-                        Start Time
+                        {extensionDetails ? "Booking" : "Start Time"}
                       </span>
                       <span className="text-xs font-bold text-white flex items-center gap-1.5">
                         <Clock size={12} className="text-[#C6F432]" />
-                        {bookingSummary?.startTime}
+                        {extensionDetails
+                          ? `#${extensionDetails.bookingReference ?? extensionDetails.bookingId}`
+                          : bookingSummary?.startTime}
                       </span>
                     </div>
                     <div>
                       <span className="text-[8px] uppercase text-[#4B5563] font-black block mb-1">
-                        End Time
+                        {extensionDetails ? "Added Time" : "End Time"}
                       </span>
                       <span className="text-xs font-bold text-white flex items-center gap-1.5">
                         <Clock size={12} className="text-[#C6F432]" />
-                        {bookingSummary?.endTime}
+                        {bookingSummary?.endTime ?? extensionDetails?.durationLabel}
                       </span>
                     </div>
                   </div>
@@ -441,7 +466,7 @@ function CheckoutForm({
                       Duration
                     </span>
                     <span className="text-xs font-bold text-[#C6F432]">
-                      {bookingSummary?.duration}
+                      {bookingSummary?.duration ?? extensionDetails?.durationLabel}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
@@ -460,7 +485,7 @@ function CheckoutForm({
                       Total Paid
                     </span>
                     <span className="text-sm text-[#C6F432] font-black font-mono">
-                      ${bookingSummary?.total.toFixed(2)}
+                      ${checkoutTotal.toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -507,6 +532,7 @@ export default function PaymentPageWrapper() {
     vehicleDetails,
     selectedDuration,
     bookingSummary,
+    extensionDetails,
     clearBooking,
   } = useParkingBooking();
 
@@ -571,6 +597,7 @@ export default function PaymentPageWrapper() {
         vehicleDetails={vehicleDetails}
         selectedDuration={selectedDuration}
         bookingSummary={bookingSummary}
+        extensionDetails={extensionDetails}
         clearBooking={clearBooking}
         onComplete={() => {}}
       />

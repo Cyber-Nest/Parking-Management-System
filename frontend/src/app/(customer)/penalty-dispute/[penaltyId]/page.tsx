@@ -17,6 +17,8 @@ import { useParams, useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 
 import { customerService, PenaltyDetails } from "@/services/customer.service";
+import { uploadFileToCloudinary } from "@/lib/upload-media";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 export default function PenaltyDisputePage() {
   const params = useParams();
@@ -34,6 +36,7 @@ export default function PenaltyDisputePage() {
     fullName: "",
     email: "",
     phone: "",
+    address: "",
     explanation: "",
     proofImage: null as string | null,
   });
@@ -63,28 +66,27 @@ export default function PenaltyDisputePage() {
     }
   };
 
-  // handle image upload
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    const preview = URL.createObjectURL(file);
-    setProofPreview(preview);
-
-    setFormData((prev) => ({
-      ...prev,
-      proofImage: preview,
-    }));
+    try {
+      const url = await uploadFileToCloudinary(
+        file,
+        `parksmart/disputes/${penalty?.penaltyId ?? "unknown"}`,
+        "Dispute proof",
+      );
+      setProofPreview(url);
+      setFormData((prev) => ({ ...prev, proofImage: url }));
+      toast.success("Proof image uploaded");
+    } catch {
+      toast.error("Failed to upload proof image");
+    }
   };
 
   // handle remove image
   const handleRemoveImage = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-
-    if (proofPreview) {
-      URL.revokeObjectURL(proofPreview);
-    }
 
     setProofPreview(null);
     setFormData((prev) => ({
@@ -104,6 +106,7 @@ export default function PenaltyDisputePage() {
         !formData.fullName ||
         !formData.email ||
         !formData.phone ||
+        !formData.address ||
         !formData.explanation
       ) {
         toast.error("Please complete all required fields", {
@@ -143,7 +146,7 @@ export default function PenaltyDisputePage() {
       }, 10000);
     } catch (error) {
       console.error(error);
-      toast.error("Something went wrong");
+      toast.error(getApiErrorMessage(error, "Something went wrong"));
     } finally {
       setSubmitting(false);
     }
@@ -170,6 +173,40 @@ export default function PenaltyDisputePage() {
 
   if (!penalty) return null;
 
+  const isPaidPenalty = (penalty.status as "pending" | "paid" | "disputed") === "paid";
+  if (isPaidPenalty) {
+    return (
+      <div className="min-h-screen bg-[#0D0D0D] text-white p-6 flex items-center justify-center">
+        <div className="w-full max-w-3xl rounded-[32px] border border-white/10 bg-[#121212] p-10 shadow-2xl">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <ShieldAlert size={48} className="text-[#C6F432]" />
+            <h1 className="text-3xl font-semibold">Dispute Not Allowed</h1>
+            <p className="text-sm text-[#9CA3AF] max-w-xl">
+              This ticket has already been paid and cannot be appealed through the dispute form.
+            </p>
+            <p className="text-sm text-[#9CA3AF] max-w-xl">
+              If you believe this is incorrect, please contact support or review your payment record.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 mt-6">
+              <Link
+                href={`/penalty-payment/${penalty.penaltyId}`}
+                className="rounded-full bg-[#C6F432] px-6 py-3 text-sm font-semibold text-black"
+              >
+                View payment details
+              </Link>
+              <Link
+                href="/"
+                className="rounded-full border border-white/10 px-6 py-3 text-sm font-semibold text-white hover:bg-white/5"
+              >
+                Back to home
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // success message UI
   if (submitted) {
     return (
@@ -192,6 +229,9 @@ export default function PenaltyDisputePage() {
             <p className="text-xs text-[#9CA3AF] leading-relaxed mt-3 px-2">
               Your claim request is safe with us. Our administrative team will
               review the case details and contact you shortly.
+            </p>
+            <p className="text-xs text-[#9CA3AF] leading-relaxed mt-3 px-2">
+              You will receive response on your appeal request within 2 weeks.
             </p>
 
             <div className="mt-6 rounded-2xl border border-white/5 bg-black/40 p-4 text-left">
@@ -259,6 +299,39 @@ export default function PenaltyDisputePage() {
       </label>
     </div>
   );
+
+  if (penalty?.status === "paid") {
+    return (
+      <div className="min-h-screen bg-[#0D0D0D] text-white p-6 flex items-center justify-center">
+        <div className="w-full max-w-3xl rounded-[32px] border border-white/10 bg-[#121212] p-10 shadow-2xl">
+          <div className="flex flex-col items-center gap-4 text-center">
+            <ShieldAlert size={48} className="text-[#C6F432]" />
+            <h1 className="text-3xl font-semibold">Dispute Not Allowed</h1>
+            <p className="text-sm text-[#9CA3AF] max-w-xl">
+              This ticket has already been paid and cannot be appealed through the dispute form.
+            </p>
+            <p className="text-sm text-[#9CA3AF] max-w-xl">
+              If you believe this is incorrect, please contact support or review your payment record.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 mt-6">
+              <Link
+                href={`/penalty-payment/${penalty.penaltyId}`}
+                className="rounded-full bg-[#C6F432] px-6 py-3 text-sm font-semibold text-black"
+              >
+                View payment details
+              </Link>
+              <Link
+                href="/"
+                className="rounded-full border border-white/10 px-6 py-3 text-sm font-semibold text-white hover:bg-white/5"
+              >
+                Back to home
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-screen bg-[#0D0D0D] text-white overflow-y-auto scrollbar-hide">
@@ -358,6 +431,19 @@ export default function PenaltyDisputePage() {
               </div>
 
               <div className="space-y-4">
+                {/* Ticket Number */}
+                <div className="space-y-1.5">
+                  <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold">
+                    Ticket Number
+                  </label>
+                  <input
+                    type="text"
+                    value={penalty.penaltyId}
+                    disabled
+                    className="w-full bg-[#0F0F0F] border border-white/10 rounded-xl py-3.5 px-4 text-sm text-[#9CA3AF] cursor-not-allowed"
+                  />
+                </div>
+
                 {/* Full Name */}
                 <div className="space-y-1.5">
                   <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold">
@@ -431,6 +517,25 @@ export default function PenaltyDisputePage() {
                       className="w-full bg-[#111111] border border-white/5 rounded-xl py-3.5 pl-11 pr-4 text-sm focus:border-[#C6F432]/40 focus:outline-none transition-all placeholder:text-[#374151]"
                     />
                   </div>
+                </div>
+
+                {/* Address */}
+                <div className="space-y-1.5">
+                  <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold">
+                    Parking / Incident Address
+                  </label>
+                  <textarea
+                    rows={2}
+                    placeholder="Enter the parking or violation location address"
+                    value={formData.address}
+                    onChange={(e) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        address: e.target.value,
+                      }))
+                    }
+                    className="w-full rounded-xl bg-[#111111] border border-white/5 p-4 text-sm outline-none resize-none focus:border-[#C6F432]/40 focus:outline-none transition-all placeholder:text-[#374151] leading-relaxed"
+                  />
                 </div>
 
                 {/* Explanation */}

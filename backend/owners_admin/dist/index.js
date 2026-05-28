@@ -21,12 +21,20 @@ const tax_routes_1 = __importDefault(require("./routes/tax.routes"));
 const pricing_routes_1 = __importDefault(require("./routes/pricing.routes"));
 const user_routes_1 = __importDefault(require("./routes/user.routes"));
 const role_routes_1 = __importDefault(require("./routes/role.routes"));
+const customer_routes_1 = __importDefault(require("./routes/customer.routes"));
+const parkingZone_routes_1 = __importDefault(require("./routes/parkingZone.routes"));
+const enforcement_routes_1 = __importDefault(require("./routes/enforcement.routes"));
+const officerAuth_routes_1 = __importDefault(require("./routes/officerAuth.routes"));
+const media_routes_1 = __importDefault(require("./routes/media.routes"));
 const errorHandler_middleware_1 = require("./middleware/errorHandler.middleware");
+const cloudinary_service_1 = require("./services/cloudinary.service");
 dotenv_1.default.config();
 const app = (0, express_1.default)();
 const corsAllowList = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
+    'http://localhost:3001',
+    'http://127.0.0.1:3001',
     'http://localhost:5173',
     env_1.env.frontendUrl,
     ...(process.env.CORS_ORIGINS ?? '')
@@ -38,8 +46,8 @@ app.use((0, cors_1.default)({
     credentials: true,
     origin: env_1.env.nodeEnv === 'production' ? corsAllowList : true,
 }));
-app.use(express_1.default.json());
-app.use(express_1.default.urlencoded({ extended: true }));
+app.use(express_1.default.json({ limit: '12mb' }));
+app.use(express_1.default.urlencoded({ extended: true, limit: '12mb' }));
 app.get('/health', (_req, res) => {
     res.status(200).json({
         success: true,
@@ -52,6 +60,7 @@ app.use('/api/admin/auth', adminAuth_routes_1.default);
 app.use('/api/admin/tickets', ticket_routes_1.default);
 app.use('/api/admin/payments', payment_routes_1.default);
 app.use('/api/admin/parking-plans', parkingPlan_routes_1.default);
+app.use('/api/admin/parking-zones', parkingZone_routes_1.default);
 app.use('/api/admin/officers', officer_routes_1.default);
 app.use('/api/admin/sessions', session_routes_1.default);
 app.use('/api/admin/settings', settings_routes_1.default);
@@ -61,6 +70,10 @@ app.use('/api/admin/taxes', tax_routes_1.default);
 app.use('/api/admin/pricings', pricing_routes_1.default);
 app.use('/api/admin/users', user_routes_1.default);
 app.use('/api/admin/roles', role_routes_1.default);
+app.use('/api/customer', customer_routes_1.default);
+app.use('/api/officer/auth', officerAuth_routes_1.default);
+app.use('/api/officer', enforcement_routes_1.default);
+app.use('/api/media', media_routes_1.default);
 app.use(errorHandler_middleware_1.notFoundHandler);
 app.use(errorHandler_middleware_1.errorHandler);
 const startServer = async () => {
@@ -68,6 +81,12 @@ const startServer = async () => {
         await (0, database_1.connectDatabase)();
         app.listen(env_1.env.port, () => {
             console.log(`ParkSmart Owners Admin API running at http://localhost:${env_1.env.port}`);
+            const cloudinarySetupError = (0, cloudinary_service_1.getCloudinarySetupError)();
+            console.log((0, cloudinary_service_1.isCloudinaryConfigured)()
+                ? '[Cloudinary] Media uploads enabled (URLs stored in database)'
+                : cloudinarySetupError
+                    ? `[Cloudinary] NOT ready — ${cloudinarySetupError}`
+                    : '[Cloudinary] NOT configured — set CLOUDINARY_URL in .env for media uploads');
         });
     }
     catch (error) {

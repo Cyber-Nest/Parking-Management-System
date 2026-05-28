@@ -41,7 +41,8 @@ class AdminRepository {
     }
     async insertAdmin(params) {
         const id = crypto_1.default.randomUUID();
-        await (0, database_1.execute)(`INSERT INTO admins (id, email, password_hash, full_name, role_id) VALUES (?, ?, ?, ?, ?)`, [id, params.email.toLowerCase().trim(), params.passwordHash, params.fullName, params.roleId]);
+        const active = params.isActive === false ? 0 : 1;
+        await (0, database_1.execute)(`INSERT INTO admins (id, email, password_hash, full_name, role_id, is_active) VALUES (?, ?, ?, ?, ?, ?)`, [id, params.email.toLowerCase().trim(), params.passwordHash, params.fullName, params.roleId, active]);
         return id;
     }
 }

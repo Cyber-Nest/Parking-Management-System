@@ -45,16 +45,28 @@ export interface BookingSummary {
   bookingId?: string;
 }
 
+export interface ExtensionDetails {
+  bookingId: string;
+  bookingReference?: string;
+  parkingName: string;
+  zoneName?: string;
+  durationLabel: string;
+  durationMinutes: number;
+  amount: number;
+}
+
 interface ParkingBookingContextType {
   parkingDetails: ParkingDetails | null;
   vehicleDetails: VehicleDetails | null;
   selectedDuration: DurationDetails | null;
   bookingSummary: BookingSummary | null;
+  extensionDetails: ExtensionDetails | null;
 
   setParkingDetails: (data: ParkingDetails | null) => void;
   setVehicleDetails: (data: VehicleDetails | null) => void;
   setSelectedDuration: (data: DurationDetails | null) => void;
   setBookingSummary: (data: BookingSummary | null) => void;
+  setExtensionDetails: (data: ExtensionDetails | null) => void;
 
   clearBooking: () => void;
 }
@@ -79,11 +91,15 @@ export const ParkingBookingProvider = ({
   const [bookingSummary, setBookingSummary] =
     useState<BookingSummary | null>(null);
 
+  const [extensionDetails, setExtensionDetails] =
+    useState<ExtensionDetails | null>(null);
+
   const clearBooking = () => {
     setParkingDetails(null);
     setVehicleDetails(null);
     setSelectedDuration(null);
     setBookingSummary(null);
+    setExtensionDetails(null);
   };
 
   const value = useMemo(
@@ -92,11 +108,13 @@ export const ParkingBookingProvider = ({
       vehicleDetails,
       selectedDuration,
       bookingSummary,
+      extensionDetails,
 
       setParkingDetails,
       setVehicleDetails,
       setSelectedDuration,
       setBookingSummary,
+      setExtensionDetails,
 
       clearBooking,
     }),
@@ -105,6 +123,7 @@ export const ParkingBookingProvider = ({
       vehicleDetails,
       selectedDuration,
       bookingSummary,
+      extensionDetails,
     ]
   );
 

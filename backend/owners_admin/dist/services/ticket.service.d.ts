@@ -1,5 +1,8 @@
 import { CreateTicketBody, PaginatedResponse, TicketPublic, TicketStatus } from '../types';
 export declare class TicketService {
+    private getOrCreatePenaltyInvoice;
+    private sendPenaltyPaymentEmail;
+    ensurePenaltyReceipt(ticketId: string, customerEmail?: string): Promise<import("../repositories/invoice.repository").InvoiceRow | null>;
     list(query: Record<string, string | undefined>): Promise<PaginatedResponse<TicketPublic>>;
     summary(): Promise<{
         totalToday: number;
@@ -17,7 +20,11 @@ export declare class TicketService {
     }): Promise<{
         id: string;
     }>;
+    /** Flat payload for admin print / reprint (same pattern as payment receipt). */
+    getPrintPayload(t: TicketPublic): Record<string, unknown>;
     getById(id: string): Promise<TicketPublic>;
+    getByTicketNumber(ticketNumber: string): Promise<TicketPublic>;
+    disputeTicket(ticketNumber: string, disputeMessage: string): Promise<TicketPublic>;
     updateTicket(id: string, body: {
         license_plate?: string;
         amount?: number;
@@ -30,8 +37,11 @@ export declare class TicketService {
     markPaid(id: string, body?: {
         payment_method?: string;
         transaction_ref?: string;
+        customer_email?: string;
     }): Promise<{
         payment_id: string;
+        invoice_id?: string;
+        invoice_number?: string;
     }>;
 }
 //# sourceMappingURL=ticket.service.d.ts.map

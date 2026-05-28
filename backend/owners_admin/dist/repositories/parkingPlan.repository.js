@@ -19,6 +19,29 @@ class ParkingPlanRepository {
        LIMIT 1`, [id]);
         return rows[0] ?? null;
     }
+    async findByPriceAndDuration(price, duration) {
+        const rows = await (0, database_1.queryRows)(`SELECT id, name, price, duration, plan_type, tax_percent, status, created_at, updated_at
+       FROM parking_plans
+       WHERE price = ? AND duration = ?
+       LIMIT 1`, [price, duration]);
+        return rows[0] ?? null;
+    }
+    /** Match customer booking duration to an active plan (exact duration, then closest price). */
+    async findForBooking(durationMinutes, price) {
+        const exactDuration = await (0, database_1.queryRows)(`SELECT id, name, price, duration, plan_type, tax_percent, status, created_at, updated_at
+       FROM parking_plans
+       WHERE duration = ? AND status = 'Active'
+       ORDER BY ABS(price - ?) ASC
+       LIMIT 1`, [durationMinutes, price ?? 0]);
+        if (exactDuration[0])
+            return exactDuration[0];
+        const closestDuration = await (0, database_1.queryRows)(`SELECT id, name, price, duration, plan_type, tax_percent, status, created_at, updated_at
+       FROM parking_plans
+       WHERE status = 'Active'
+       ORDER BY ABS(duration - ?) ASC, ABS(price - ?) ASC
+       LIMIT 1`, [durationMinutes, price ?? 0]);
+        return closestDuration[0] ?? null;
+    }
     async create(params) {
         const id = crypto_1.default.randomUUID();
         await (0, database_1.execute)(`INSERT INTO parking_plans (id, name, price, duration, plan_type, tax_percent, status)

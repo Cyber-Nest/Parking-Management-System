@@ -65,6 +65,24 @@ class OfficerRepository {
        LIMIT 1`, [id]);
         return rows[0] ?? null;
     }
+    async findByEmail(email) {
+        const rows = await (0, database_1.queryRows)(`SELECT id, full_name, email, password_hash, status FROM officers WHERE email = ? LIMIT 1`, [email.toLowerCase().trim()]);
+        console.log('findByEmail result:', rows[0]); // Debug log
+        return rows[0] ?? null;
+    }
+    async saveResetToken(id, tokenHash, expiresAt) {
+        await (0, database_1.execute)(`UPDATE officers SET reset_token = ?, reset_token_expires_at = ? WHERE id = ?`, [tokenHash, expiresAt, id]);
+    }
+    async findByResetToken(tokenHash, officerId) {
+        const rows = await (0, database_1.queryRows)(`SELECT id FROM officers WHERE id = ? AND reset_token = ? AND reset_token_expires_at > NOW() LIMIT 1`, [officerId, tokenHash]);
+        return rows[0] ?? null;
+    }
+    async updatePassword(id, passwordHash) {
+        await (0, database_1.execute)(`UPDATE officers SET password_hash = ?, reset_token = NULL, reset_token_expires_at = NULL WHERE id = ?`, [passwordHash, id]);
+    }
+    async updateLastLogin(id) {
+        await (0, database_1.execute)(`UPDATE officers SET last_login_at = NOW() WHERE id = ?`, [id]);
+    }
     async summary() {
         const [totalRows, activeRows, disabledRows, ticketsTodayRows] = await Promise.all([
             (0, database_1.queryRows)(`SELECT COUNT(*) AS total FROM officers`),

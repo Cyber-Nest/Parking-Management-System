@@ -20,14 +20,23 @@ export interface TicketRow {
     date_issued: Date;
     due_date: Date | null;
     paid_at: Date | null;
+    payment_id?: string | null;
     remarks: string | null;
     note: string | null;
     dispute_raised: number;
+    dispute_message?: string | null;
+    dispute_at?: Date | null;
+    dispute_resolved_at?: Date | null;
     created_at: Date;
     session_id?: string | null;
     location_name?: string | null;
+    start_time?: Date | null;
+    end_time?: Date | null;
+    plan_name?: string | null;
+    notes?: string | null;
 }
 export declare class TicketRepository {
+    private nextTicketNumber;
     private buildWhere;
     list(filters: TicketListFilters): Promise<{
         items: TicketRow[];
@@ -53,6 +62,8 @@ export declare class TicketRepository {
         remarks?: string;
     }): Promise<string>;
     findById(id: string): Promise<TicketRow | null>;
+    findByTicketNumber(ticketNumber: string): Promise<TicketRow | null>;
+    raiseDispute(id: string, disputeMessage: string): Promise<number>;
     updateTicket(id: string, params: {
         licensePlate?: string;
         amount?: number;
