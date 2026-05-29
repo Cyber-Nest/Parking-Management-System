@@ -27,7 +27,7 @@ class TransactionService {
             transaction_reference: result?.transaction_reference,
             amount: result?.amount,
             status: result?.status,
-            created_at: result?.created_at,
+            created_at: new Date(),
         };
     }
     async getTransaction(id) {

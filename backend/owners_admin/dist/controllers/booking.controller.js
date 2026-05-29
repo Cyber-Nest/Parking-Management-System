@@ -117,7 +117,7 @@ class BookingController {
             });
         }
     }
-    async getActiveBookings(req, res) {
+    async getActiveBookings(_req, res) {
         try {
             const bookings = await booking_service_1.bookingService.getActiveBookings();
             return res.status(200).json({
@@ -194,7 +194,7 @@ class BookingController {
             });
         }
     }
-    async getBookingStats(req, res) {
+    async getBookingStats(_req, res) {
         try {
             const stats = await booking_service_1.bookingService.getBookingStats();
             return res.status(200).json({
@@ -210,7 +210,7 @@ class BookingController {
             });
         }
     }
-    async getTodayBookings(req, res) {
+    async getTodayBookings(_req, res) {
         try {
             const stats = await booking_service_1.bookingService.getTodayBookings();
             return res.status(200).json({

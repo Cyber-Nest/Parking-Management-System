@@ -163,6 +163,7 @@ export class InvoiceController {
       
       const stream = fs.createReadStream(filePath);
       stream.pipe(res);
+      return;
     } catch (error) {
       console.error('Error downloading invoice:', error);
       return res.status(500).json({
@@ -207,7 +208,7 @@ export class InvoiceController {
     }
   }
 
-  async getInvoiceStats(req: Request, res: Response) {
+  async getInvoiceStats(_req: Request, res: Response) {
     try {
       const stats = await invoiceService.getInvoiceStats();
 
@@ -224,7 +225,7 @@ export class InvoiceController {
     }
   }
 
-  async getTodayInvoices(req: Request, res: Response) {
+  async getTodayInvoices(_req: Request, res: Response) {
     try {
       const stats = await invoiceService.getTodayInvoices();
 

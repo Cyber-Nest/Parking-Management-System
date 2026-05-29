@@ -196,7 +196,7 @@ class TransactionController {
             });
         }
     }
-    async getTodayRevenue(req, res) {
+    async getTodayRevenue(_req, res) {
         try {
             const revenue = await transaction_service_1.transactionService.getTodayRevenue();
             return res.status(200).json({

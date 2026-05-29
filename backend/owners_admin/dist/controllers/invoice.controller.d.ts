@@ -6,8 +6,8 @@ export declare class InvoiceController {
     getInvoicesByEmail(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     downloadInvoice(req: Request, res: Response): Promise<Response<any, Record<string, any>> | undefined>;
     markAsPaid(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
-    getInvoiceStats(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
-    getTodayInvoices(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    getInvoiceStats(_req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    getTodayInvoices(_req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
 }
 export declare const invoiceController: InvoiceController;
 //# sourceMappingURL=invoice.controller.d.ts.map

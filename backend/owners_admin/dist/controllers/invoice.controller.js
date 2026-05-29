@@ -148,6 +148,7 @@ class InvoiceController {
             res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
             const stream = fs_1.default.createReadStream(filePath);
             stream.pipe(res);
+            return;
         }
         catch (error) {
             console.error('Error downloading invoice:', error);
@@ -188,7 +189,7 @@ class InvoiceController {
             });
         }
     }
-    async getInvoiceStats(req, res) {
+    async getInvoiceStats(_req, res) {
         try {
             const stats = await invoice_service_1.invoiceService.getInvoiceStats();
             return res.status(200).json({
@@ -204,7 +205,7 @@ class InvoiceController {
             });
         }
     }
-    async getTodayInvoices(req, res) {
+    async getTodayInvoices(_req, res) {
         try {
             const stats = await invoice_service_1.invoiceService.getTodayInvoices();
             return res.status(200).json({

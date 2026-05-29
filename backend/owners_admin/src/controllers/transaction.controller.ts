@@ -215,7 +215,7 @@ export class TransactionController {
     }
   }
 
-  async getTodayRevenue(req: Request, res: Response) {
+  async getTodayRevenue(_req: Request, res: Response) {
     try {
       const revenue = await transactionService.getTodayRevenue();
 

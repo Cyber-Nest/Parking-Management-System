@@ -133,7 +133,7 @@ export class InvoiceService {
     // Record download
     await invoiceRepository.recordDownload(invoiceId);
 
-    return invoice.pdf_file_path;
+    return invoice.pdf_file_path ?? null;
   }
 
   private async generatePDF(invoice: any): Promise<string> {
@@ -215,7 +215,7 @@ export class InvoiceService {
       // Footer
       doc.moveTo(50, doc.page.height - 100).lineTo(550, doc.page.height - 100).stroke();
       doc.fontSize(9).font('Helvetica');
-      doc.text('Thank you for your business!', { align: 'center', y: doc.page.height - 80 });
+      doc.text('Thank you for your business!', 50, doc.page.height - 80, { align: 'center' });
       doc.text('For inquiries, contact support@parksmart.com', { align: 'center' });
 
       doc.end();

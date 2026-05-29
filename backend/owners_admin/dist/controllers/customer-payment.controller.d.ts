@@ -15,7 +15,7 @@ export declare class CustomerPaymentController {
     /**
      * Get Stripe config
      */
-    getConfig(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    getConfig(_req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     /**
      * Get booking details with invoice
      */

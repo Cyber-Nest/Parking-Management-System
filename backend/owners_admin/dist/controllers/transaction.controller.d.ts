@@ -8,7 +8,7 @@ export declare class TransactionController {
     failTransaction(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     getTransactionStats(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
     getRevenueByDate(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
-    getTodayRevenue(req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
+    getTodayRevenue(_req: Request, res: Response): Promise<Response<any, Record<string, any>>>;
 }
 export declare const transactionController: TransactionController;
 //# sourceMappingURL=transaction.controller.d.ts.map
