@@ -223,7 +223,7 @@ export class CustomerPaymentController {
   /**
    * Get Stripe config
    */
-  async getConfig(req: Request, res: Response) {
+  async getConfig(_req: Request, res: Response) {
     try {
       return res.status(200).json({
         success: true,

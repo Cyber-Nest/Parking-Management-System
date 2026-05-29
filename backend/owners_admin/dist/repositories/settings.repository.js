@@ -109,6 +109,10 @@ class SettingsRepository {
             updates.push('full_name = ?');
             values.push(patch.full_name);
         }
+        if (patch.email !== undefined) {
+            updates.push('email = ?');
+            values.push(patch.email.toLowerCase().trim());
+        }
         if (patch.role_id !== undefined) {
             updates.push('role_id = ?');
             values.push(patch.role_id);
@@ -121,6 +125,33 @@ class SettingsRepository {
             return 0;
         values.push(id);
         const result = await (0, database_1.execute)(`UPDATE admins SET ${updates.join(', ')}, updated_at = NOW() WHERE id = ?`, values);
+        return result.affectedRows;
+    }
+    async listAdminsPaginated(params) {
+        const offset = (params.page - 1) * params.limit;
+        const q = params.q?.trim();
+        let whereClause = '1=1';
+        const filterValues = [];
+        if (q) {
+            whereClause += ' AND (a.email LIKE ? OR a.full_name LIKE ?)';
+            filterValues.push(`%${q}%`, `%${q}%`);
+        }
+        const countRows = await (0, database_1.queryRows)(`SELECT COUNT(*) AS c FROM admins a WHERE ${whereClause}`, filterValues);
+        const total = Number(countRows[0]?.c ?? 0);
+        const items = await (0, database_1.queryRows)(`SELECT a.id, a.email, a.full_name, a.role_id, r.name AS role_name, a.is_active, a.last_login_at, a.created_at, a.updated_at
+       FROM admins a
+       JOIN roles r ON r.id = a.role_id
+       WHERE ${whereClause}
+       ORDER BY a.created_at DESC
+       LIMIT ? OFFSET ?`, [...filterValues, params.limit, offset]);
+        return { items, total };
+    }
+    async countAdmins() {
+        const rows = await (0, database_1.queryRows)('SELECT COUNT(*) AS c FROM admins');
+        return Number(rows[0]?.c ?? 0);
+    }
+    async deleteAdmin(id) {
+        const result = await (0, database_1.execute)('DELETE FROM admins WHERE id = ?', [id]);
         return result.affectedRows;
     }
     async listRolesWithPermissions() {
@@ -142,6 +173,54 @@ class SettingsRepository {
                 roleId,
             ]);
         }
+    }
+    async listRolesPaginated(params) {
+        const offset = (params.page - 1) * params.limit;
+        const q = params.q?.trim();
+        let where = '1=1';
+        const filterVals = [];
+        if (q) {
+            where += ' AND r.name LIKE ?';
+            filterVals.push(`%${q}%`);
+        }
+        const countRows = await (0, database_1.queryRows)(`SELECT COUNT(*) AS c FROM roles r WHERE ${where}`, filterVals);
+        const total = Number(countRows[0]?.c ?? 0);
+        const items = await (0, database_1.queryRows)(`SELECT r.id, r.name, p.permissions
+       FROM roles r
+       LEFT JOIN admin_roles_permissions p ON p.role_id = r.id
+       WHERE ${where}
+       ORDER BY r.name ASC
+       LIMIT ? OFFSET ?`, [...filterVals, params.limit, offset]);
+        return {
+            items: items.map((row) => ({
+                ...row,
+                created_at: null,
+                updated_at: null,
+            })),
+            total,
+        };
+    }
+    async findRoleById(id) {
+        const rows = await (0, database_1.queryRows)(`SELECT id, name FROM roles WHERE id = ? LIMIT 1`, [id]);
+        return rows[0] ?? null;
+    }
+    async insertRoleRow(id, name) {
+        await (0, database_1.execute)(`INSERT INTO roles (id, name) VALUES (?, ?)`, [id, name]);
+    }
+    async updateRoleName(id, name) {
+        const result = await (0, database_1.execute)(`UPDATE roles SET name = ? WHERE id = ?`, [name, id]);
+        return result.affectedRows;
+    }
+    async countAdminsByRoleId(roleId) {
+        const rows = await (0, database_1.queryRows)(`SELECT COUNT(*) AS c FROM admins WHERE role_id = ?`, [roleId]);
+        return Number(rows[0]?.c ?? 0);
+    }
+    async deleteRolePermissions(roleId) {
+        await (0, database_1.execute)(`DELETE FROM admin_roles_permissions WHERE role_id = ?`, [roleId]);
+    }
+    async deleteRoleRow(id) {
+        const result = await (0, database_1.execute)(`DELETE FROM roles WHERE id = ?`, [id]);
+        return result.affectedRows;
     }
     getDefaultSystemSettings() {
         return {

@@ -1,6 +1,13 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { loadStripe, type Stripe } from "@stripe/stripe-js";
+import {
+  CardElement,
+  Elements,
+  useElements,
+  useStripe,
+} from "@stripe/react-stripe-js";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -8,6 +15,7 @@ import {
   CheckCircle2,
   Clock3,
   CreditCard,
+  Download,
   MapPin,
   ShieldAlert,
   Car,
@@ -15,7 +23,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 
 import { customerService, PenaltyDetails } from "@/services/customer.service";
@@ -23,13 +31,88 @@ import { customerService, PenaltyDetails } from "@/services/customer.service";
 export default function PenaltyPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const penaltyId = params.penaltyId as string;
+  const emailFromQuery = searchParams.get("email") ?? undefined;
 
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
   const [penalty, setPenalty] = useState<PenaltyDetails | null>(null);
+  const [selectedProofIndex, setSelectedProofIndex] = useState(0);
 
   const [isPhotoModalOpen, setIsPhotoModalOpen] = useState(false);
+  const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
+  const [stripeConfigError, setStripeConfigError] = useState<string | null>(null);
+  const [isStripeLoading, setIsStripeLoading] = useState(true);
+  const [isStripeModalOpen, setIsStripeModalOpen] = useState(false);
+  const [stripePaymentError, setStripePaymentError] = useState<string | null>(null);
+  const [invoiceId, setInvoiceId] = useState<string | null>(null);
+  const [showPaymentSuccess, setShowPaymentSuccess] = useState(false);
+
+  useEffect(() => {
+    const initStripe = async () => {
+      try {
+        const publishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim();
+        const key =
+          publishableKey ||
+          (await customerService.getStripeConfig()).stripePublishableKey;
+
+        if (!key) {
+          throw new Error("Stripe publishable key is missing");
+        }
+
+        setStripePromise(loadStripe(key));
+      } catch (error) {
+        console.error("[PenaltyPage] Unable to load Stripe:", error);
+        setStripeConfigError(
+          "Stripe is not configured. Please check your Stripe settings.",
+        );
+      } finally {
+        setIsStripeLoading(false);
+      }
+    };
+
+    initStripe();
+  }, []);
+
+  const openPaymentModal = () => {
+    if (penalty?.status === "paid") return;
+    setStripePaymentError(null);
+    setIsStripeModalOpen(true);
+  };
+
+  const closePaymentModal = () => {
+    setIsStripeModalOpen(false);
+    setStripePaymentError(null);
+  };
+
+  const handlePaymentSuccess = (invoiceId?: string | null) => {
+    if (invoiceId) setInvoiceId(invoiceId);
+    setPenalty((prev) => (prev ? { ...prev, status: "paid" } : prev));
+    closePaymentModal();
+    setShowPaymentSuccess(true);
+  };
+
+  const downloadReceipt = async () => {
+    try {
+      if (invoiceId) {
+        await customerService.downloadInvoice(invoiceId);
+      } else {
+        await customerService.downloadPenaltyReceipt(penaltyId, emailFromQuery);
+      }
+      toast.success("Receipt downloaded", {
+        style: {
+          background: "#0B0B0B",
+          border: "1px solid rgba(190,242,100,0.2)",
+          color: "#fff",
+          borderRadius: "18px",
+        },
+      });
+    } catch (error) {
+      console.error(error);
+      toast.error("Receipt is being prepared. Please try again.");
+    }
+  };
 
   // fetch penalty by id
   useEffect(() => {
@@ -39,7 +122,7 @@ export default function PenaltyPage() {
   const fetchPenalty = async () => {
     try {
       setLoading(true);
-      const response = await customerService.getPenaltyById(penaltyId);
+      const response = await customerService.getPenaltyById(penaltyId, emailFromQuery);
 
       if (!response) {
         toast.error("Penalty record not found", {
@@ -55,6 +138,8 @@ export default function PenaltyPage() {
       }
 
       setPenalty(response);
+      setInvoiceId(response.status === 'paid' ? response.receiptInvoiceId ?? null : null);
+      setSelectedProofIndex(0);
     } catch (error) {
       console.error(error);
       toast.error("Failed to load penalty details", {
@@ -70,41 +155,20 @@ export default function PenaltyPage() {
     }
   };
 
-  // handle pay penalty api call function
+  // open Stripe checkout modal for penalty payment
   const handlePayPenalty = async () => {
-    try {
-      setPaying(true);
-      const success = await customerService.payPenalty(penaltyId);
-
-      if (!success) {
-        toast.error("Failed to process penalty payment", {
-          style: {
-            background: "#0B0B0B",
-            border: "1px solid rgba(239,68,68,0.2)",
-            color: "#fff",
-            borderRadius: "18px",
-          },
-        });
-        return;
-      }
-
-      toast.success("Penalty payment successful", {
-        style: {
-          background: "#0B0B0B",
-          border: "1px solid rgba(190,242,100,0.2)",
-          color: "#fff",
-          borderRadius: "18px",
-        },
-      });
-
-      setPenalty((prev) => (prev ? { ...prev, status: "paid" } : prev));
-    } catch (error) {
-      console.error(error);
-      toast.error("Penalty payment failed");
-    } finally {
-      setPaying(false);
-    }
+    openPaymentModal();
   };
+
+  const proofImages = penalty
+    ? penalty.proofImages.length > 0
+      ? penalty.proofImages
+      : penalty.evidenceImage
+      ? [penalty.evidenceImage]
+      : []
+    : [];
+  const selectedProofImage = proofImages[selectedProofIndex] ?? proofImages[0] ??
+    "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&q=80";
 
   // loading skeleton UI
   if (loading) {
@@ -322,33 +386,47 @@ export default function PenaltyPage() {
             {/* Action Controls btn */}
             <div className="space-y-3">
               {/* Pay Penalty Button */}
-              <button
-                disabled={penalty.status === "paid" || paying}
-                onClick={handlePayPenalty}
-                className={`w-full py-4 rounded-full font-black text-base transition-all flex items-center justify-center gap-2 shadow-[0_8px_25px_rgba(198,244,50,0.1)] active:scale-[0.97] ${
-                  penalty.status === "paid"
-                    ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 cursor-not-allowed shadow-none"
-                    : "bg-[#C6F432] border border-[#C6F432] text-black hover:bg-[#d4ff45]"
-                }`}
-              >
-                {penalty.status === "paid" ? (
-                  <>
-                    <CheckCircle2 size={18} className="text-emerald-400" />
-                    Penalty Violation Settled
-                  </>
-                ) : paying ? (
-                  <>
-                    <span className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                    Processing Settle...
-                  </>
-                ) : (
-                  <>
-                    <CreditCard size={18} strokeWidth={2.5} />
-                    Pay Penalty Notice • $
-                    {Number(penalty.generatedPenalty || 0).toFixed(2)}
-                  </>
-                )}
-              </button>
+              <div className="grid gap-3">
+                <button
+                  disabled={
+                    penalty.status === "paid" || paying || isStripeLoading || Boolean(stripeConfigError)
+                  }
+                  onClick={handlePayPenalty}
+                  className={`w-full py-4 rounded-full font-black text-base transition-all flex items-center justify-center gap-2 shadow-[0_8px_25px_rgba(198,244,50,0.1)] active:scale-[0.97] ${
+                    penalty.status === "paid"
+                      ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 cursor-not-allowed shadow-none"
+                      : "bg-[#C6F432] border border-[#C6F432] text-black hover:bg-[#d4ff45]"
+                  }`}
+                >
+                  {penalty.status === "paid" ? (
+                    <>
+                      <CheckCircle2 size={18} className="text-emerald-400" />
+                      Penalty Violation Settled
+                    </>
+                  ) : isStripeLoading ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                      Loading Stripe...
+                    </>
+                  ) : (
+                    <>
+                      <CreditCard size={18} strokeWidth={2.5} />
+                      Pay Penalty Notice • $
+                      {Number(penalty.generatedPenalty || 0).toFixed(2)}
+                    </>
+                  )}
+                </button>
+
+                {penalty.status === 'paid' ? (
+                  <button
+                    type="button"
+                    onClick={() => void downloadReceipt()}
+                    className="w-full py-4 rounded-full border border-[#C6F432] bg-black/10 text-[#C6F432] font-bold transition hover:bg-[#C6F432]/10"
+                  >
+                    Download Receipt
+                  </button>
+                ) : null}
+              </div>
 
               {/* Disputed Button */}
               {penalty.status !== "paid" && (
@@ -386,20 +464,80 @@ export default function PenaltyPage() {
           </div>
         </div>
       </div>
+      {isStripeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
+          <div
+            className="relative w-full max-w-xl bg-[#121212] border border-white/10 rounded-[32px] overflow-hidden shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Elements stripe={stripePromise!}>
+              <PenaltyStripeModal
+                penaltyId={penaltyId}
+                amount={Number(penalty?.generatedPenalty ?? 0)}
+                email={emailFromQuery}
+                stripeError={stripePaymentError}
+                onError={setStripePaymentError}
+                onClose={closePaymentModal}
+                onSuccess={handlePaymentSuccess}
+              />
+            </Elements>
+          </div>
+        </div>
+      )}
+
+      {showPaymentSuccess ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
+          <div className="w-full max-w-sm rounded-[32px] border border-white/10 bg-[#121212] p-7 text-center shadow-2xl">
+            <div className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[#C6F432]/10">
+              <CheckCircle2 className="text-[#C6F432]" size={34} />
+            </div>
+            <h3 className="text-2xl font-bold">Payment Successful</h3>
+            <p className="mt-2 text-sm leading-relaxed text-[#9CA3AF]">
+              Your penalty is settled. A receipt confirmation has been sent to your email.
+            </p>
+            <div className="mt-6 grid gap-3">
+              <button
+                type="button"
+                onClick={() => void downloadReceipt()}
+                className="flex w-full items-center justify-center gap-2 rounded-full border border-[#C6F432] py-3 text-sm font-bold text-[#C6F432] transition hover:bg-[#C6F432]/10"
+              >
+                <Download size={16} />
+                Download Receipt
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowPaymentSuccess(false)}
+                className="w-full rounded-full bg-[#C6F432] py-3 text-sm font-black text-black transition hover:bg-[#d4ff45]"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {/*EVIDENCE   POPUP */}
       {isPhotoModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
           <div
-            className="relative w-full max-w-lg bg-[#121212] border border-white/5 rounded-[28px] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col"
+            className="relative flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-[28px] border border-white/10 bg-[#121212] shadow-2xl animate-in zoom-in-95 duration-300"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Modal Header */}
             <div className="p-5 border-b border-white/5 flex items-center justify-between bg-[#1A1A1A]/50">
-              <div className="flex items-center gap-2">
-                <Image size={16} className="text-[#C6F432]" />
-                <span className="text-xs font-bold uppercase tracking-wider text-white">
-                  Enforcement Photo Proof
-                </span>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setIsPhotoModalOpen(false)}
+                  className="rounded-full bg-white/5 border border-white/5 p-2 text-[#9CA3AF] hover:text-white hover:bg-white/10 transition-colors"
+                >
+                  <ArrowLeft size={14} />
+                </button>
+                <div className="flex items-center gap-2">
+                  <Image size={16} className="text-[#C6F432]" />
+                  <span className="text-xs font-bold uppercase tracking-wider text-white">
+                    Enforcement Photo Proof
+                  </span>
+                </div>
               </div>
               <button
                 onClick={() => setIsPhotoModalOpen(false)}
@@ -409,15 +547,32 @@ export default function PenaltyPage() {
               </button>
             </div>
 
-            <div className="relative w-full aspect-[4/3] bg-black flex items-center justify-center">
+            <div className="relative flex min-h-0 bg-black">
               <img
-                src={
-                  penalty.evidenceImage ||
-                  "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&q=80"
-                }
-                alt="Enforcement citation evidence plate"
-                className="w-full h-full object-cover opacity-90"
+                src={selectedProofImage}
+                alt="Violation proof image"
+                className="max-h-[60vh] w-full object-contain opacity-95"
               />
+              {proofImages.length > 1 ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedProofIndex((index) => (index - 1 + proofImages.length) % proofImages.length)}
+                    className="absolute left-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white transition hover:bg-black/80"
+                    aria-label="Previous evidence image"
+                  >
+                    <ArrowLeft size={18} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedProofIndex((index) => (index + 1) % proofImages.length)}
+                    className="absolute right-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-black/60 text-white transition hover:bg-black/80"
+                    aria-label="Next evidence image"
+                  >
+                    <ArrowLeft size={18} className="rotate-180" />
+                  </button>
+                </>
+              ) : null}
               <div className="absolute bottom-4 left-4 right-4 bg-black/70 backdrop-blur-md border border-white/5 rounded-xl p-3 flex items-center justify-between">
                 <div>
                   <p className="text-[9px] uppercase tracking-wider text-[#4B5563] font-bold">
@@ -437,9 +592,184 @@ export default function PenaltyPage() {
                 </div>
               </div>
             </div>
+            {proofImages.length > 1 ? (
+              <div className="grid max-h-36 grid-cols-3 gap-3 overflow-y-auto p-4 sm:grid-cols-5">
+                {proofImages.map((src, index) => (
+                  <button
+                    key={src + index}
+                    type="button"
+                    onClick={() => setSelectedProofIndex(index)}
+                    className={`overflow-hidden rounded-2xl border p-1 transition ${
+                      selectedProofIndex === index
+                        ? "border-[#C6F432] bg-white/10"
+                        : "border-white/10 bg-white/5"
+                    }`}
+                  >
+                    <img
+                      src={src}
+                      alt={`Proof ${index + 1}`}
+                      className="h-20 w-full object-cover"
+                    />
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function PenaltyStripeModal({
+  penaltyId,
+  amount,
+  email,
+  stripeError,
+  onError,
+  onClose,
+  onSuccess,
+}: {
+  penaltyId: string;
+  amount: number;
+  email?: string;
+  stripeError: string | null;
+  onError: React.Dispatch<React.SetStateAction<string | null>>;
+  onClose: () => void;
+  onSuccess: (invoiceId?: string | null) => void;
+}) {
+  const stripe = useStripe();
+  const elements = useElements();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleConfirmPayment = async () => {
+    if (!stripe || !elements) {
+      onError("Stripe is not ready. Please try again.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    onError(null);
+
+    try {
+      const paymentIntent = await customerService.createPaymentIntent(amount);
+
+      const result = await stripe.confirmCardPayment(paymentIntent.clientSecret, {
+        payment_method: {
+          card: elements.getElement(CardElement)!,
+        },
+      });
+
+      if (result.error) {
+        onError(result.error.message || "Payment failed. Please check your card details.");
+        return;
+      }
+
+      if (!result.paymentIntent || result.paymentIntent.status !== "succeeded") {
+        onError("Payment did not complete successfully. Please try again.");
+        return;
+      }
+
+      const resultData = await customerService.payPenalty(penaltyId, email, result.paymentIntent.id);
+      toast.success("Penalty payment successful", {
+        style: {
+          background: "#0B0B0B",
+          border: "1px solid rgba(190,242,100,0.2)",
+          color: "#fff",
+          borderRadius: "18px",
+        },
+      });
+      onSuccess(resultData.invoice_id ?? null);
+    } catch (error: any) {
+      console.error(error);
+      onError(
+        error?.response?.data?.message || error?.message || "Payment processing failed. Please try again.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="relative w-full bg-[#121212] rounded-[32px] overflow-hidden">
+      <div className="p-6 border-b border-white/10 flex items-center justify-between">
+        <div>
+          <h3 className="text-xl font-bold">Pay Penalty Notice</h3>
+          <p className="text-sm text-[#9CA3AF] mt-1">
+            Complete payment via Stripe to settle your citation.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="h-10 w-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-[#9CA3AF] hover:text-white hover:bg-white/10 transition-colors"
+        >
+          <X size={16} />
+        </button>
+      </div>
+
+      <div className="p-6 space-y-6">
+        <div className="rounded-3xl bg-[#0F0F0F] p-5 border border-white/10">
+          <p className="text-xs uppercase tracking-[0.2em] text-[#4B5563] font-bold mb-3">
+            Total Due
+          </p>
+          <p className="text-4xl font-black text-[#C6F432] font-mono">
+            ${amount.toFixed(2)}
+          </p>
+        </div>
+
+        <div className="rounded-3xl bg-[#0F0F0F] p-5 border border-white/10">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-[#4B5563] font-bold mb-3">
+            Card details
+          </p>
+          <div className="rounded-3xl border border-white/10 bg-[#121212] p-4">
+            <CardElement
+              options={{
+                style: {
+                  base: {
+                    color: "#FFFFFF",
+                    fontSize: "16px",
+                    fontFamily: "Inter, system-ui, sans-serif",
+                    fontSmoothing: "antialiased",
+                    "::placeholder": {
+                      color: "#9CA3AF",
+                    },
+                  },
+                  invalid: {
+                    color: "#F87171",
+                  },
+                },
+              }}
+            />
+          </div>
+          {stripeError ? (
+            <p className="text-sm text-rose-400 mt-3">{stripeError}</p>
+          ) : null}
+        </div>
+
+        <button
+          type="button"
+          onClick={handleConfirmPayment}
+          disabled={isSubmitting || !stripe || !elements}
+          className={`w-full py-4 rounded-full font-black text-base transition-all flex items-center justify-center gap-2 ${
+            isSubmitting
+              ? "bg-[#1A1A1A] text-[#4B5563]"
+              : "bg-[#C6F432] text-black hover:bg-[#d4ff45]"
+          }`}
+        >
+          {isSubmitting ? (
+            <span className="flex items-center gap-2">
+              <span className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
+              Processing payment...
+            </span>
+          ) : (
+            <>
+              <CreditCard size={18} strokeWidth={2.5} />
+              Pay ${amount.toFixed(2)}
+            </>
+          )}
+        </button>
+      </div>
     </div>
   );
 }

@@ -49,6 +49,16 @@ interface AmountRow {
 }
 
 export class TicketRepository {
+  private async nextTicketNumber(): Promise<string> {
+    const rows = await queryRows<{ max_number: number | null }>(
+      `SELECT MAX(CAST(SUBSTRING(ticket_number, 5) AS UNSIGNED)) AS max_number
+       FROM penalty_tickets
+       WHERE ticket_number REGEXP '^TKT-[0-9]+$'`,
+    );
+    const next = Number(rows[0]?.max_number ?? 0) + 1;
+    return `TKT-${String(next).padStart(3, '0')}`;
+  }
+
   private buildWhere(filters: TicketListFilters): { clause: string; values: any[] } {
     const conditions: string[] = [];
     const values: any[] = [];
@@ -164,7 +174,7 @@ export class TicketRepository {
     remarks?: string;
   }): Promise<string> {
     const id = crypto.randomUUID();
-    const ticketNumber = `TKT-${Date.now()}`;
+    const ticketNumber = await this.nextTicketNumber();
 
     await execute(
       `INSERT INTO penalty_tickets

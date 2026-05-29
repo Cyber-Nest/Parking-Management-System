@@ -66,6 +66,15 @@ const run = async () => {
   await addColumn('payments', 'receipt_number', '`receipt_number` VARCHAR(64) NULL AFTER `paid_at`');
   await addColumn('payments', 'receipt_date', '`receipt_date` DATETIME NULL AFTER `receipt_number`');
 
+  const [[paymentMethodColumn]] = await conn.query(
+    `SELECT COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'payments' AND COLUMN_NAME = 'payment_method'`
+  );
+  if (paymentMethodColumn && String(paymentMethodColumn.COLUMN_TYPE).indexOf("'cash'") === -1) {
+    await conn.query(`ALTER TABLE payments MODIFY payment_method ENUM('credit_card','debit_card','apple_pay','visa','mastercard','amex','cash') NOT NULL`);
+    console.log('[DB MIGRATE] payments.payment_method enum updated to include cash');
+  }
+
   await addColumn('taxes', 'type', "`type` ENUM('percentage','fixed') NOT NULL DEFAULT 'percentage' AFTER `rate`");
 
   await addColumn('roles', 'description', '`description` TEXT NULL AFTER `name`');
@@ -115,6 +124,69 @@ const run = async () => {
   await addColumn('system_settings', 'prices_include_tax', '`prices_include_tax` TINYINT(1) NOT NULL DEFAULT 1 AFTER `rounding_rule`');
   await addColumn('system_settings', 'refund_allowed', '`refund_allowed` TINYINT(1) NOT NULL DEFAULT 1 AFTER `prices_include_tax`');
   await addColumn('system_settings', 'refund_approval_required', '`refund_approval_required` TINYINT(1) NOT NULL DEFAULT 1 AFTER `refund_allowed`');
+
+  await addColumn('officers', 'assigned_zone', '`assigned_zone` VARCHAR(150) NULL AFTER `badge_number`');
+
+  const [shiftTable] = await conn.query(
+    `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'officer_shifts'`,
+  );
+  if (!shiftTable.length) {
+    await conn.query(`
+      CREATE TABLE officer_shifts (
+        id CHAR(36) PRIMARY KEY,
+        officer_id CHAR(36) NOT NULL,
+        started_at DATETIME NOT NULL,
+        ended_at DATETIME NULL,
+        status ENUM('active', 'ended') NOT NULL DEFAULT 'active',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_officer_shifts_officer_status (officer_id, status),
+        CONSTRAINT fk_officer_shifts_officer FOREIGN KEY (officer_id) REFERENCES officers(id) ON DELETE CASCADE
+      )
+    `);
+    console.log('[DB MIGRATE] Created officer_shifts');
+  }
+
+  const [settingsTable] = await conn.query(
+    `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'officer_settings'`,
+  );
+  if (!settingsTable.length) {
+    await conn.query(`
+      CREATE TABLE officer_settings (
+        officer_id CHAR(36) PRIMARY KEY,
+        settings_json JSON NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT fk_officer_settings_officer FOREIGN KEY (officer_id) REFERENCES officers(id) ON DELETE CASCADE
+      )
+    `);
+    console.log('[DB MIGRATE] Created officer_settings');
+  }
+
+  const [offlineTable] = await conn.query(
+    `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'officer_offline_records'`,
+  );
+  if (!offlineTable.length) {
+    await conn.query(`
+      CREATE TABLE officer_offline_records (
+        id CHAR(36) PRIMARY KEY,
+        officer_id CHAR(36) NOT NULL,
+        record_type ENUM('ticket', 'evidence', 'payment', 'other') NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        subtitle VARCHAR(255) NULL,
+        payload_json JSON NOT NULL,
+        status ENUM('pending', 'syncing', 'synced', 'failed') NOT NULL DEFAULT 'pending',
+        error_message TEXT NULL,
+        client_id VARCHAR(100) NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        synced_at DATETIME NULL,
+        INDEX idx_officer_offline_officer_status (officer_id, status),
+        CONSTRAINT fk_officer_offline_officer FOREIGN KEY (officer_id) REFERENCES officers(id) ON DELETE CASCADE
+      )
+    `);
+    console.log('[DB MIGRATE] Created officer_offline_records');
+  }
 
   await conn.end();
 };

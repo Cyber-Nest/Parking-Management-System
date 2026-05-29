@@ -1,16 +1,15 @@
-import { User } from '../models/user.model';
 export declare class UserService {
     list(query: Record<string, string | undefined>): Promise<{
         items: {
-            id: any;
-            username: any;
-            email: any;
-            role_id: any;
-            role_name: any;
+            id: string;
+            username: string;
+            email: string;
+            role_id: string;
+            role_name: string;
             is_active: boolean;
-            last_login_at: any;
-            created_at: any;
-            updated_at: any;
+            last_login_at: string | null;
+            created_at: string;
+            updated_at: string;
         }[];
         total: number;
         page: number;
@@ -31,7 +30,17 @@ export declare class UserService {
         email?: string;
         role_id?: string;
         is_active?: boolean;
-    }): Promise<User>;
+    }): Promise<{
+        id: string;
+        username: string;
+        email: string;
+        role_id: string;
+        role_name: import("../types").RoleName;
+        is_active: boolean;
+        last_login_at: string | null;
+        created_at: string;
+        updated_at: string;
+    }>;
     remove(id: string): Promise<void>;
 }
 //# sourceMappingURL=user.service.d.ts.map

@@ -10,6 +10,7 @@ const adminOnly = (handler) => [
     handler,
 ];
 router.get('/summary', ...adminOnly(ticket_controller_1.getTicketSummary));
+router.get('/:id/print', ...adminOnly(ticket_controller_1.getTicketPrint));
 router.get('/:id', ...adminOnly(ticket_controller_1.getTicketById));
 router.patch('/:id/mark-paid', ...adminOnly(ticket_controller_1.markTicketPaid));
 router.patch('/:id/cancel', ...adminOnly(ticket_controller_1.cancelTicket));

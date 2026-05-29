@@ -17,6 +17,7 @@ export interface ParkingZoneRecord {
 export interface ParkingZoneFormInput {
   name: string;
   address?: string;
+  imageUrl?: string;
   hourlyRate?: number;
   availableSpots?: number;
   totalSpots?: number;
@@ -35,6 +36,7 @@ export const createParkingZone = async (input: ParkingZoneFormInput): Promise<Pa
   const response = await axiosInstance.post(API_ENDPOINTS.PARKING_ZONES.LIST, {
     parking_name: input.name,
     address: input.address,
+    image_url: input.imageUrl,
     hourly_rate: input.hourlyRate,
     available_spots: input.availableSpots,
     total_spots: input.totalSpots,
@@ -50,6 +52,7 @@ export const updateParkingZone = async (
   const response = await axiosInstance.patch(API_ENDPOINTS.PARKING_ZONES.BY_ID(id), {
     parking_name: input.name,
     address: input.address,
+    image_url: input.imageUrl,
     hourly_rate: input.hourlyRate,
     available_spots: input.availableSpots,
     total_spots: input.totalSpots,

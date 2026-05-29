@@ -99,8 +99,9 @@ export const SystemProvider = ({ children }: { children: React.ReactNode }) => {
       if (stored.branding) setBranding(stored.branding);
 
       const token = getTokenValue("token");
-      if (!token) {
-        // Skip protected settings fetch until the user logs in.
+      const isAdminArea = window.location.pathname.startsWith("/admin");
+      if (!token || !isAdminArea) {
+        // Fetch settings only for authenticated admin/admin area users.
         setLoading(false);
         return;
       }

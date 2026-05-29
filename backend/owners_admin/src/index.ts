@@ -18,7 +18,11 @@ import userRoutes from './routes/user.routes';
 import roleRoutes from './routes/role.routes';
 import customerRoutes from './routes/customer.routes';
 import parkingZoneRoutes from './routes/parkingZone.routes';
+import enforcementRoutes from './routes/enforcement.routes';
+import officerAuthRoutes from './routes/officerAuth.routes';
+import mediaRoutes from './routes/media.routes';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.middleware';
+import { getCloudinarySetupError, isCloudinaryConfigured } from './services/cloudinary.service';
 
 dotenv.config();
 
@@ -43,8 +47,8 @@ app.use(
     origin: env.nodeEnv === 'production' ? corsAllowList : true,
   })
 );
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '12mb' }));
+app.use(express.urlencoded({ extended: true, limit: '12mb' }));
 
 app.get('/health', (_req, res) => {
   res.status(200).json({
@@ -70,6 +74,9 @@ app.use('/api/admin/pricings', pricingRoutes);
 app.use('/api/admin/users', userRoutes);
 app.use('/api/admin/roles', roleRoutes);
 app.use('/api/customer', customerRoutes);
+app.use('/api/officer/auth', officerAuthRoutes);
+app.use('/api/officer', enforcementRoutes);
+app.use('/api/media', mediaRoutes);
 app.use(notFoundHandler);
 app.use(errorHandler);
 
@@ -78,6 +85,14 @@ const startServer = async (): Promise<void> => {
     await connectDatabase();
     app.listen(env.port, () => {
       console.log(`ParkSmart Owners Admin API running at http://localhost:${env.port}`);
+      const cloudinarySetupError = getCloudinarySetupError();
+      console.log(
+        isCloudinaryConfigured()
+          ? '[Cloudinary] Media uploads enabled (URLs stored in database)'
+          : cloudinarySetupError
+            ? `[Cloudinary] NOT ready — ${cloudinarySetupError}`
+            : '[Cloudinary] NOT configured — set CLOUDINARY_URL in .env for media uploads',
+      );
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown startup error';

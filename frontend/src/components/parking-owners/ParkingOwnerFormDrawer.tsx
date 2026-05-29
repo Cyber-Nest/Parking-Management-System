@@ -18,7 +18,9 @@ import {
   AlertTriangle,
 } from "lucide-react";
 
+import toast from "react-hot-toast";
 import { ParkingOwner, ParkingZone } from "@/services/parking-owner.service";
+import { uploadFileToCloudinary } from "@/lib/upload-media";
 
 export interface ParkingOwnerFormData {
   ownerName: string;
@@ -91,13 +93,17 @@ export const ParkingOwnerFormDrawer = ({
     formData.parkingImage || null,
   );
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    const preview = URL.createObjectURL(file);
-    setImagePreview(preview);
-    onFormChange("parkingImage", preview);
+    try {
+      const url = await uploadFileToCloudinary(file, "parksmart/parking", "Parking cover");
+      setImagePreview(url);
+      onFormChange("parkingImage", url);
+      toast.success("Parking image uploaded");
+    } catch {
+      toast.error("Failed to upload parking image");
+    }
   };
 
   const handleAddZone = () => {

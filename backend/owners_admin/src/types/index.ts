@@ -5,7 +5,7 @@ export type RoleName = 'owner' | 'inspector' | 'user';
 export type UserType = 'admin' | 'officer' | 'user';
 export type TicketStatus = 'unpaid' | 'paid' | 'cancelled' | 'disputed' | 'resolved';
 export type PaymentStatus = 'pending' | 'success' | 'failed' | 'refunded';
-export type PaymentMethod = 'credit_card' | 'debit_card' | 'apple_pay' | 'visa' | 'mastercard' | 'amex';
+export type PaymentMethod = 'credit_card' | 'debit_card' | 'apple_pay' | 'visa' | 'mastercard' | 'amex' | 'cash';
 export type PaymentType = 'parking' | 'penalty' | 'extension';
 export type SessionStatus = 'active' | 'expired' | 'extended' | 'cancelled';
 export type OfficerStatus = 'active' | 'inactive' | 'suspended';
@@ -99,6 +99,7 @@ export interface TicketPublic {
   dispute_raised: boolean;
   photos: string[];
   location_name?: string | null;
+  payment_id?: string | null;
 }
 
 export interface CreateTicketBody {
@@ -231,9 +232,13 @@ export interface AuthenticatedRequest extends Request {
 export type EmailType =
   | 'payment_receipt' | 'penalty_notice' | 'dispute_response'
   | 'password_reset' | 'session_expiry_warning' | 'session_started'
-  | 'officer_created';
+  | 'officer_created' | 'extension_receipt' | 'penalty_payment';
 
 export interface SendEmailOptions {
-  to: string; subject: string; html: string;
-  emailType: EmailType; relatedId?: string;
+  to: string;
+  subject: string;
+  html: string;
+  emailType: EmailType;
+  relatedId?: string;
+  attachments?: Array<{ filename: string; path: string }>;
 }

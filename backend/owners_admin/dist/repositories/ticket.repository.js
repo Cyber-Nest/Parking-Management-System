@@ -7,6 +7,13 @@ exports.TicketRepository = void 0;
 const crypto_1 = __importDefault(require("crypto"));
 const database_1 = require("../config/database");
 class TicketRepository {
+    async nextTicketNumber() {
+        const rows = await (0, database_1.queryRows)(`SELECT MAX(CAST(SUBSTRING(ticket_number, 5) AS UNSIGNED)) AS max_number
+       FROM penalty_tickets
+       WHERE ticket_number REGEXP '^TKT-[0-9]+$'`);
+        const next = Number(rows[0]?.max_number ?? 0) + 1;
+        return `TKT-${String(next).padStart(3, '0')}`;
+    }
     buildWhere(filters) {
         const conditions = [];
         const values = [];
@@ -78,7 +85,7 @@ class TicketRepository {
     }
     async create(params) {
         const id = crypto_1.default.randomUUID();
-        const ticketNumber = `TKT-${Date.now()}`;
+        const ticketNumber = await this.nextTicketNumber();
         await (0, database_1.execute)(`INSERT INTO penalty_tickets
       (id, ticket_number, officer_id, officer_name, session_id, license_plate, amount, reason, status, date_issued, due_date, remarks, note)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?)`, [
@@ -98,10 +105,32 @@ class TicketRepository {
         return id;
     }
     async findById(id) {
-        const rows = await (0, database_1.queryRows)(`SELECT id, ticket_number, officer_id, officer_name, license_plate, location_name, amount, reason, status,
-              date_issued, due_date, paid_at, remarks, note, dispute_raised, created_at, session_id
-       FROM penalty_tickets WHERE id = ? LIMIT 1`, [id]);
+        const rows = await (0, database_1.queryRows)(`SELECT t.id, t.ticket_number, t.officer_id, t.officer_name, t.license_plate, t.location_name, t.amount, t.reason, t.status,
+              t.date_issued, t.due_date, t.paid_at, t.payment_id, t.remarks, t.note, t.dispute_raised, t.dispute_message, t.dispute_at,
+              t.dispute_resolved_at, t.created_at, t.session_id, s.start_time, s.end_time, s.plan_name, s.notes
+       FROM penalty_tickets t
+       LEFT JOIN parking_sessions s ON t.session_id = s.id
+       WHERE t.id = ? LIMIT 1`, [id]);
         return rows[0] ?? null;
+    }
+    async findByTicketNumber(ticketNumber) {
+        const rows = await (0, database_1.queryRows)(`SELECT t.id, t.ticket_number, t.officer_id, t.officer_name, t.license_plate, t.location_name, t.amount, t.reason, t.status,
+              t.date_issued, t.due_date, t.paid_at, t.payment_id, t.remarks, t.note, t.dispute_raised, t.dispute_message, t.dispute_at,
+              t.dispute_resolved_at, t.created_at, t.session_id, s.start_time, s.end_time, s.plan_name, s.notes
+       FROM penalty_tickets t
+       LEFT JOIN parking_sessions s ON t.session_id = s.id
+       WHERE t.ticket_number = ? LIMIT 1`, [ticketNumber]);
+        return rows[0] ?? null;
+    }
+    async raiseDispute(id, disputeMessage) {
+        const result = await (0, database_1.execute)(`UPDATE penalty_tickets
+       SET dispute_raised = 1,
+           dispute_message = ?,
+           dispute_at = NOW(),
+           status = 'disputed',
+           updated_at = NOW()
+       WHERE id = ?`, [disputeMessage, id]);
+        return result.affectedRows;
     }
     async updateTicket(id, params) {
         const updates = [];
@@ -137,8 +166,10 @@ class TicketRepository {
         if (!row)
             return 0;
         const stamp = new Date().toISOString();
-        const next = row.remarks ? `${row.remarks}\n[${stamp}] ${note}` : `[${stamp}] ${note}`;
-        const result = await (0, database_1.execute)(`UPDATE penalty_tickets SET remarks = ?, updated_at = NOW() WHERE id = ?`, [next, id]);
+        const trimmed = note.trim();
+        const next = row.remarks ? `${row.remarks}\n[${stamp}] ${trimmed}` : `[${stamp}] ${trimmed}`;
+        // `remarks` = full audit log; `note` = latest admin note (handy for DB browsing / exports)
+        const result = await (0, database_1.execute)(`UPDATE penalty_tickets SET remarks = ?, note = ?, updated_at = NOW() WHERE id = ?`, [next, trimmed, id]);
         return result.affectedRows;
     }
     async setStatus(id, status, extras) {

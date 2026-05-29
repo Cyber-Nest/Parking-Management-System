@@ -29,7 +29,7 @@ import { BrandingSettings } from "@/components/all-settings/BrandingSettings";
 const TABS = [
   { id: "general", label: "General", icon: Settings },
   { id: "tax", label: "Tax & Pricing", icon: Receipt },
-  { id: "system", label: "System", icon: Clock },
+  // { id: "system", label: "System", icon: Clock },
   { id: "users", label: "Users & Roles", icon: Users },
   { id: "security", label: "Security", icon: Shield },
   { id: "notifications", label: "Notifications", icon: Bell },
@@ -51,8 +51,8 @@ export default function SettingsPage() {
         return <GeneralSettings />;
       case "tax":
         return <TaxSettings />;
-      case "system":
-        return <SystemSettings />;
+      // case "system":
+      //   return <SystemSettings />;
       case "users":
         return <UsersRolesSettings />;
       case "security":

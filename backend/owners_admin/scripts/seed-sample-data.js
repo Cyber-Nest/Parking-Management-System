@@ -389,7 +389,12 @@ const run = async () => {
       [
         id,
         ticketId,
-        `https://example.com/seed-photo-${i + 1}.jpg`,
+        `https://images.unsplash.com/photo-${[
+          '1541899481282-d53bffe3c35d',
+          '1502877338535-766e1452684a',
+          '1493238792000-8113da705763',
+          '1605559424843-9e4c228bf1c2',
+        ][i % 4]}?auto=format&fit=crop&w=900&q=80&seed=seed-photo-${i + 1}`,
         fmt(new Date(Date.now() - (i * 3600000))),
         fmt(new Date(Date.now() - (i * 1800000))),
       ]

@@ -13,6 +13,7 @@ import {
   ParkingZonePublic,
 } from '../types';
 import { sanitizeParkingImageUrl } from '../utils/parkingImages';
+import { sendEmail, paymentReceiptTemplate } from '../utils/email';
 
 const parkingZoneRepo = new ParkingZoneRepository();
 const parkingPlanRepo = new ParkingPlanRepository();
@@ -106,6 +107,7 @@ export class CustomerService {
       durationLabel: string;
       durationMinutes: number;
       amount: number;
+      stripePaymentIntentId: string;
     }
   ) {
     const booking = await bookingService.getBooking(bookingId);
@@ -119,6 +121,20 @@ export class CustomerService {
 
     if (booking.allow_extension === 0) {
       throw new Error('Booking extension is not allowed for this booking');
+    }
+
+    if (!payload.stripePaymentIntentId) {
+      throw new Error('Stripe payment intent ID is required for booking extension');
+    }
+
+    const paymentIntent = await stripe.paymentIntents.retrieve(payload.stripePaymentIntentId);
+    if (paymentIntent.status !== 'succeeded') {
+      throw new Error('Stripe payment intent is not completed');
+    }
+
+    const expectedAmount = Math.round(payload.amount * 100);
+    if (paymentIntent.amount < expectedAmount) {
+      throw new Error('Stripe payment amount is lower than the extension amount');
     }
 
     const existingEndTime = new Date(booking.end_time);
@@ -143,10 +159,11 @@ export class CustomerService {
         transactionType: 'booking_extension',
         bookingId: booking.id,
         userEmail: booking.customer_email,
+        stripePaymentIntentId: payload.stripePaymentIntentId,
       });
       await transactionService.completeTransaction(transaction.id);
 
-      await invoiceService.createInvoice({
+      const extendInvoice = await invoiceService.createInvoice({
         customerEmail: booking.customer_email,
         vehiclePlateNumber: booking.vehicle_plate_number,
         vehicleModel: booking.vehicle_model,
@@ -167,6 +184,52 @@ export class CustomerService {
         endTime: newEndTime,
         durationMinutes: payload.durationMinutes,
       });
+
+      if (extendInvoice?.id) {
+        await invoiceService.markAsPaid(extendInvoice.id, payload.amount);
+      }
+
+      // Send extension confirmation email
+      try {
+        const emailHtml = paymentReceiptTemplate({
+          bookingId: booking.id,
+          customerEmail: booking.customer_email,
+          vehicleModel: booking.vehicle_model,
+          vehiclePlateNumber: booking.vehicle_plate_number,
+          parkingName: booking.parking_name,
+          parkingLocation: booking.parking_location || 'N/A',
+          startTime: existingEndTime,
+          endTime: newEndTime,
+          durationLabel: payload.durationLabel,
+          bookingReference: booking.booking_reference,
+          invoiceNumber: extendInvoice?.invoice_number || 'N/A',
+          totalAmount: payload.amount,
+          basePrice: payload.amount,
+          serviceFee: 0,
+          frontendUrl: env.frontendUrl,
+        });
+
+        const attachments = [];
+        if (extendInvoice?.pdf_file_path) {
+          attachments.push({
+            filename: `extension-invoice-${extendInvoice.invoice_number}.pdf`,
+            path: extendInvoice.pdf_file_path,
+          });
+        }
+
+        await sendEmail({
+          to: booking.customer_email,
+          subject: `ParkSmart Extension Confirmed - Reservation #${booking.booking_reference}`,
+          html: emailHtml,
+          emailType: 'extension_receipt',
+          relatedId: booking.id,
+          attachments: attachments.length > 0 ? attachments : undefined,
+        });
+
+        console.log(`[CustomerService] Extension confirmation sent to ${booking.customer_email}`);
+      } catch (emailError) {
+        console.error('[CustomerService] Failed to send extension email:', emailError);
+      }
     } catch (error) {
       console.error('[CustomerService] extendBooking transaction/invoice failed:', error);
     }
@@ -210,7 +273,7 @@ export class CustomerService {
 
     const sessionId = await sessionRepo.create({
       licensePlate: payload.plateNumber,
-      planId,
+      planId: planId ?? undefined,
       planName,
       startTime: formatDateTime(startTime),
       endTime: formatDateTime(endTime),
@@ -301,6 +364,49 @@ export class CustomerService {
     await parkingZoneRepo.decrementAvailableSpots(zone.id);
 
     const receiptNumber = `RCP-${Date.now()}-${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
+
+    // Send payment receipt email
+    try {
+      const emailHtml = paymentReceiptTemplate({
+        bookingId: booking.id,
+        customerEmail: payload.email,
+        vehicleModel: payload.vehicleModel,
+        vehiclePlateNumber: payload.plateNumber,
+        parkingName: zone.parking_name,
+        parkingLocation: zone.address,
+        startTime: startTime,
+        endTime: endTime,
+        durationLabel: payload.durationLabel,
+        bookingReference: booking.booking_reference,
+        invoiceNumber: invoice?.invoice_number || 'N/A',
+        totalAmount: totalAmount,
+        basePrice: basePrice,
+        serviceFee: serviceFee,
+        frontendUrl: env.frontendUrl,
+      });
+
+      const attachments = [];
+      if (invoice?.pdf_file_path) {
+        attachments.push({
+          filename: `invoice-${invoice.invoice_number}.pdf`,
+          path: invoice.pdf_file_path,
+        });
+      }
+
+      await sendEmail({
+        to: payload.email,
+        subject: `ParkSmart Booking Confirmed - Reservation #${booking.booking_reference}`,
+        html: emailHtml,
+        emailType: 'payment_receipt',
+        relatedId: booking.id,
+        attachments: attachments.length > 0 ? attachments : undefined,
+      });
+
+      console.log(`[CustomerService] Payment receipt sent to ${payload.email}` + (attachments.length > 0 ? ' with invoice PDF' : ''));
+    } catch (emailError) {
+      console.error('[CustomerService] Failed to send receipt email:', emailError);
+      // Don't throw - booking is already completed, just log the error
+    }
 
     return {
       bookingId: booking.id,

@@ -130,7 +130,7 @@ export class BookingController {
     }
   }
 
-  async getActiveBookings(req: Request, res: Response) {
+  async getActiveBookings(_req: Request, res: Response) {
     try {
       const bookings = await bookingService.getActiveBookings();
 
@@ -213,7 +213,7 @@ export class BookingController {
     }
   }
 
-  async getBookingStats(req: Request, res: Response) {
+  async getBookingStats(_req: Request, res: Response) {
     try {
       const stats = await bookingService.getBookingStats();
 
@@ -230,7 +230,7 @@ export class BookingController {
     }
   }
 
-  async getTodayBookings(req: Request, res: Response) {
+  async getTodayBookings(_req: Request, res: Response) {
     try {
       const stats = await bookingService.getTodayBookings();
 

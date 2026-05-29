@@ -18,7 +18,7 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      setIsLoading(true);
+      // setIsLoading(true);
 
       const data = await loginUser({
         email,

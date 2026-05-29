@@ -122,7 +122,7 @@ const run = async () => {
       user_id CHAR(36) NULL,
       license_plate VARCHAR(50) NOT NULL,
       amount DECIMAL(10,2) NOT NULL,
-      payment_method ENUM('credit_card', 'debit_card', 'apple_pay', 'visa', 'mastercard', 'amex') NOT NULL,
+      payment_method ENUM('credit_card', 'debit_card', 'apple_pay', 'visa', 'mastercard', 'amex', 'cash') NOT NULL,
       payment_type ENUM('parking', 'penalty', 'extension') NOT NULL,
       status ENUM('pending', 'success', 'failed', 'refunded') NOT NULL DEFAULT 'success',
       transaction_ref VARCHAR(191) NULL,
@@ -169,10 +169,25 @@ const run = async () => {
     CREATE TABLE IF NOT EXISTS ticket_photos (
       id CHAR(36) PRIMARY KEY,
       ticket_id CHAR(36) NOT NULL,
-      photo_url TEXT NOT NULL,
+      photo_url LONGTEXT NOT NULL,
       photo_taken_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
       uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       CONSTRAINT fk_ticket_photo_ticket FOREIGN KEY (ticket_id) REFERENCES penalty_tickets(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS officer_evidence (
+      id CHAR(36) PRIMARY KEY,
+      officer_id CHAR(36) NULL,
+      officer_name VARCHAR(191) NOT NULL,
+      license_plate VARCHAR(50) NOT NULL,
+      location_name VARCHAR(150) NULL,
+      evidence_type VARCHAR(100) NOT NULL DEFAULT 'general',
+      notes TEXT NULL,
+      photo_url LONGTEXT NOT NULL,
+      photo_taken_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_officer_evidence_plate (license_plate),
+      INDEX idx_officer_evidence_uploaded_at (uploaded_at)
     );
 
     CREATE TABLE IF NOT EXISTS email_logs (

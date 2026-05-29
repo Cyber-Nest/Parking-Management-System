@@ -31,7 +31,7 @@ export interface VehicleDetails {
 }
 
 export interface DurationOption {
-  type: string;
+  type?: string;
   label: string;
   value: string;
   price: number;
@@ -96,6 +96,7 @@ export interface PenaltyVehicleDetails {
 
 export interface PenaltyDetails {
   evidenceImage: string;
+  proofImages: string[];
   penaltyId: string;
 
   parkingName: string;
@@ -119,6 +120,33 @@ export interface PenaltyDetails {
   status: "pending" | "paid" | "disputed";
 
   issuedAt: string;
+
+  receiptInvoiceId?: string | null;
+}
+
+export interface PenaltyPaymentResponse {
+  payment_id: string;
+  invoice_id?: string;
+  invoice_number?: string;
+}
+
+export interface CustomerInvoice {
+  id: string;
+  invoice_number: string;
+  invoice_date: string;
+  customer_email: string;
+  customer_name?: string | null;
+  vehicle_plate_number?: string | null;
+  item_type: string;
+  item_description?: string | null;
+  subtotal?: number;
+  tax_amount?: number;
+  service_fee?: number;
+  total_amount: number;
+  currency?: string;
+  payment_status: string;
+  paid_amount: number;
+  status: string;
 }
 
 export interface PenaltyDisputePayload {
@@ -127,6 +155,8 @@ export interface PenaltyDisputePayload {
   email: string;
 
   phone: string;
+
+  address?: string;
 
   explanation: string;
 
@@ -355,6 +385,13 @@ class CustomerService {
     };
   }
 
+  async getBookingById(bookingId: string): Promise<CustomerBookingDetails | null> {
+    const response = await axiosInstance.get(
+      API_ENDPOINTS.CUSTOMER.BOOKING_BY_ID(bookingId),
+    );
+    return response.data?.data?.booking ?? null;
+  }
+
   async getBookingByReference(reference: string): Promise<CustomerBookingDetails | null> {
     const response = await axiosInstance.get(
       API_ENDPOINTS.CUSTOMER.BOOKING_BY_REFERENCE(reference),
@@ -368,6 +405,7 @@ class CustomerService {
       durationLabel: string;
       durationMinutes: number;
       amount: number;
+      stripePaymentIntentId: string;
     },
   ): Promise<CustomerBookingDetails> {
     const response = await axiosInstance.patch(
@@ -376,6 +414,7 @@ class CustomerService {
         durationLabel: payload.durationLabel,
         durationMinutes: payload.durationMinutes,
         amount: payload.amount,
+        stripePaymentIntentId: payload.stripePaymentIntentId,
       },
     );
     return response.data?.data as CustomerBookingDetails;
@@ -398,13 +437,40 @@ class CustomerService {
     window.URL.revokeObjectURL(url);
   }
 
+  async downloadPenaltyReceipt(ticketNumber: string, email?: string): Promise<void> {
+    const response = await axiosInstance.get(
+      API_ENDPOINTS.CUSTOMER.PENALTY_RECEIPT(ticketNumber),
+      {
+        params: email ? { email } : undefined,
+        responseType: "blob",
+      },
+    );
+
+    const blob = new Blob([response.data], { type: "application/pdf" });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `receipt-${ticketNumber}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  }
+
+  async getInvoice(invoiceId: string): Promise<CustomerInvoice | null> {
+    const response = await axiosInstance.get(API_ENDPOINTS.CUSTOMER.INVOICE(invoiceId));
+    return response.data?.data ?? null;
+  }
+
   async processDummyPayment(): Promise<boolean> {
     await new Promise((resolve) => setTimeout(resolve, 800));
     return true;
   }
 
-  async getPenaltyById(penaltyId: string): Promise<PenaltyDetails | null> {
-    const response = await axiosInstance.get(API_ENDPOINTS.CUSTOMER.PENALTY(penaltyId));
+  async getPenaltyById(penaltyId: string, email?: string): Promise<PenaltyDetails | null> {
+    const response = await axiosInstance.get(API_ENDPOINTS.CUSTOMER.PENALTY(penaltyId), {
+      params: email ? { email } : undefined,
+    });
     const data = response.data?.data;
     if (!data) return null;
 
@@ -425,6 +491,15 @@ class CustomerService {
           Math.round((Date.now() - endTime.getTime()) / 60000),
         )
       : 0;
+
+    const rawProofImages = Array.isArray(data.photos)
+      ? data.photos.map((item: unknown) => String(item)).filter(Boolean)
+      : [];
+    const proofImages = rawProofImages.length
+      ? rawProofImages
+      : data.evidence_image
+      ? [String(data.evidence_image)]
+      : [];
 
     return {
       penaltyId: data.ticket_number,
@@ -458,15 +533,25 @@ class CustomerService {
           ? 'disputed'
           : 'pending',
       issuedAt: data.date_issued ?? new Date().toISOString(),
-      evidenceImage: data.evidence_image ?? '',
+      evidenceImage: proofImages[0] ?? '',
+      proofImages,
+      receiptInvoiceId: data.receiptInvoiceId ?? null,
     };
   }
 
-  async payPenalty(penaltyId: string): Promise<boolean> {
+  async payPenalty(penaltyId: string, email?: string, transactionRef?: string): Promise<PenaltyPaymentResponse> {
     const response = await axiosInstance.patch(
       API_ENDPOINTS.CUSTOMER.PENALTY_PAY(penaltyId),
+      {
+        email,
+        transaction_ref: transactionRef,
+      },
     );
-    return response.data?.success === true;
+    if (response.data?.success !== true) {
+      const message = response.data?.message || 'Penalty payment failed';
+      throw new Error(message);
+    }
+    return response.data?.data as PenaltyPaymentResponse;
   }
 
   async submitPenaltyDispute(
@@ -479,6 +564,7 @@ class CustomerService {
         fullName: payload.fullName,
         email: payload.email,
         phone: payload.phone,
+        address: payload.address,
         explanation: payload.explanation,
         proofImage: payload.proofImage,
       },
