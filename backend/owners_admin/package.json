@@ -2,10 +2,10 @@
   "name": "owners-admin",
   "version": "1.0.0",
   "description": "ParkSmart - Owners Admin Panel Backend (TypeScript + MySQL)",
-  "main": "dist/index.js",
+  "main": "index.js",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/index.js",
+    "start": "node index.js",
     "dev": "kill-port 5000 && ts-node-dev --respawn --transpile-only src/index.ts",
     "seed": "node scripts/insert-admin.js",
     "db:init": "node scripts/init-db.js",
