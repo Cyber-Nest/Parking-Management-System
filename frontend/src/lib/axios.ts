@@ -54,9 +54,9 @@ axiosInstance.interceptors.response.use(
       document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
       document.cookie = "refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
       const currentPath = window.location.pathname;
-      const isAuthPath = ["/login", "/officer/login", "/officer/forgot-password", "/officer/reset-password"].includes(currentPath);
+      const isAuthPath = ["/admin/login", "/officer/login", "/officer/forgot-password", "/officer/reset-password"].includes(currentPath);
       if (!isAuthPath) {
-        window.location.href = currentPath.startsWith("/officer") ? "/officer/login" : "/login";
+        window.location.href = currentPath.startsWith("/officer") ? "/officer/login" : "/admin/login";
       }
     }
     return Promise.reject(error);

@@ -109,14 +109,14 @@ export const ActionDropdown = ({
               }}
               danger
             />
-            <MenuItem
+            {/* <MenuItem
               icon={<Flag size={14} className="sm:w-[15px] sm:h-[15px]" />}
               label="Mark Issue"
               onClick={() => {
                 onIssue(session);
                 setOpen(false);
               }}
-            />
+            /> */}
           </motion.div>
         )}
       </AnimatePresence>

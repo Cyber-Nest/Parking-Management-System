@@ -29,7 +29,6 @@ import {
 import { officerService, Officer } from "@/services/officer.service";
 import { createOfficer, updateOfficer } from "@/services/officers.service";
 
-
 const initialFormData: OfficerFormData = {
   countryCode: "+1",
   name: "",
@@ -84,9 +83,14 @@ export default function OfficerManagementPage() {
   const stats = useMemo(() => {
     return {
       totalOfficers: officers.length,
-      activeOfficers: officers.filter((o) => o.accessStatus === "Enabled").length,
-      disabledOfficers: officers.filter((o) => o.accessStatus === "Disabled").length,
-      totalTickets: officers.reduce((acc, curr) => acc + (curr.tickets ?? 0), 0),
+      activeOfficers: officers.filter((o) => o.accessStatus === "Enabled")
+        .length,
+      disabledOfficers: officers.filter((o) => o.accessStatus === "Disabled")
+        .length,
+      totalTickets: officers.reduce(
+        (acc, curr) => acc + (curr.tickets ?? 0),
+        0,
+      ),
     };
   }, [officers]);
 
@@ -165,21 +169,27 @@ export default function OfficerManagementPage() {
 
   const handleDisableOfficer = async (officerId: string) => {
     try {
-      const newStatus = officers.find(o => o.id === officerId)?.accessStatus === "Disabled" ? "ACTIVE" : "DISABLED";
+      const newStatus =
+        officers.find((o) => o.id === officerId)?.accessStatus === "Disabled"
+          ? "ACTIVE"
+          : "DISABLED";
       await officerService.setOfficerStatus(officerId, newStatus);
       // Refresh the list
       const items = await officerService.getOfficers({});
       setOfficers(items);
-      toast.success(`Officer ${newStatus === "DISABLED" ? "disabled" : "enabled"} successfully`);
+      toast.success(
+        `Officer ${newStatus === "DISABLED" ? "disabled" : "enabled"} successfully`,
+      );
     } catch (error) {
       console.error(error);
       const msg =
         typeof error === "object" &&
         error !== null &&
         "response" in error &&
-        typeof (error as { response?: { data?: { message?: string } } }).response?.data?.message ===
-          "string"
-          ? (error as { response: { data: { message: string } } }).response.data.message
+        typeof (error as { response?: { data?: { message?: string } } })
+          .response?.data?.message === "string"
+          ? (error as { response: { data: { message: string } } }).response.data
+              .message
           : "Failed to update officer status";
       toast.error(msg);
     }
@@ -232,8 +242,10 @@ export default function OfficerManagementPage() {
         typeof e === "object" &&
         e !== null &&
         "response" in e &&
-        typeof (e as { response?: { data?: { message?: string } } }).response?.data?.message === "string"
-          ? (e as { response: { data: { message: string } } }).response.data.message
+        typeof (e as { response?: { data?: { message?: string } } }).response
+          ?.data?.message === "string"
+          ? (e as { response: { data: { message: string } } }).response.data
+              .message
           : "Could not save officer";
       toast.error(msg);
     }
@@ -370,14 +382,18 @@ export default function OfficerManagementPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden">
-                            <img
-                              src={
-                                officer.profilePhoto ||
-                                `https://i.pravatar.cc/150?u=${idx}`
-                              }
-                              alt="avatar"
-                            />
+                          <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden flex items-center justify-center">
+                            {officer.profilePhoto ? (
+                              <img
+                                src={officer.profilePhoto}
+                                alt="avatar"
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-sm font-bold text-slate-700 uppercase">
+                                {officer.name?.charAt(0)}
+                              </span>
+                            )}
                           </div>
                           <div>
                             <div className="font-black text-sm">
@@ -460,10 +476,11 @@ export default function OfficerManagementPage() {
                   <button
                     key={page}
                     onClick={() => setCurrentPage(page)}
-                    className={`w-9 h-9 rounded-xl text-xs font-black transition-all ${currentPage === page
-                      ? "bg-[var(--color-primary)] text-white shadow-lg shadow-[var(--color-primary)]/20"
-                      : "hover:bg-white"
-                      }`}
+                    className={`w-9 h-9 rounded-xl text-xs font-black transition-all ${
+                      currentPage === page
+                        ? "bg-[var(--color-primary)] text-white shadow-lg shadow-[var(--color-primary)]/20"
+                        : "hover:bg-white"
+                    }`}
                   >
                     {page}
                   </button>
@@ -514,7 +531,12 @@ type OfficerActionDropdownType = {
   onDisable: (officerId: string) => void;
 };
 
-function OfficerActionDropdown({ officer, onView, onEdit, onDisable }: OfficerActionDropdownType) {
+function OfficerActionDropdown({
+  officer,
+  onView,
+  onEdit,
+  onDisable,
+}: OfficerActionDropdownType) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
