@@ -311,7 +311,7 @@ export default function PaymentsPage() {
             icon={<Car size={22} className="text-emerald-500" />}
             title="Parking Revenue"
             value={stats.parkingRevenue}
-            subValue="12 Transactions"
+            subValue="Transactions"
           />
           <StatCard
             icon={
@@ -319,13 +319,13 @@ export default function PaymentsPage() {
             }
             title="Penalty Revenue"
             value={stats.penaltyRevenue}
-            subValue="6 Transactions"
+            subValue="Transactions"
           />
           <StatCard
             icon={<Clock size={22} className="text-orange-400" />}
             title="Pending / Failed"
             value={stats.pendingFailed}
-            subValue="2 Transactions"
+            subValue="Transactions"
           />
         </div>
 

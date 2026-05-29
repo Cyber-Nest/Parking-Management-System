@@ -238,7 +238,7 @@ export default function Sidebar({
 
   const handleLogout = () => {
     document.cookie = "auth=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
-    window.location.href = "/login";
+    window.location.href = "/admin/login";
   };
 
   const navItems = [

@@ -26,7 +26,7 @@ export function middleware(request: NextRequest) {
   const isAdminRoute = request.nextUrl.pathname.startsWith("/dashboard");
 
   if (isAdminRoute && !token) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return NextResponse.redirect(new URL("/admin/login", request.url));
   }
 
   return NextResponse.next();

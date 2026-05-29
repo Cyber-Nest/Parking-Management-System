@@ -87,7 +87,7 @@ export default function ParkingPlanAndRulesPage() {
     const token = getTokenValue("token");
     if (!token) {
       setLoading(false);
-      router.push("/login");
+      router.push("/admin/login");
       return;
     }
 
