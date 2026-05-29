@@ -55,6 +55,13 @@ app.use(
 app.use(express.json({ limit: "12mb" }));
 app.use(express.urlencoded({ extended: true, limit: "12mb" }));
 
+app.get("/", (_req, res) => {
+  return res.status(200).json({
+    success: true,
+    message: "Root route working",
+  });
+});
+
 app.get("/health", (_req, res) => {
   res.status(200).json({
     success: true,
