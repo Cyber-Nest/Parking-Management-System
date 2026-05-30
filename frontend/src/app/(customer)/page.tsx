@@ -96,7 +96,13 @@ export default function LandingPage() {
         setLoading(true);
 
         const zoneId =
-          searchParams.get("zoneId") || process.env.NEXT_PUBLIC_DEFAULT_ZONE_ID || "ZONE-201";
+          searchParams.get("zone") || searchParams.get("zoneId");
+
+        //Only allow ZONE-201 to open the page)
+        if (!zoneId || zoneId.toUpperCase() !== "ZONE-201") {
+          setLoading(false);
+          return;
+        }
 
         const response = await customerService.getParkingZoneById(zoneId);
 
@@ -180,150 +186,170 @@ export default function LandingPage() {
       )}
 
       <main className="max-w-7xl mx-auto px-6 pt-24 pb-12 lg:pt-32">
-        {/* Grid Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
-          {/* Image Card */}
-          <div className="relative w-full h-[300px] md:h-[400px] lg:h-[550px] rounded-[32px] overflow-hidden group shadow-2xl lg:order-2">
-            {loading ? (
-              <ImageSkeleton />
-            ) : (
-              <>
-                <img
-                  src={parkingData?.image}
-                  alt={parkingData?.parkingName ?? "Premium Parking"}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-70"
-                  onError={(e) => {
-                    e.currentTarget.onerror = null;
-                    e.currentTarget.src =
-                      "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=1200&q=80";
-                  }}
-                />
-
-                <div className="absolute inset-0 bg-gradient-to-t from-[#0D0D0D] via-transparent to-transparent" />
-
-                <div className="absolute top-6 left-6 flex gap-2">
-                  <span className="bg-[#C6F432] text-black px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-lg">
-                    <span className="w-2 h-2 bg-black rounded-full animate-pulse" />
-
-                    {parkingData?.availableSpots ? "Available" : "Full"}
-                  </span>
-                </div>
-              </>
-            )}
+        {!loading && !parkingData ? (
+          <div className="flex flex-col items-center justify-center min-h-[50vh] text-center space-y-6">
+            <div className="w-24 h-24 bg-[#1A1A1A] rounded-3xl flex items-center justify-center border border-white/10 mb-4 shadow-2xl">
+              <span className="text-4xl">📱</span>
+            </div>
+            <h1 className="text-3xl md:text-5xl font-bold tracking-tight">
+              Please <span className="text-[#C6F432]">Scan QR Code</span>
+            </h1>
+            <p className="text-[#9CA3AF] max-w-md mx-auto text-lg">
+              To access parking details and proceed with your booking, please
+              scan the QR code located at the parking zone.
+            </p>
           </div>
-
-          {/* Content */}
-          <div className="flex flex-col lg:order-1 space-y-6 lg:space-y-10">
-            <div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
+            {/* Image Card */}
+            <div className="relative w-full h-[300px] md:h-[400px] lg:h-[550px] rounded-[32px] overflow-hidden group shadow-2xl lg:order-2">
               {loading ? (
-                <TitleSkeleton />
+                <ImageSkeleton />
               ) : (
                 <>
-                  <h1
-                    className="text-5xl md:text-4xl lg:text-6xl font-medium tracking-tight leading-[1.1]"
-                    style={{ fontFamily: "serif" }}
-                  >
-                    {parkingData?.parkingName
-                      ?.split(" ")
-                      ?.slice(0, 1)
-                      ?.join(" ")}
+                  <img
+                    src={parkingData?.image}
+                    alt={parkingData?.parkingName ?? "Premium Parking"}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-70"
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src =
+                        "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&w=1200&q=80";
+                    }}
+                  />
 
-                    <br />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#0D0D0D] via-transparent to-transparent" />
 
-                    <span className="text-[#C6F432]">
-                      {parkingData?.parkingName
-                        ?.split(" ")
-                        ?.slice(1)
-                        ?.join(" ")}
-                    </span>
-                  </h1>
+                  <div className="absolute top-6 left-6 flex gap-2">
+                    <span className="bg-[#C6F432] text-black px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-lg">
+                      <span className="w-2 h-2 bg-black rounded-full animate-pulse" />
 
-                  <div className="mt-6 flex items-center gap-3 px-2 text-[#9CA3AF]">
-                    <MapPin size={18} className="text-[#C6F432]" />
-
-                    <span className="text-sm md:text-base font-light italic">
-                      {parkingData?.address}
+                      {parkingData?.availableSpots ? "Available" : "Full"}
                     </span>
                   </div>
                 </>
               )}
             </div>
 
-            {/* Zone Selection  */}
-            {!loading && parkingData?.zones && parkingData.zones.length > 1 && (
-              <div className="space-y-3">
-                <div className="flex items-center justify-between px-1">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-[#4B5563] font-bold">
-                    Select Parking Zone
-                  </p>
+            {/* Content */}
+            <div className="flex flex-col lg:order-1 space-y-6 lg:space-y-10">
+              <div>
+                {loading ? (
+                  <TitleSkeleton />
+                ) : (
+                  <>
+                    <h1
+                      className="text-5xl md:text-4xl lg:text-6xl font-medium tracking-tight leading-[1.1]"
+                      style={{ fontFamily: "serif" }}
+                    >
+                      {parkingData?.parkingName
+                        ?.split(" ")
+                        ?.slice(0, 1)
+                        ?.join(" ")}
 
-                  <span className="text-[10px] uppercase tracking-wider text-[#9CA3AF] bg-white/5 px-2.5 py-0.5 rounded-md border border-white/5 font-mono">
-                    {parkingData.zones.length} Zones Available
-                  </span>
-                </div>
+                      <br />
 
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                  {parkingData.zones.map((zone) => {
-                    const isActive = selectedZone?.zoneId === zone.zoneId;
+                      <span className="text-[#C6F432]">
+                        {parkingData?.parkingName
+                          ?.split(" ")
+                          ?.slice(1)
+                          ?.join(" ")}
+                      </span>
+                    </h1>
 
-                    return (
-                      <button
-                        key={zone.zoneId}
-                        onClick={() => handleZoneSelect(zone)}
-                        className={`flex flex-col items-center justify-center py-3.5 px-4 rounded-xl border transition-all duration-300 w-full active:scale-[0.97] ${
-                          isActive
-                            ? "bg-[#C6F432] border-[#C6F432] text-black shadow-[0_4px_20px_rgba(198,244,50,0.12)]"
-                            : "bg-[#1A1A1A] border-white/5 text-[#9CA3AF] hover:border-white/10"
-                        }`}
-                      >
-                        {/* Zone Title */}
-                        <span
-                          className={`text-[11px] font-bold uppercase tracking-wider mb-0.5 ${
-                            isActive ? "text-black" : "text-white"
-                          }`}
-                        >
-                          {zone.zoneName}
-                        </span>
+                    <div className="mt-6 flex items-center gap-3 px-2 text-[#9CA3AF]">
+                      <MapPin size={18} className="text-[#C6F432]" />
 
-                        {/* Spot Code */}
-                        <span
-                          className={`text-[10px] font-mono font-bold ${
-                            isActive ? "text-black/60" : "text-[#4B5563]"
-                          }`}
-                        >
-                          {zone.spotId}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+                      <span className="text-sm md:text-base font-light italic">
+                        {parkingData?.address}
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
-            )}
 
-            {/* Cards */}
-            {loading ? (
-              <CardsSkeleton />
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Rate */}
-                <div className="bg-[#1A1A1A] p-5 rounded-2xl border border-white/5 flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-[#C6F432]/10 flex items-center justify-center">
-                    <Zap className="text-[#C6F432]" size={24} />
+              {/* Zone Selection  */}
+              {!loading &&
+                parkingData?.zones &&
+                parkingData.zones.length > 1 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between px-1">
+                      <p className="text-[10px] uppercase tracking-[0.2em] text-[#4B5563] font-bold">
+                        Select Parking Zone
+                      </p>
+
+                      <span className="text-[10px] uppercase tracking-wider text-[#9CA3AF] bg-white/5 px-2.5 py-0.5 rounded-md border border-white/5 font-mono">
+                        {parkingData.zones.length} Zones Available
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+                      {parkingData.zones.map((zone) => {
+                        const isActive = selectedZone?.zoneId === zone.zoneId;
+
+                        return (
+                          <button
+                            key={zone.zoneId}
+                            onClick={() => handleZoneSelect(zone)}
+                            className={`flex flex-col items-center justify-center py-3.5 px-4 rounded-xl border transition-all duration-300 w-full active:scale-[0.97] ${
+                              isActive
+                                ? "bg-[#C6F432] border-[#C6F432] text-black shadow-[0_4px_20px_rgba(198,244,50,0.12)]"
+                                : "bg-[#1A1A1A] border-white/5 text-[#9CA3AF] hover:border-white/10"
+                            }`}
+                          >
+                            {/* Zone Title */}
+                            <span
+                              className={`text-[11px] font-bold uppercase tracking-wider mb-0.5 ${
+                                isActive ? "text-black" : "text-white"
+                              }`}
+                            >
+                              {zone.zoneName}
+                            </span>
+
+                            {/* Spot Code */}
+                            <span
+                              className={`text-[10px] font-mono font-bold ${
+                                isActive ? "text-black/60" : "text-[#4B5563]"
+                              }`}
+                            >
+                              {zone.spotId}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+              {/* Cards */}
+              {loading ? (
+                <CardsSkeleton />
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Rate */}
+                  <div className="bg-[#1A1A1A] p-5 rounded-2xl border border-white/5 flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-[#C6F432]/10 flex items-center justify-center">
+                      <Zap className="text-[#C6F432]" size={24} />
+                    </div>
+
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-[#9CA3AF]">
+                        Rate per hour
+                      </p>
+
+                      <p className="text-2xl lg:text-3xl font-bold font-mono">
+                        $
+                        {(
+                          selectedZone?.hourlyRate ??
+                          parkingData?.hourlyRate ??
+                          0
+                        ).toFixed(2)}
+                      </p>
+                    </div>
                   </div>
 
-                  <div>
-                    <p className="text-[10px] uppercase tracking-wider text-[#9CA3AF]">
-                      Rate per hour
-                    </p>
-
-                    <p className="text-2xl lg:text-3xl font-bold font-mono">
-                      ${(selectedZone?.hourlyRate ?? parkingData?.hourlyRate ?? 0).toFixed(2)}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Availability */}
-                {/* <div className="bg-[#1A1A1A] p-5 rounded-2xl border border-white/5 flex items-center gap-4">
+                  {/* Availability */}
+                  {/* <div className="bg-[#1A1A1A] p-5 rounded-2xl border border-white/5 flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl bg-[#2D7BFF]/10 flex items-center justify-center">
                     <ShieldCheck className="text-[#2D7BFF]" size={24} />
                   </div>
@@ -338,39 +364,40 @@ export default function LandingPage() {
                     </p>
                   </div>
                 </div> */}
-              </div>
-            )}
-
-            {/* CTA */}
-            <div className="pt-4 lg:pt-8">
-              {loading ? (
-                <CTASkeleton />
-              ) : (
-                <>
-                  <Link href="/vehicle-details">
-                    <button
-                      disabled={
-                        loading ||
-                        !(
-                          selectedZone?.availableSpots ||
-                          parkingData?.availableSpots
-                        )
-                      }
-                      className="w-full lg:w-max lg:px-12 bg-[#C6F432] hover:bg-[#d4ff45] text-black font-black py-4 rounded-full flex items-center justify-center gap-3 transition-all active:scale-[0.98] text-md lg:text-lg shadow-[0_10px_30px_rgba(198,244,50,0.2)] disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Proceed to Booking
-                      <ArrowRight size={22} strokeWidth={3} />
-                    </button>
-                  </Link>
-
-                  <p className="text-center lg:text-left text-[8px] text-[#4B5563] mt-4 uppercase tracking-[0.2em]">
-                    Scan • Secure • Park Smart
-                  </p>
-                </>
+                </div>
               )}
+
+              {/* CTA */}
+              <div className="pt-4 lg:pt-8">
+                {loading ? (
+                  <CTASkeleton />
+                ) : (
+                  <>
+                    <Link href="/vehicle-details">
+                      <button
+                        disabled={
+                          loading ||
+                          !(
+                            selectedZone?.availableSpots ||
+                            parkingData?.availableSpots
+                          )
+                        }
+                        className="w-full lg:w-max lg:px-12 bg-[#C6F432] hover:bg-[#d4ff45] text-black font-black py-4 rounded-full flex items-center justify-center gap-3 transition-all active:scale-[0.98] text-md lg:text-lg shadow-[0_10px_30px_rgba(198,244,50,0.2)] disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Proceed to Booking
+                        <ArrowRight size={22} strokeWidth={3} />
+                      </button>
+                    </Link>
+
+                    <p className="text-center lg:text-left text-[8px] text-[#4B5563] mt-4 uppercase tracking-[0.2em]">
+                      Scan • Secure • Park Smart
+                    </p>
+                  </>
+                )}
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </main>
     </div>
   );
