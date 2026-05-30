@@ -26,6 +26,7 @@ export class SessionService {
       duration_minutes: s.duration_minutes,
       status: s.status,
       notes: s.notes,
+      amount: s.amount,
       created_at: s.created_at,
     }));
 

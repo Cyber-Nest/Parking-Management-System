@@ -23,6 +23,7 @@ export interface SessionRow {
   duration_minutes: number;
   status: SessionStatus;
   notes: string | null;
+  amount: number;
   created_by_officer: string | null;
   created_at: Date;
 }
@@ -66,7 +67,9 @@ export class SessionRepository {
     const items = await queryRows<SessionRow>(
       `SELECT
         id, user_id, vehicle_id, license_plate, plan_id, plan_name,
-        start_time, end_time, duration_minutes, status, notes, created_by_officer, created_at
+        start_time, end_time, duration_minutes, status, notes,
+        COALESCE((SELECT SUM(amount) FROM payments p WHERE p.session_id = parking_sessions.id AND p.status = 'success'), 0) AS amount,
+        created_by_officer, created_at
        FROM parking_sessions
        ${clause}
        ORDER BY start_time DESC

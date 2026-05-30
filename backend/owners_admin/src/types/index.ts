@@ -70,6 +70,7 @@ export interface SessionPublic {
   duration_minutes: number;
   status: SessionStatus;
   notes: string | null;
+  amount: number;
   created_at: Date;
 }
 
