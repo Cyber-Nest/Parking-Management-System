@@ -19,12 +19,14 @@ import toast from "react-hot-toast";
 import { customerService, PenaltyDetails } from "@/services/customer.service";
 import { uploadFileToCloudinary } from "@/lib/upload-media";
 import { getApiErrorMessage } from "@/lib/api-error";
+import { useParkingBooking } from "@/contexts/CustomerParkingContext";
 
 export default function PenaltyDisputePage() {
   const params = useParams();
   const router = useRouter();
   const penaltyId = params.penaltyId as string;
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { parkingDetails } = useParkingBooking();
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -53,7 +55,7 @@ export default function PenaltyDisputePage() {
 
       if (!response) {
         toast.error("Penalty record not found");
-        router.replace("/");
+        router.replace(`/?zone=ZONE-201`);
         return;
       }
 
@@ -142,7 +144,7 @@ export default function PenaltyDisputePage() {
       });
 
       setTimeout(() => {
-        router.replace("/");
+        router.replace(`/?zone=ZONE-201`);
       }, 10000);
     } catch (error) {
       console.error(error);
@@ -195,7 +197,7 @@ export default function PenaltyDisputePage() {
                 View payment details
               </Link>
               <Link
-                href="/"
+                href={`/?zone=ZONE-201`}
                 className="rounded-full border border-white/10 px-6 py-3 text-sm font-semibold text-white hover:bg-white/5"
               >
                 Back to home
@@ -321,7 +323,7 @@ export default function PenaltyDisputePage() {
                 View payment details
               </Link>
               <Link
-                href="/"
+                href={`/?zone=ZONE-201`}
                 className="rounded-full border border-white/10 px-6 py-3 text-sm font-semibold text-white hover:bg-white/5"
               >
                 Back to home

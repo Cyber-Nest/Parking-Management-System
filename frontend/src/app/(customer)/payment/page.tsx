@@ -85,7 +85,7 @@ function CheckoutForm({
         },
       });
 
-      router.push("/");
+      router.push(`/?zone=ZONE-201`);
 
       return;
     }
@@ -104,7 +104,7 @@ function CheckoutForm({
     const timer = setTimeout(() => {
       clearBooking();
 
-      router.push("/");
+      router.push(`/?zone=ZONE-201`);
     }, 6000);
 
     return () => clearTimeout(timer);
@@ -242,7 +242,7 @@ function CheckoutForm({
 
   const handleReturnHome = () => {
     clearBooking();
-    router.push("/");
+    router.push(`/?zone=ZONE-201`);
   };
 
   const handleDownloadInvoice = async () => {
