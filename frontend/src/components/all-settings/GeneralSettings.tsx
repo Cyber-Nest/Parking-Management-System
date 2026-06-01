@@ -23,9 +23,12 @@ const FormInput = ({
   onChange,
   textarea = false,
   rows = 3,
+  disabled = false,
+  tooltip = "",
+  className = "",
 }: any) => {
   return (
-    <div className="space-y-2 group">
+    <div className="space-y-2 group" title={tooltip}>
       <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-[0.15em] ml-1 transition-colors group-focus-within:text-[var(--color-primary)]">
         {label}
       </label>
@@ -38,6 +41,7 @@ const FormInput = ({
         {textarea ? (
           <textarea
             value={value}
+            disabled={disabled}
             onChange={onChange}
             placeholder={placeholder}
             rows={rows}
@@ -46,10 +50,19 @@ const FormInput = ({
         ) : (
           <input
             type="text"
+            disabled={disabled}
             value={value}
             onChange={onChange}
             placeholder={placeholder}
-            className="w-full pl-12 pr-4 py-3.5 text-sm bg-[var(--color-surface-soft)] border border-[var(--color-border)] focus:border-[var(--color-primary)] focus:bg-white focus:ring-[6px] focus:ring-[var(--color-primary)]/5 rounded-2xl transition-all duration-300 outline-none placeholder:text-gray-400 font-medium dark:focus:bg-[var(--color-surface)]"
+            className={`w-full pl-12 pr-4 py-3.5 text-sm
+  bg-[var(--color-surface-soft)]
+  border border-[var(--color-border)]
+  rounded-2xl transition-all duration-300 outline-none
+  placeholder:text-gray-400 font-medium
+  disabled:opacity-70
+  disabled:cursor-not-allowed
+  disabled:bg-gray-50
+  ${className}`}
           />
         )}
       </div>
@@ -78,6 +91,7 @@ export const GeneralSettings = () => {
   // Form state
   const [formData, setFormData] = useState({
     companyName: "",
+    parkingLotName: "",
     phone: "",
     address: "",
     email: "",
@@ -90,11 +104,12 @@ export const GeneralSettings = () => {
     if (branding) {
       setFormData({
         companyName: branding.systemName || "",
+        parkingLotName: branding.parkingLotName || "",
         phone: "+1 (647) 123-4567",
         address: "123 Park Street, Suite 100, Toronto, Ontario, Canada",
-        email: "admin@parksmart.com",
-        supportEmail: "support@parksmart.com",
-        website: "www.parksmart.com",
+        email: "admin@parkssmart.com",
+        supportEmail: "support@parkssmart.com",
+        website: "www.parkssmart.com",
       });
       if (branding.logoUrl) {
         setLogoPreview(branding.logoUrl);
@@ -114,6 +129,7 @@ export const GeneralSettings = () => {
       // Update system name in branding
       await updateBrandingSettings({
         systemName: formData.companyName,
+        parkingLotName: formData.parkingLotName,
         logoUrl: logoPreview,
       });
 
@@ -171,12 +187,12 @@ export const GeneralSettings = () => {
                   Company Brand
                 </h3>
               </div>
-              <button
+              {/* <button
                 onClick={handleReset}
                 className="p-2 hover:rotate-180 transition-all duration-500 text-[var(--color-text-muted)] hover:text-[var(--color-primary)]"
               >
                 <RotateCcw size={16} />
-              </button>
+              </button> */}
             </div>
 
             <div className="relative aspect-square w-full max-w-[240px] mx-auto bg-[var(--color-bg)] rounded-[2.5rem] border-2 border-dashed border-[var(--color-border)] group-hover:border-[var(--color-primary)]/30 flex flex-col items-center justify-center transition-all duration-300 overflow-hidden shadow-inner">
@@ -224,8 +240,19 @@ export const GeneralSettings = () => {
                 placeholder="ParkSmart Solutions"
                 icon={<Building2 />}
                 value={formData.companyName}
+                disabled={true}
+                tooltip="Company name cannot be edited"
                 onChange={(e: any) =>
                   handleChange("companyName", e.target.value)
+                }
+              />
+              <FormInput
+                label="Parking Lot Name"
+                placeholder="Downtown Parking Lot"
+                icon={<MapPin />}
+                value={formData.parkingLotName}
+                onChange={(e: any) =>
+                  handleChange("parkingLotName", e.target.value)
                 }
               />
               <FormInput

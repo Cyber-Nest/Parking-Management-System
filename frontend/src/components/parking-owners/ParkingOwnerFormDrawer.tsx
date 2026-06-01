@@ -278,7 +278,7 @@ export const ParkingOwnerFormDrawer = ({
                       />
                       <input
                         type="email"
-                        placeholder="owner@parksmart.com"
+                        placeholder="owner@parkssmart.com"
                         className="w-full bg-[var(--color-surface-soft)]/50 border border-[var(--color-border)]/70 rounded-xl pl-10 pr-4 py-2.5 text-sm font-medium text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none focus:border-[var(--color-primary)] focus:bg-[var(--color-surface)] focus:ring-4 focus:ring-[var(--color-primary)]/5 transition-all duration-200"
                         value={formData.ownerEmail}
                         onChange={(e) =>

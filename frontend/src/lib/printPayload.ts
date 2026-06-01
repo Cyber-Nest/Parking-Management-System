@@ -26,7 +26,7 @@ export function printKeyValuePayload(title: string, data: Record<string, unknown
 <style>body{font-family:system-ui,sans-serif;padding:24px;color:#111}h1{font-size:1.15rem;margin:0 0 12px}
 table{width:100%;border-collapse:collapse}</style></head><body>
 <h1>${esc(title)}</h1><table>${rows}</table>
-<p style="margin-top:16px;font-size:11px;color:#666">ParkSmart — ${esc(new Date().toLocaleString())}</p>
+<p style="margin-top:16px;font-size:11px;color:#666">Parks-Smart — ${esc(new Date().toLocaleString())}</p>
 </body></html>`;
 
   const iframe = document.createElement("iframe");

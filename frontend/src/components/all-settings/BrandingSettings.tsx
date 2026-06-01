@@ -275,12 +275,13 @@ export const BrandingSettings = () => {
   const [saving, setSaving] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [localSettings, setLocalSettings] = useState<BrandingSettingsType>({
-    systemName: "ParkSmart",
+    systemName: "Parks-Smart",
     themeColor: "#0F766E",
     logoUrl: null,
     faviconUrl: null,
     darkMode: "light",
     sidebarCollapsed: false,
+    parkingLotName: "",
   });
 
   // Sync with context
@@ -299,7 +300,9 @@ export const BrandingSettings = () => {
   const handleSave = async () => {
     try {
       setSaving(true);
-      await updateBrandingSettings(localSettings);
+      const { systemName, ...allowedSettings } = localSettings;
+      await updateBrandingSettings(allowedSettings);
+
       toast.success("Brand identity updated successfully!");
     } catch (error) {
       toast.error("Failed to save");
@@ -344,15 +347,15 @@ export const BrandingSettings = () => {
               </label>
               <div className="relative group">
                 <Type
-                  className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] group-focus-within:text-[var(--color-primary)]"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] opacity-60"
                   size={18}
                 />
                 <input
                   type="text"
                   value={localSettings.systemName}
-                  onChange={(e) => handleChange("systemName", e.target.value)}
-                  placeholder="e.g. ParkSmart Pro"
-                  className="w-full pl-12 pr-4 py-4 bg-[var(--color-surface-soft)] border border-[var(--color-border)] rounded-2xl text-sm font-bold focus:border-[var(--color-primary)] focus:bg-white transition-all outline-none"
+                  disabled
+                  placeholder="e.g. ParksSmart Pro"
+                  className="w-full pl-12 pr-4 py-4 bg-[var(--color-surface-soft)] border border-[var(--color-border)] rounded-2xl text-sm font-bold outline-none cursor-not-allowed opacity-70"
                 />
               </div>
             </div>
@@ -486,7 +489,7 @@ export const BrandingSettings = () => {
             />
           </div>
 
-          <div className="p-5 bg-amber-50/50 rounded-2xl border border-amber-100/50">
+          {/* <div className="p-5 bg-amber-50/50 rounded-2xl border border-amber-100/50">
             <div className="flex gap-3">
               <Info size={16} className="text-amber-600 shrink-0 mt-0.5" />
               <p className="text-[11px] text-amber-800 font-medium leading-relaxed">
@@ -494,7 +497,7 @@ export const BrandingSettings = () => {
                 officer dashboards and generated PDF receipts.
               </p>
             </div>
-          </div>
+          </div> */}
 
           <button
             onClick={handleSave}

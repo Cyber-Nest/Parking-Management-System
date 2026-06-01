@@ -167,7 +167,7 @@ export default function LandingPage() {
               </div>
 
               <span className="font-bold tracking-tighter text-lg uppercase">
-                ParkSmart
+                Parks-Smart
               </span>
             </div>
 

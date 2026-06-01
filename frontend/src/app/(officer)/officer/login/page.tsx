@@ -62,11 +62,11 @@ export default function OfficerLoginPage() {
       >
         <div className="mb-10 flex flex-col items-center">
           <div className="mb-4 flex rotate-[-5deg] items-center justify-center rounded-2xl bg-[#1062ff] shadow-lg shadow-blue-900/20">
-            <span className="px-10 py-1 text-3xl font-black italic text-white">ParkSmart</span>
+            <span className="px-10 py-1 text-3xl font-black italic text-white">Parks-Smart</span>
           </div>
           <h2 className="text-3xl font-black tracking-tight text-[var(--color-text-primary)]">Officer Portal</h2>
           <p className="mt-1 text-sm font-medium text-[var(--color-text-secondary)]">
-            Secure access to ParkSmart enforcement
+            Secure access to Parks-Smart enforcement
           </p>
         </div>
 

@@ -11,7 +11,7 @@ const geist = Geist({
 });
 
 export const metadata: Metadata = {
-  title: "ParkSmart ",
+  title: "Parks-Smart ",
   description: "Parking Management System",
 };
 

@@ -639,7 +639,7 @@ function ThermalTicket({
 
         <div className="relative my-6">
           <div className="absolute inset-x-8 top-1/2 -translate-y-1/2 text-center text-[22px] font-bold text-[#0478c8]/20">
-            Parksmart
+            Parks-Smart
             <br />
             Services
           </div>
@@ -732,7 +732,7 @@ function PrintLine({ label, value }: { label: string; value: string }) {
 function AddressBlock({ compact = false }: { compact?: boolean }) {
   return (
     <div className={`${compact ? "" : "mt-2"} text-center`}>
-      <div>Parksmart Services</div>
+      <div>Parks-Smart Services</div>
       <div>Parking Services</div>
       <div>Alberta Hospital Edmonton</div>
       <div>PO Box 307</div>
@@ -781,7 +781,7 @@ function ThermalTicketLegacy({
     <>
       <div className="thermal-page text-center font-mono text-[12px] leading-tight">
         <div className="text-[20px] font-bold tracking-widest">PAYMENT RECEIPT</div>
-        <div className="mt-3 text-[12px] font-bold">PARKSMART</div>
+        <div className="mt-3 text-[12px] font-bold">PARKs-SMART</div>
         <div className="text-[12px] font-bold">ENFORCEMENT PARKING</div>
         <div className="my-4 border-t border-dashed border-black" />
         <div>License Plate Number</div>

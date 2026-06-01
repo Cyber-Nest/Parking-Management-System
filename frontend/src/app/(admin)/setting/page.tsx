@@ -16,6 +16,9 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 
+import { useSearchParams } from "next/navigation";
+import { useEffect } from "react";
+
 import { GeneralSettings } from "@/components/all-settings/GeneralSettings";
 import { TaxSettings } from "@/components/all-settings/TaxSettings";
 import { SystemSettingsComponent as SystemSettings } from "@/components/all-settings/SystemSettings";
@@ -25,10 +28,11 @@ import { NotificationSettings } from "@/components/all-settings/NotificationSett
 import { IntegrationsSettings } from "@/components/all-settings/IntegrationsSettings";
 import { AuditLogsSettings } from "@/components/all-settings/AuditLogsSettings";
 import { BrandingSettings } from "@/components/all-settings/BrandingSettings";
-
+import { OwnerProfileSettings } from "@/components/all-settings/OwnerProfileSettings";
 const TABS = [
   { id: "general", label: "General", icon: Settings },
   { id: "tax", label: "Tax & Pricing", icon: Receipt },
+  { id: "owner-profile", label: "Owner Profile", icon: Users },
   // { id: "system", label: "System", icon: Clock },
   { id: "users", label: "Users & Roles", icon: Users },
   { id: "security", label: "Security", icon: Shield },
@@ -41,6 +45,16 @@ const TABS = [
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("general");
 
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+
+    if (tab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
+
   const handleResetAll = () => {
     toast.success("Settings reset to default");
   };
@@ -49,6 +63,8 @@ export default function SettingsPage() {
     switch (activeTab) {
       case "general":
         return <GeneralSettings />;
+      case "owner-profile":
+        return <OwnerProfileSettings />;
       case "tax":
         return <TaxSettings />;
       // case "system":
@@ -102,10 +118,11 @@ export default function SettingsPage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`relative flex items-center gap-1.5 px-3 py-2 text-[11px] lg:text-[12px] font-bold rounded-[var(--radius-sm)] transition-all whitespace-nowrap flex-1 justify-center ${isActive
+                className={`relative flex items-center gap-1.5 px-3 py-2 text-[11px] lg:text-[12px] font-bold rounded-[var(--radius-sm)] transition-all whitespace-nowrap flex-1 justify-center ${
+                  isActive
                     ? "bg-white text-[var(--color-primary)] shadow-sm border border-[var(--color-border)]/50"
                     : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
-                  }`}
+                }`}
               >
                 <Icon
                   size={14}
