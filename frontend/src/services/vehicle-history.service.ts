@@ -9,6 +9,7 @@ export interface VehicleHistoryFilters {
     searchIn: string;
     startDate: string;
     endDate: string;
+    parkingLotId?: string;
 }
 
 export interface VehicleHistoryStats {
@@ -162,7 +163,8 @@ const queryParams = (f: VehicleHistoryFilters) => {
     const from = f.startDate?.trim() || undefined;
     const to = f.endDate?.trim() || undefined;
     const location = f.location?.trim() || undefined;
-    return { license_plate: plate, from, to, location };
+    const parking_lot_id = f.parkingLotId?.trim() || undefined;
+    return { license_plate: plate, from, to, location, parking_lot_id };
 };
 
 const mapSessions = (rows: any[]): SessionTableRow[] =>
@@ -372,6 +374,7 @@ export const vehicleHistoryService = {
             from: q.from,
             to: q.to,
             location: q.location,
+            parking_lot_id: q.parking_lot_id,
         });
     },
 

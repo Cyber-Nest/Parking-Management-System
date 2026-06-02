@@ -20,6 +20,7 @@ import toast from "react-hot-toast";
 
 import { StatCard } from "@/components/common/StatCard";
 import { TableSkeleton } from "@/components/common/TableSkeleton";
+import { ReportParkingLotFilter } from "@/components/reports/ReportParkingLotFilter";
 import { RevenueCharts } from "@/components/reports/charts/RevenueCharts";
 import ViewDetailsDrawer from "@/components/reports/drawers/RevenueDrawer";
 import {
@@ -55,6 +56,7 @@ export default function RevenueReportsPage() {
     planType: "All Plans",
     startDate: "",
     endDate: "",
+    parkingLotId: "",
   });
 
   const [chartPeriod, setChartPeriod] = useState("daily");
@@ -106,6 +108,7 @@ export default function RevenueReportsPage() {
       planType: "All Plans",
       startDate: "",
       endDate: "",
+      parkingLotId: "",
     });
     setSelectedDateOption("");
     setChartPeriod("daily");
@@ -404,6 +407,20 @@ export default function RevenueReportsPage() {
                     <option value="lastMonth">Last Month</option>
                     <option value="custom">📅 Custom Range</option>
                   </select>
+                </div>
+                
+                {/* Parking Lot Filter */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
+                    Parking Lot
+                  </label>
+                  <ReportParkingLotFilter
+                    value={filters.parkingLotId ?? ""}
+                    onChange={(value) => {
+                      setFilters({ ...filters, parkingLotId: value });
+                      setCurrentPage(1);
+                    }}
+                  />
                 </div>
               </div>
 

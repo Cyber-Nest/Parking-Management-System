@@ -10,6 +10,7 @@ export interface ParkingUsageFilters {
     startDate: string;
     endDate: string;
     days?: number;
+    parkingLotId?: string;
 }
 
 export interface ParkingUsageSummary {
@@ -48,6 +49,7 @@ export interface PlanTypeDistributionDatum {
 const range = (f: ParkingUsageFilters) => ({
     from: f.startDate?.trim() || undefined,
     to: f.endDate?.trim() || undefined,
+    parking_lot_id: f.parkingLotId?.trim() || undefined,
 });
 
 const WD_LABELS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -159,8 +161,8 @@ export const parkingUsageService = {
     async exportReport(payload: ParkingUsageFilters & { format: ReportExportFormat }) {
         const { format, days: _days, ...filters } = payload;
         void _days;
-        const { from, to } = range(filters as ParkingUsageFilters);
-        return downloadReportExport("usage", format, { from, to });
+        const { from, to, parking_lot_id } = range(filters as ParkingUsageFilters);
+        return downloadReportExport("usage", format, { from, to, parking_lot_id });
     },
 
     /** For peak-hours heatmap: weekday index matches MySQL WEEKDAY (Mon=0). */

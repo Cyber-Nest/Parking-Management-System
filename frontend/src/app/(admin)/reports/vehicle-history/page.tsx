@@ -36,6 +36,7 @@ import toast from "react-hot-toast";
 
 import { StatCard } from "@/components/common/StatCard";
 import { TableSkeleton } from "@/components/common/TableSkeleton";
+import { ReportParkingLotFilter } from "@/components/reports/ReportParkingLotFilter";
 import { VehicleDetailsDrawer } from "@/components/reports/drawers/VehicleDetailsDrawer";
 import { AddNoteDrawer } from "@/components/reports/drawers/AddNoteDrawer";
 
@@ -205,6 +206,7 @@ export default function VehicleHistoryReport() {
     searchIn: "All Records",
     startDate: "",
     endDate: "",
+    parkingLotId: "",
   });
 
   // Close export dropdown on click outside
@@ -353,6 +355,7 @@ export default function VehicleHistoryReport() {
       searchIn: "All Records",
       startDate: "",
       endDate: "",
+      parkingLotId: "",
     });
     toast("Filters reset");
   };
@@ -579,7 +582,20 @@ export default function VehicleHistoryReport() {
               </div>
             </div>
 
-            {/* Custom Date Range Inputs */}
+                {/* Parking Lot Filter */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
+                    Parking Lot
+                  </label>
+                  <ReportParkingLotFilter
+                    value={filters.parkingLotId ?? ""}
+                    onChange={(value) => {
+                      setFilters({ ...filters, parkingLotId: value });
+                      setCurrentPage(1);
+                    }}
+                  />
+                </div>
+
             {filters.dateRange === "Custom Range" && (
               <>
                 <div className="space-y-1.5">

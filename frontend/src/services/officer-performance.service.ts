@@ -8,6 +8,7 @@ export interface OfficerPerformanceFilters {
     officer: string;
     startDate: string;
     endDate: string;
+    parkingLotId?: string;
 }
 
 export interface OfficerPerformanceSummary {
@@ -71,6 +72,7 @@ export interface OfficerActivityLog {
 const range = (f: OfficerPerformanceFilters) => ({
     from: f.startDate?.trim() || undefined,
     to: f.endDate?.trim() || undefined,
+    parking_lot_id: f.parkingLotId?.trim() || undefined,
 });
 
 const loadPerformance = async (filters: OfficerPerformanceFilters) =>
@@ -156,8 +158,8 @@ export const officerPerformanceService = {
 
     async exportReport(payload: OfficerPerformanceFilters & { format: ReportExportFormat }) {
         const { format, ...filters } = payload;
-        const { from, to } = range(filters as OfficerPerformanceFilters);
-        return downloadReportExport("performance", format, { from, to });
+        const { from, to, parking_lot_id } = range(filters as OfficerPerformanceFilters);
+        return downloadReportExport("performance", format, { from, to, parking_lot_id });
     },
 
     async getOfficerTickets(officerId: string): Promise<OfficerTicketData[]> {

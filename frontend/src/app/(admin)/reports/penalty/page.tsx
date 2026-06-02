@@ -21,6 +21,7 @@ import toast from "react-hot-toast";
 
 import { StatCard } from "@/components/common/StatCard";
 import { TableSkeleton } from "@/components/common/TableSkeleton";
+import { ReportParkingLotFilter } from "@/components/reports/ReportParkingLotFilter";
 import { PenaltyReportCharts } from "@/components/reports/charts/PenaltyReportCharts";
 import { PenaltyDetailsDrawer } from "@/components/reports/drawers/PenaltyDetailsDrawer";
 
@@ -91,6 +92,7 @@ export default function PenaltyReport() {
     maxAmount: "",
     startDate: "",
     endDate: "",
+    parkingLotId: "",
   });
 
   // Close export dropdown on click outside
@@ -244,6 +246,7 @@ export default function PenaltyReport() {
       maxAmount: "",
       startDate: "",
       endDate: "",
+      parkingLotId: "",
     });
     setSearchQuery("");
     setCurrentPage(1);
@@ -460,7 +463,20 @@ export default function PenaltyReport() {
                   </select>
                 </div>
                 
-                {/* Custom Date Range Inputs  */}
+                {/* Parking Lot Filter */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
+                    Parking Lot
+                  </label>
+                  <ReportParkingLotFilter
+                    value={filters.parkingLotId ?? ""}
+                    onChange={(value) => {
+                      setFilters({ ...filters, parkingLotId: value });
+                      setCurrentPage(1);
+                    }}
+                  />
+                </div>
+
                 {filters.dateRange === "Custom Range" && (
                   <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">

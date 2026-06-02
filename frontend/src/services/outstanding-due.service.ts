@@ -41,6 +41,7 @@ export interface OutstandingTicketRow {
 const range = (f: OutstandingDueFilters) => ({
     from: f.startDate?.trim() || undefined,
     to: f.endDate?.trim() || undefined,
+    parking_lot_id: f.parkingLotId?.trim() || undefined,
 });
 
 const dayMs = 1000 * 60 * 60 * 24;
@@ -98,8 +99,8 @@ export const outstandingDueService = {
 
     async exportReport(payload: OutstandingDueFilters & { format: ReportExportFormat }) {
         const { format, ...filters } = payload;
-        const { from, to } = range(filters as OutstandingDueFilters);
-        return downloadReportExport("due", format, { from, to });
+        const { from, to, parking_lot_id } = range(filters as OutstandingDueFilters);
+        return downloadReportExport("due", format, { from, to, parking_lot_id });
     },
 
     async getTicketById(ticketId: string): Promise<OutstandingTicketRow> {

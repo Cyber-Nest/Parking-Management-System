@@ -9,6 +9,7 @@ export interface ReportQueryParams {
     limit?: number;
     license_plate?: string;
     location?: string;
+    parking_lot_id?: string;
 }
 
 export const getReport = async (type: string, params: ReportQueryParams = {}) => {
@@ -18,10 +19,11 @@ export const getReport = async (type: string, params: ReportQueryParams = {}) =>
     return getResponseData(response);
 };
 
-const pickRange = (filters: { startDate?: string; endDate?: string }): { from?: string; to?: string } => {
+const pickRange = (filters: { startDate?: string; endDate?: string; parkingLotId?: string }): { from?: string; to?: string; parking_lot_id?: string } => {
     const from = filters.startDate?.trim() || undefined;
     const to = filters.endDate?.trim() || undefined;
-    return { from, to };
+    const parking_lot_id = filters.parkingLotId?.trim() || undefined;
+    return { from, to, parking_lot_id };
 };
 
 export interface RevenueFilters {
@@ -30,6 +32,7 @@ export interface RevenueFilters {
     planType: string;
     startDate: string;
     endDate: string;
+    parkingLotId?: string;
 }
 
 export interface RevenueSummary {
@@ -82,8 +85,8 @@ type RevenueApiDaily = {
 const CHART_COLORS = ["#6366f1", "#22c55e", "#f97316", "#ec4899", "#14b8a6", "#a855f7"];
 
 const loadRevenue = async (filters: RevenueFilters) => {
-    const { from, to } = pickRange(filters);
-    return getReport("revenue", { from, to }) as Promise<{
+    const { from, to, parking_lot_id } = pickRange(filters);
+    return getReport("revenue", { from, to, parking_lot_id }) as Promise<{
         totals: RevenueApiTotals;
         daily: RevenueApiDaily[];
     }>;
@@ -140,7 +143,7 @@ export const reportsService = {
 
     async exportRevenueReport(filters: RevenueFilters & { format: ReportExportFormat }) {
         const { format, ...rest } = filters;
-        const { from, to } = pickRange(rest);
-        return downloadReportExport("revenue", format, { from, to });
+        const { from, to, parking_lot_id } = pickRange(rest);
+        return downloadReportExport("revenue", format, { from, to, parking_lot_id });
     },
 };

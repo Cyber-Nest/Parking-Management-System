@@ -29,6 +29,7 @@ import { IntegrationsSettings } from "@/components/all-settings/IntegrationsSett
 import { AuditLogsSettings } from "@/components/all-settings/AuditLogsSettings";
 import { BrandingSettings } from "@/components/all-settings/BrandingSettings";
 import { OwnerProfileSettings } from "@/components/all-settings/OwnerProfileSettings";
+import { ReportParkingLotFilter } from "@/components/reports/ReportParkingLotFilter";
 const TABS = [
   { id: "general", label: "General", icon: Settings },
   { id: "tax", label: "Tax & Pricing", icon: Receipt },
@@ -42,8 +43,22 @@ const TABS = [
   { id: "branding", label: "Branding", icon: Palette },
 ];
 
+const PARKING_LOT_FILTER_EXCLUDED_TABS = new Set([
+  "branding",
+  "owner-profile",
+]);
+
 export default function SettingsPage() {
+  return (
+    <React.Suspense fallback={<div className="p-8 text-center text-[var(--color-text-secondary)]">Loading settings...</div>}>
+      <SettingsContent />
+    </React.Suspense>
+  );
+}
+
+function SettingsContent() {
   const [activeTab, setActiveTab] = useState("general");
+  const [parkingLotId, setParkingLotId] = useState("");
 
   const searchParams = useSearchParams();
 
@@ -78,7 +93,7 @@ export default function SettingsPage() {
       case "integrations":
         return <IntegrationsSettings />;
       case "audit":
-        return <AuditLogsSettings />;
+        return <AuditLogsSettings parkingLotId={parkingLotId} />;
       case "branding":
         return <BrandingSettings />;
       default:
@@ -99,6 +114,19 @@ export default function SettingsPage() {
           </p>
         </div>
 
+      {!PARKING_LOT_FILTER_EXCLUDED_TABS.has(activeTab) && (
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 shadow-[var(--shadow-card)]">
+          <div>
+            <p className="text-xs font-black uppercase tracking-widest text-[var(--color-text-muted)]">
+              Parking Lot Scope
+            </p>
+          </div>
+          <ReportParkingLotFilter
+            value={parkingLotId}
+            onChange={setParkingLotId}
+          />
+        </div>
+      )}
         {/* <button
           onClick={handleResetAll}
           className="flex items-center gap-2 px-5 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] transition-all text-xs font-bold shadow-sm"
@@ -149,6 +177,19 @@ export default function SettingsPage() {
 
       {/* Animated Content Area */}
       <div className="min-h-[400px]">
+                        {!PARKING_LOT_FILTER_EXCLUDED_TABS.has(activeTab) && (
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 shadow-[var(--shadow-card)]">
+          <div>
+            <p className="text-xs font-black uppercase tracking-widest text-[var(--color-text-muted)]">
+              Parking Lot Scope
+            </p>
+          </div>
+          <ReportParkingLotFilter
+            value={parkingLotId}
+            onChange={setParkingLotId}
+          />
+        </div>
+      )}
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}

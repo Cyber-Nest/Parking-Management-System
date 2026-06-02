@@ -60,7 +60,11 @@ const ModuleBadge = ({ module }: { module: string }) => {
   );
 };
 
-export const AuditLogsSettings = () => {
+interface AuditLogsSettingsProps {
+  parkingLotId?: string;
+}
+
+export const AuditLogsSettings = ({ parkingLotId = "" }: AuditLogsSettingsProps) => {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const [logs, setLogs] = useState<AuditLog[]>([]);
@@ -74,11 +78,17 @@ export const AuditLogsSettings = () => {
     user: "All Users",
     module: "All Modules",
     action: "All Actions",
+    parkingLotId,
   });
 
   const [users, setUsers] = useState<string[]>([]);
   const [modules, setModules] = useState<string[]>([]);
   const itemsPerPage = 10;
+
+  useEffect(() => {
+    setFilters((prev) => ({ ...prev, parkingLotId }));
+    setCurrentPage(1);
+  }, [parkingLotId]);
 
   useEffect(() => {
     const fetchData = async () => {

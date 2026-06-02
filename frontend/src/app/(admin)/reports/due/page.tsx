@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import {
   Download,
   Calendar,
@@ -25,6 +31,7 @@ import toast from "react-hot-toast";
 
 import { StatCard } from "@/components/common/StatCard";
 import { TableSkeleton } from "@/components/common/TableSkeleton";
+import { ReportParkingLotFilter } from "@/components/reports/ReportParkingLotFilter";
 import { OutstandingDetailsDrawer } from "@/components/reports/drawers/OutstandingDetailsDrawer";
 
 // Services
@@ -72,12 +79,16 @@ export default function OutstandingDueReport() {
     ticketStatus: "Unpaid",
     startDate: "",
     endDate: "",
+    parkingLotId: "",
   });
 
   // Close export dropdown on click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target as Node)) {
+      if (
+        exportDropdownRef.current &&
+        !exportDropdownRef.current.contains(event.target as Node)
+      ) {
         setShowExportDropdown(false);
       }
     };
@@ -88,7 +99,7 @@ export default function OutstandingDueReport() {
   // Auto-set dates based on dateRange selection
   useEffect(() => {
     const today = new Date();
-    const formatDate = (date: Date) => date.toISOString().split('T')[0];
+    const formatDate = (date: Date) => date.toISOString().split("T")[0];
 
     if (filters.dateRange === "Custom Range") return;
 
@@ -125,7 +136,11 @@ export default function OutstandingDueReport() {
         end = formatDate(lastDay);
         break;
       case "Last Month":
-        const firstDayLast = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const firstDayLast = new Date(
+          today.getFullYear(),
+          today.getMonth() - 1,
+          1,
+        );
         const lastDayLast = new Date(today.getFullYear(), today.getMonth(), 0);
         start = formatDate(firstDayLast);
         end = formatDate(lastDayLast);
@@ -134,7 +149,11 @@ export default function OutstandingDueReport() {
         return;
     }
 
-    setFilters((prev: OutstandingFilters) => ({ ...prev, startDate: start, endDate: end }));
+    setFilters((prev: OutstandingFilters) => ({
+      ...prev,
+      startDate: start,
+      endDate: end,
+    }));
   }, [filters.dateRange]);
 
   const filteredData = useMemo(() => {
@@ -189,6 +208,7 @@ export default function OutstandingDueReport() {
       ticketStatus: "Unpaid",
       startDate: "",
       endDate: "",
+      parkingLotId: "",
     });
     setSearchPlate("");
     setCurrentPage(1);
@@ -213,14 +233,19 @@ export default function OutstandingDueReport() {
         const url = window.URL.createObjectURL(response.blob);
         const link = document.createElement("a");
         link.href = url;
-        link.setAttribute("download", `outstanding_due_${new Date().toISOString().split('T')[0]}.${format === "pdf" ? "pdf" : "xlsx"}`);
+        link.setAttribute(
+          "download",
+          `outstanding_due_${new Date().toISOString().split("T")[0]}.${format === "pdf" ? "pdf" : "xlsx"}`,
+        );
         document.body.appendChild(link);
         link.click();
         link.remove();
         window.URL.revokeObjectURL(url);
         toast.success(`Report exported as ${format.toUpperCase()}`);
       } else {
-        toast.success(response.message || `Report exported as ${format.toUpperCase()}`);
+        toast.success(
+          response.message || `Report exported as ${format.toUpperCase()}`,
+        );
       }
     } catch (error) {
       console.error("Export error:", error);
@@ -285,10 +310,11 @@ export default function OutstandingDueReport() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${showFilters
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${
+              showFilters
                 ? "bg-[var(--color-primary)] text-white border-[var(--color-primary)]"
                 : "bg-[var(--color-surface)] text-[var(--color-text-secondary)] border-[var(--color-border)] hover:border-[var(--color-primary)]"
-              }`}
+            }`}
           >
             <Filter size={16} />
             Filters
@@ -397,7 +423,20 @@ export default function OutstandingDueReport() {
                   </select>
                 </div>
 
-                {/* Custom Date Range Inputs */}
+                {/* Parking Lot Filter */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
+                    Parking Lot
+                  </label>
+                  <ReportParkingLotFilter
+                    value={filters.parkingLotId ?? ""}
+                    onChange={(value) => {
+                      setFilters({ ...filters, parkingLotId: value });
+                      setCurrentPage(1);
+                    }}
+                  />
+                </div>
+
                 {filters.dateRange === "Custom Range" && (
                   <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">

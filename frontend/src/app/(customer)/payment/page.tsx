@@ -87,11 +87,7 @@ function CheckoutForm({
         },
       });
 
-<<<<<<< HEAD
       router.push(returnUrl || "/");
-=======
-      router.push(`/?zone=ZONE-201`);
->>>>>>> cec4310bb42c24ca2b4460432548bcc767f387be
 
       return;
     }
@@ -248,11 +244,7 @@ function CheckoutForm({
 
   const handleReturnHome = () => {
     clearBooking();
-<<<<<<< HEAD
     router.push(returnUrl || "/");
-=======
-    router.push(`/?zone=ZONE-201`);
->>>>>>> cec4310bb42c24ca2b4460432548bcc767f387be
   };
 
   const handleDownloadInvoice = async () => {

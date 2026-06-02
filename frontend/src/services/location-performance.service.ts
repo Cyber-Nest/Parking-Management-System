@@ -92,6 +92,7 @@ export interface PeakHourData {
 const range = (f: LocationPerformanceFilters) => ({
     from: f.startDate?.trim() || undefined,
     to: f.endDate?.trim() || undefined,
+    parking_lot_id: f.parkingLotId?.trim() || undefined,
 });
 
 export const locationPerformanceService = {

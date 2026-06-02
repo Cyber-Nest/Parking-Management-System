@@ -22,6 +22,7 @@ import toast from "react-hot-toast";
 
 import { StatCard } from "@/components/common/StatCard";
 import { TableSkeleton } from "@/components/common/TableSkeleton";
+import { ReportParkingLotFilter } from "@/components/reports/ReportParkingLotFilter";
 import { ParkingUsageCharts } from "@/components/reports/charts/ParkingUsageCharts";
 import { ParkingUsageDrawer } from "@/components/reports/drawers/ParkingUsageDrawer";
 
@@ -75,6 +76,7 @@ export default function ParkingUsageReport() {
     status: "All Status",
     startDate: initialUsageRange.startDate,
     endDate: initialUsageRange.endDate,
+    parkingLotId: "",
   });
 
   // Chart days filter
@@ -200,6 +202,7 @@ export default function ParkingUsageReport() {
       status: "All Status",
       startDate: r.startDate,
       endDate: r.endDate,
+      parkingLotId: "",
     });
     setSelectedDateOption("");
     setChartDays(30);
@@ -397,7 +400,20 @@ export default function ParkingUsageReport() {
                   </select>
                 </div>
 
-                {/* Custom Date Range Inputs */}
+                {/* Parking Lot Filter */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
+                    Parking Lot
+                  </label>
+                  <ReportParkingLotFilter
+                    value={filters.parkingLotId ?? ""}
+                    onChange={(value) => {
+                      setFilters({ ...filters, parkingLotId: value });
+                      setCurrentPage(1);
+                    }}
+                  />
+                </div>
+
                 {selectedDateOption === "Custom Range" && (
                   <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">

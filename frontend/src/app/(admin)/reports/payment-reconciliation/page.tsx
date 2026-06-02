@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import {
   Download,
   Calendar,
@@ -24,6 +30,7 @@ import toast from "react-hot-toast";
 // Components
 import { StatCard } from "@/components/common/StatCard";
 import { TableSkeleton } from "@/components/common/TableSkeleton";
+import { ReportParkingLotFilter } from "@/components/reports/ReportParkingLotFilter";
 import { ReconciliationDetailsDrawer } from "@/components/reports/drawers/ReconciliationDetailsDrawer";
 import { ReconciliationCharts } from "@/components/reports/charts/ReconciliationCharts";
 
@@ -65,12 +72,16 @@ export default function PaymentReconciliationReport() {
     status: "All Status",
     startDate: "",
     endDate: "",
+    parkingLotId: "",
   });
 
   // Close export dropdown on click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target as Node)) {
+      if (
+        exportDropdownRef.current &&
+        !exportDropdownRef.current.contains(event.target as Node)
+      ) {
         setShowExportDropdown(false);
       }
     };
@@ -81,14 +92,14 @@ export default function PaymentReconciliationReport() {
   // Auto-set dates based on dateRange selection
   useEffect(() => {
     const today = new Date();
-    const formatDate = (date: Date) => date.toISOString().split('T')[0];
-    
+    const formatDate = (date: Date) => date.toISOString().split("T")[0];
+
     if (filters.dateRange === "Custom Range") return;
-    
+
     let start = "";
     let end = "";
-    
-    switch(filters.dateRange) {
+
+    switch (filters.dateRange) {
       case "Today":
         start = formatDate(today);
         end = formatDate(today);
@@ -118,7 +129,11 @@ export default function PaymentReconciliationReport() {
         end = formatDate(lastDay);
         break;
       case "Last Month":
-        const firstDayLast = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const firstDayLast = new Date(
+          today.getFullYear(),
+          today.getMonth() - 1,
+          1,
+        );
         const lastDayLast = new Date(today.getFullYear(), today.getMonth(), 0);
         start = formatDate(firstDayLast);
         end = formatDate(lastDayLast);
@@ -126,8 +141,12 @@ export default function PaymentReconciliationReport() {
       default:
         return;
     }
-    
-    setFilters((prev: ReconciliationFilters) => ({ ...prev, startDate: start, endDate: end }));
+
+    setFilters((prev: ReconciliationFilters) => ({
+      ...prev,
+      startDate: start,
+      endDate: end,
+    }));
   }, [filters.dateRange]);
 
   // Filtered data based on search
@@ -180,6 +199,7 @@ export default function PaymentReconciliationReport() {
       status: "All Status",
       startDate: "",
       endDate: "",
+      parkingLotId: "",
     });
     setSearchQuery("");
     setCurrentPage(1);
@@ -196,20 +216,25 @@ export default function PaymentReconciliationReport() {
         ...filters,
         format: format,
       });
-      
+
       // Handle blob download
       if (response.blob) {
         const url = window.URL.createObjectURL(response.blob);
         const link = document.createElement("a");
         link.href = url;
-        link.setAttribute("download", `reconciliation_report_${new Date().toISOString().split('T')[0]}.${format === "pdf" ? "pdf" : "xlsx"}`);
+        link.setAttribute(
+          "download",
+          `reconciliation_report_${new Date().toISOString().split("T")[0]}.${format === "pdf" ? "pdf" : "xlsx"}`,
+        );
         document.body.appendChild(link);
         link.click();
         link.remove();
         window.URL.revokeObjectURL(url);
         toast.success(`Report exported as ${format.toUpperCase()}`);
       } else {
-        toast.success(response.message || `Report exported as ${format.toUpperCase()}`);
+        toast.success(
+          response.message || `Report exported as ${format.toUpperCase()}`,
+        );
       }
     } catch (error) {
       console.error("Export error:", error);
@@ -271,7 +296,7 @@ export default function PaymentReconciliationReport() {
             <Filter size={16} />
             Filters
           </button>
-          
+
           {/* Export Dropdown */}
           <div className="relative" ref={exportDropdownRef}>
             <button
@@ -286,7 +311,7 @@ export default function PaymentReconciliationReport() {
               )}
               Export
             </button>
-            
+
             {showExportDropdown && (
               <div className="absolute right-0 mt-2 w-36 bg-[var(--color-surface)] rounded-xl shadow-lg border border-[var(--color-border)] overflow-hidden z-10">
                 <button
@@ -311,7 +336,13 @@ export default function PaymentReconciliationReport() {
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <StatCard key={i} loading={true} icon={undefined} title={""} value={""} />
+            <StatCard
+              key={i}
+              loading={true}
+              icon={undefined}
+              title={""}
+              value={""}
+            />
           ))}
         </div>
       ) : (
@@ -368,8 +399,21 @@ export default function PaymentReconciliationReport() {
                     ))}
                   </select>
                 </div>
-                
-                {/* Custom Date Range Inputs */}
+
+                {/* Parking Lot Filter */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
+                    Parking Lot
+                  </label>
+                  <ReportParkingLotFilter
+                    value={filters.parkingLotId ?? ""}
+                    onChange={(value) => {
+                      setFilters({ ...filters, parkingLotId: value });
+                      setCurrentPage(1);
+                    }}
+                  />
+                </div>
+
                 {filters.dateRange === "Custom Range" && (
                   <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
@@ -400,7 +444,7 @@ export default function PaymentReconciliationReport() {
                     </div>
                   </div>
                 )}
-                
+
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
                     Location

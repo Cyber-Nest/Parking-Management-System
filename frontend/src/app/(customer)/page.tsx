@@ -95,22 +95,11 @@ export default function LandingPage() {
       try {
         setLoading(true);
 
-<<<<<<< HEAD
         const lotId = searchParams.get("lotId");
         const zoneId = searchParams.get("zoneId");
         const currentUrl = `${window.location.pathname}${window.location.search}`;
         setReturnUrl(currentUrl);
         const lookupId = lotId || zoneId || process.env.NEXT_PUBLIC_DEFAULT_ZONE_ID || "ZONE-201";
-=======
-        const zoneId =
-          searchParams.get("zone") || searchParams.get("zoneId");
-
-        //Only allow ZONE-201 to open the page)
-        if (!zoneId || zoneId.toUpperCase() !== "ZONE-201") {
-          setLoading(false);
-          return;
-        }
->>>>>>> cec4310bb42c24ca2b4460432548bcc767f387be
 
         const response = await customerService.getParkingZoneById(lookupId);
 

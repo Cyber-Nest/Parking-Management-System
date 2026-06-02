@@ -55,14 +55,15 @@ const FormInput = ({
             onChange={onChange}
             placeholder={placeholder}
             className={`w-full pl-12 pr-4 py-3.5 text-sm
-  bg-[var(--color-surface-soft)]
-  border border-[var(--color-border)]
-  rounded-2xl transition-all duration-300 outline-none
-  placeholder:text-gray-400 font-medium
-  disabled:opacity-70
-  disabled:cursor-not-allowed
-  disabled:bg-gray-50
-  ${className}`}
+    bg-[var(--color-surface-soft)]
+    border border-[var(--color-border)]
+    rounded-2xl transition-all duration-300 outline-none
+    placeholder:text-gray-400 font-medium
+    disabled:opacity-70
+    disabled:cursor-not-allowed
+    disabled:bg-[var(--color-surface)]
+    disabled:text-[var(--color-text-secondary)]
+    ${className}`}
           />
         )}
       </div>

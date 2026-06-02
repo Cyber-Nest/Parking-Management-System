@@ -13,6 +13,7 @@ export interface PenaltyReportFilters {
     maxAmount: string;
     startDate: string;
     endDate: string;
+    parkingLotId?: string;
 }
 
 export interface PenaltyReportSummary {
@@ -68,6 +69,7 @@ const COLORS = ["#6366f1", "#22c55e", "#f97316", "#ec4899", "#14b8a6", "#a855f7"
 const range = (f: PenaltyReportFilters) => ({
     from: f.startDate?.trim() || undefined,
     to: f.endDate?.trim() || undefined,
+    parking_lot_id: f.parkingLotId?.trim() || undefined,
 });
 
 const displayStatus = (s: string): string => {
@@ -137,8 +139,8 @@ export const penaltyReportService = {
 
     async exportReport(payload: PenaltyReportFilters & { tab?: string; format: ReportExportFormat }) {
         const { format, tab: _tab, ...filters } = payload;
-        const { from, to } = range(filters as PenaltyReportFilters);
-        return downloadReportExport("penalty", format, { from, to });
+        const { from, to, parking_lot_id } = range(filters as PenaltyReportFilters);
+        return downloadReportExport("penalty", format, { from, to, parking_lot_id });
     },
 
     async getTicketDetails(ticketId: string): Promise<PenaltyTicketDetails> {

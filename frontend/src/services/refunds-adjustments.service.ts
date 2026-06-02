@@ -48,9 +48,15 @@ export interface RefundReasonDatum {
     color: string;
 }
 
+const queryParams = (f: RefundsFilters) => ({
+    from: f.startDate?.trim() || undefined,
+    to: f.endDate?.trim() || undefined,
+    parking_lot_id: f.parkingLotId?.trim() || undefined,
+});
+
 export const refundsAdjustmentsService = {
-    async getStats(_filters: RefundsFilters): Promise<RefundsStats> {
-        const data = (await getReport("refunds", { limit: 200 })) as {
+    async getStats(filters: RefundsFilters): Promise<RefundsStats> {
+        const data = (await getReport("refunds", { limit: 200, ...queryParams(filters) })) as {
             summary: { refund_count: number; total_refunded: number };
         };
         const c = Number(data.summary?.refund_count) || 0;
@@ -67,8 +73,8 @@ export const refundsAdjustmentsService = {
         };
     },
 
-    async getTableData(_filters: RefundsFilters): Promise<RefundAdjustmentData[]> {
-        const data = (await getReport("refunds", { limit: 100 })) as {
+    async getTableData(filters: RefundsFilters): Promise<RefundAdjustmentData[]> {
+        const data = (await getReport("refunds", { limit: 100, ...queryParams(filters) })) as {
             records: {
                 id: string;
                 paid_at: string | null;
@@ -111,8 +117,8 @@ export const refundsAdjustmentsService = {
     },
 
     async exportReport(payload: RefundsFilters & { format: ReportExportFormat }) {
-        const { format, ..._rest } = payload;
-        return downloadReportExport("refunds", format, { limit: 200 });
+        const { format, ...filters } = payload;
+        return downloadReportExport("refunds", format, { limit: 200, ...queryParams(filters as RefundsFilters) });
     },
 
     async getDetailsById(itemId: string): Promise<RefundAdjustmentData> {

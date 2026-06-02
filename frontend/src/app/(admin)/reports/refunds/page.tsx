@@ -25,6 +25,7 @@ import toast from "react-hot-toast";
 
 import { StatCard } from "@/components/common/StatCard";
 import { TableSkeleton } from "@/components/common/TableSkeleton";
+import { ReportParkingLotFilter } from "@/components/reports/ReportParkingLotFilter";
 import { RefundsCharts } from "@/components/reports/charts/RefundsCharts";
 import { RefundDetailsDrawer } from "@/components/reports/drawers/RefundDetailsDrawer";
 
@@ -67,6 +68,7 @@ export default function RefundsAdjustmentsReport() {
     status: "All Statuses",
     startDate: "",
     endDate: "",
+    parkingLotId: "",
   });
 
   // Close export dropdown on click outside
@@ -189,6 +191,7 @@ export default function RefundsAdjustmentsReport() {
       status: "All Statuses",
       startDate: "",
       endDate: "",
+      parkingLotId: "",
     });
     setChartDays(30);
     setSearchQuery("");
@@ -413,6 +416,19 @@ export default function RefundsAdjustmentsReport() {
                 </div>
                 
                 {/* Custom Date Range Inputs */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
+                    Parking Lot
+                  </label>
+                  <ReportParkingLotFilter
+                    value={filters.parkingLotId ?? ""}
+                    onChange={(value) => {
+                      setFilters({ ...filters, parkingLotId: value });
+                      setCurrentPage(1);
+                    }}
+                  />
+                </div>
+
                 {filters.dateRange === "Custom Range" && (
                   <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">

@@ -90,6 +90,8 @@ export interface AuditLog {
   timestamp: string;
   dateTime?: string;
   status: "success" | "failure";
+  parkingLotId?: string | null;
+  parking_lot_id?: string | null;
 }
 
 export interface AuditLogFilters {
@@ -102,6 +104,7 @@ export interface AuditLogFilters {
   to?: string;
   startDate?: string;
   endDate?: string;
+  parkingLotId?: string;
   page?: number;
   limit?: number;
 }
@@ -434,6 +437,10 @@ export const settingsService = {
         const end = new Date(filters.endDate).setHours(23, 59, 59, 999);
         const timestamp = new Date(log.timestamp).getTime();
         if (timestamp > end) return false;
+      }
+      if (filters.parkingLotId) {
+        const logLotId = log.parkingLotId ?? log.parking_lot_id;
+        if (logLotId !== filters.parkingLotId) return false;
       }
       return true;
     });

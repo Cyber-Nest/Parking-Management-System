@@ -11,6 +11,7 @@ export interface AuditLogFilters {
     status: string;
     startDate: string;
     endDate: string;
+    parkingLotId?: string;
 }
 
 export interface AuditLogStats {
@@ -51,15 +52,15 @@ const mapRow = (row: any): AuditLog => ({
     status: row.status || "—",
 });
 
-const loadAudit = async (limit = 200) =>
-    getReport("audit", { limit }) as Promise<{
+const loadAudit = async (limit = 200, filters?: AuditLogFilters) =>
+    getReport("audit", { limit, parking_lot_id: filters?.parkingLotId?.trim() || undefined }) as Promise<{
         summary: { total_logs: number; success_count: number; failure_count: number };
         recentActivity: any[];
     }>;
 
 export const auditLogsService = {
     async getStats(_filters: AuditLogFilters): Promise<AuditLogStats> {
-        const { summary } = await loadAudit(500);
+        const { summary } = await loadAudit(500, _filters);
         return {
             totalLogs: Number(summary.total_logs) || 0,
             successCount: Number(summary.success_count) || 0,
@@ -69,7 +70,7 @@ export const auditLogsService = {
     },
 
     async getLogs(filters: AuditLogFilters): Promise<AuditLog[]> {
-        const { recentActivity } = await loadAudit(200);
+        const { recentActivity } = await loadAudit(200, filters);
         let rows = recentActivity.map(mapRow);
         if (filters.search.trim()) {
             const q = filters.search.toLowerCase();
@@ -124,7 +125,10 @@ export const auditLogsService = {
     },
 
     async exportLogs(payload: AuditLogFilters & { format: ReportExportFormat }) {
-        const { format, ..._rest } = payload;
-        return downloadReportExport("audit", format, { limit: 200 });
+        const { format, ...filters } = payload;
+        return downloadReportExport("audit", format, {
+            limit: 200,
+            parking_lot_id: filters.parkingLotId?.trim() || undefined,
+        });
     },
 };
