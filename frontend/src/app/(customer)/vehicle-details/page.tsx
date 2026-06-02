@@ -54,9 +54,9 @@ export default function VehicleDetailsPage() {
         },
       });
 
-      router.push("/");
+      router.push(`/?zone=ZONE-201`);
 
-      return;
+      return; 
     }
   }, [parkingDetails, router]);
 
@@ -168,7 +168,7 @@ export default function VehicleDetailsPage() {
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <Link
-            href="/"
+            href={`/?zone=ZONE-201`}
             className="w-9 h-9 rounded-full bg-[#1A1A1A] flex items-center justify-center border border-white/5 hover:bg-white/5 transition-colors"
           >
             <ArrowLeft size={18} />

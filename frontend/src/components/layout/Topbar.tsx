@@ -12,6 +12,7 @@ import {
 } from "react-icons/fi";
 import { useSystem } from "@/contexts/SystemContext";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 export default function Topbar({
   setIsOpen,
@@ -19,6 +20,7 @@ export default function Topbar({
   setIsOpen: (val: boolean) => void;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { branding, updateBrandingSettings } = useSystem();
   const [mounted, setMounted] = useState(false);
 
@@ -87,7 +89,7 @@ export default function Topbar({
             {getPageTitle()}
           </motion.h1>
           <div className="hidden sm:flex items-center gap-1.5 text-[10px] sm:text-[11px] text-[var(--color-text-muted)] font-medium mt-1">
-            <span>ParkSmart</span>
+            <span>Parks-Smart</span>
             <span>/</span>
             <span className="text-[var(--color-primary)] capitalize">
               {getPageTitle()}
@@ -122,7 +124,10 @@ export default function Topbar({
         <div className="h-6 sm:h-8 md:h-10 w-[1px] bg-[var(--color-border)] mx-0.5 sm:mx-1 hidden sm:block" />
 
         {/* Profile Card */}
-        <button className="flex items-center gap-2 sm:gap-3 p-1 pl-1.5 sm:pl-2 hover:bg-[var(--color-bg)] rounded-2xl transition-all group border border-transparent hover:border-[var(--color-border)]">
+        <button
+          onClick={() => router.push("/setting?tab=owner-profile")}
+          className="flex items-center gap-2 sm:gap-3 p-1 pl-1.5 sm:pl-2 hover:bg-[var(--color-bg)] rounded-2xl transition-all group border border-transparent hover:border-[var(--color-border)]"
+        >
           <div className="relative">
             <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 bg-gradient-to-br from-[var(--color-primary)] to-[var(--color-primary-dark)] text-white rounded-xl flex items-center justify-center font-bold shadow-md shadow-[var(--color-primary)]/20">
               JD

@@ -62,6 +62,7 @@ export interface SystemSettings {
 }
 
 export interface BrandingSettings {
+  parkingLotName: string;
   systemName: string;
   themeColor: string;
   darkMode: DarkModePreference;

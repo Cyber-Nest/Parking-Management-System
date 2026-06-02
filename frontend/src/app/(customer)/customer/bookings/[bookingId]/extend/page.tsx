@@ -18,7 +18,7 @@ interface ExtendBookingPageProps {
 
 export default function ExtendBookingPage({ params }: ExtendBookingPageProps) {
   const router = useRouter();
-  const { setExtensionDetails } = useParkingBooking();
+  const { setExtensionDetails, parkingDetails } = useParkingBooking();
   const { bookingId } = React.use(params);
 
   const durations = customerService
@@ -37,7 +37,7 @@ export default function ExtendBookingPage({ params }: ExtendBookingPageProps) {
         const booking = await customerService.getBookingById(bookingId);
         if (!booking) {
           toast.error("Booking not found");
-          router.replace("/");
+          router.replace(`/?zone=ZONE-201`);
           return;
         }
 
@@ -46,7 +46,7 @@ export default function ExtendBookingPage({ params }: ExtendBookingPageProps) {
       } catch (error) {
         console.error(error);
         toast.error("Failed to load booking details");
-        router.replace("/");
+        router.replace(`/?zone=ZONE-201`);
       } finally {
         setIsLoading(false);
       }
@@ -64,7 +64,7 @@ export default function ExtendBookingPage({ params }: ExtendBookingPageProps) {
         if (prev <= 1) {
           clearInterval(interval);
           toast.error("Grace window expired");
-          router.replace("/");
+          router.replace(`/?zone=ZONE-201`);
           return 0;
         }
         return prev - 1;
@@ -117,7 +117,7 @@ export default function ExtendBookingPage({ params }: ExtendBookingPageProps) {
       <div className="max-w-xl lg:max-w-5xl mx-auto min-h-screen flex flex-col p-6 pt-10">
         <div className="flex items-center gap-4 mb-8">
           <Link
-            href="/"
+            href={`/?zone=ZONE-201`}
             className="w-9 h-9 rounded-full bg-[#1A1A1A] flex items-center justify-center border border-white/5 hover:bg-white/5 transition-colors"
           >
             <ArrowLeft size={18} />

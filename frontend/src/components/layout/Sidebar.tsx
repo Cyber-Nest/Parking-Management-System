@@ -314,7 +314,7 @@ export default function Sidebar({
               </span>
             </div>
             <span className="text-lg md:text-xl font-bold tracking-tight text-white dark:text-[var(--color-text-primary)]">
-              ParkSmart
+              Parks-Smart
             </span>
           </div>
           <button

@@ -122,7 +122,7 @@ export function PrinterSettingsPanel() {
       <SettingsCard title="Test Print">
         <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center font-mono text-xs">
           <p className="font-bold">*** TEST PRINT ***</p>
-          <p className="mt-2">PARKSMART ENFORCEMENT</p>
+          <p className="mt-2">PARKs-SMART ENFORCEMENT</p>
           <p>Bixolon SPP-R310 • {paperSize}</p>
           <p className="mt-2">{currentDate}</p>
           <p className="text-emerald-600">Status: Ready</p>

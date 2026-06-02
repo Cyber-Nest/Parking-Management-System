@@ -105,7 +105,7 @@ export function OfficerShell({ children }: { children: React.ReactNode }) {
               <Shield size={24} />
             </div>
             <div>
-              <p className="text-lg font-bold leading-tight">ParkSmart</p>
+              <p className="text-lg font-bold leading-tight">Parks-Smart</p>
               <p className="text-xs text-white/70">Enforcement</p>
             </div>
           </div>
@@ -204,7 +204,7 @@ export function OfficerShell({ children }: { children: React.ReactNode }) {
             <div className="flex h-20 items-center justify-between gap-3 px-4 md:px-7">
               <div className="flex items-center gap-2 lg:hidden">
                 <Home size={20} className="text-[#1062ff]" />
-                <span className="font-bold">ParkSmart Enforcement</span>
+                <span className="font-bold">Parks-Smart Enforcement</span>
               </div>
 
               <div className="hidden items-center gap-3 lg:flex">

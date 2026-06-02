@@ -11,7 +11,7 @@ import { useParkingBooking } from "@/contexts/CustomerParkingContext";
 
 export default function ExtendBookingPage() {
   const router = useRouter();
-  const { setExtensionDetails } = useParkingBooking();
+  const { setExtensionDetails, parkingDetails } = useParkingBooking();
 
   const durations = customerService
     .getDurationOptions()
@@ -39,7 +39,7 @@ export default function ExtendBookingPage() {
     if (!bookingData.isGraceWindowActive) {
       toast.error("Extension window expired");
 
-      router.replace("/");
+      router.replace(`/?zone=ZONE-201`);
 
       return;
     }
@@ -55,7 +55,7 @@ export default function ExtendBookingPage() {
 
           toast.error("Grace window expired");
 
-          router.replace("/");
+          router.replace(`/?zone=ZONE-201`);
 
           return 0;
         }
