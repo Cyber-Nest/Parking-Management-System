@@ -258,6 +258,7 @@ export interface ParkingZone {
   name: string;
   isActive: boolean;
   rate?: number;
+  parking_lot_id?: string | null;
 }
 
 export interface ParkingOwner {
@@ -288,12 +289,11 @@ const currentParkingOwner: ParkingOwner = {
   parkingImage:
     "https://images.unsplash.com/photo-1506521781263-d8422e82f27a?auto=format&fit=crop&q=80",
   zones: [
-    { id: "ZONE-1", name: "Basement A", isActive: true },
-    { id: "ZONE-2", name: "VIP Floor", isActive: true, rate: 8 },
-    { id: "ZONE-3", name: "Open Terrace", isActive: true },
+    { id: "ZONE-1", name: "Basement A", isActive: true, parking_lot_id: "LOT-DEFAULT" },
+    { id: "ZONE-2", name: "VIP Floor", isActive: true, rate: 8, parking_lot_id: "LOT-DEFAULT" },
+    { id: "ZONE-3", name: "Open Terrace", isActive: true, parking_lot_id: "LOT-DEFAULT" },
   ],
-  qrCodeUrl:
-    "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://parksmart.com/parking/PO-1021",
+  qrCodeUrl: "",
   isActive: true,
   createdAt: "2026-05-10T12:30:00Z",
   updatedAt: "2026-05-15T10:00:00Z",
@@ -301,11 +301,40 @@ const currentParkingOwner: ParkingOwner = {
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const getFrontendOrigin = (): string => {
+  if (typeof window !== "undefined" && window.location?.origin) {
+    return window.location.origin;
+  }
+
+  return process.env.NEXT_PUBLIC_APP_URL?.trim() || "http://localhost:3000";
+};
+
+const getDefaultParkingLotId = (parkingOwner: ParkingOwner): string => {
+  // Prefer explicit parking_lot_id on zone if present; otherwise fall back to zone id
+  const first = parkingOwner.zones?.[0];
+  // @ts-ignore - mock data may not have parking_lot_id
+  return (first && (first as any).parking_lot_id) || first?.id || parkingOwner.id;
+};
+
+const getParkingOwnerQrTargetUrl = (parkingOwner: ParkingOwner): string => {
+  const origin = getFrontendOrigin();
+  const targetLotId = getDefaultParkingLotId(parkingOwner);
+  return `${origin}/?lotId=${encodeURIComponent(targetLotId)}`;
+};
+
+const createParkingOwnerQrCodeUrl = (parkingOwner: ParkingOwner): string => {
+  const targetUrl = getParkingOwnerQrTargetUrl(parkingOwner);
+  return `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(targetUrl)}`;
+};
+
 class ParkingOwnerService {
   // Get current logged-in parking owner
   async getCurrentParkingOwner(): Promise<ParkingOwner | null> {
     await delay(500);
-    return { ...currentParkingOwner };
+    return {
+      ...currentParkingOwner,
+      qrCodeUrl: createParkingOwnerQrCodeUrl(currentParkingOwner),
+    };
   }
 
   // Update zones only

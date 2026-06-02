@@ -84,7 +84,7 @@ const CTASkeleton = () => (
 export default function LandingPage() {
   const searchParams = useSearchParams();
 
-  const { setParkingDetails } = useParkingBooking();
+  const { setParkingDetails, setReturnUrl } = useParkingBooking();
 
   const [parkingData, setParkingData] = useState<ParkingDetails | null>(null);
   const [selectedZone, setSelectedZone] = useState<any>(null);
@@ -95,10 +95,13 @@ export default function LandingPage() {
       try {
         setLoading(true);
 
-        const zoneId =
-          searchParams.get("zoneId") || process.env.NEXT_PUBLIC_DEFAULT_ZONE_ID || "ZONE-201";
+        const lotId = searchParams.get("lotId");
+        const zoneId = searchParams.get("zoneId");
+        const currentUrl = `${window.location.pathname}${window.location.search}`;
+        setReturnUrl(currentUrl);
+        const lookupId = lotId || zoneId || process.env.NEXT_PUBLIC_DEFAULT_ZONE_ID || "ZONE-201";
 
-        const response = await customerService.getParkingZoneById(zoneId);
+        const response = await customerService.getParkingZoneById(lookupId);
 
         setParkingData(response);
 
@@ -134,7 +137,7 @@ export default function LandingPage() {
     };
 
     fetchParkingZone();
-  }, [searchParams, setParkingDetails]);
+  }, [searchParams, setParkingDetails, setReturnUrl]);
 
   const handleZoneSelect = (zone: any) => {
     setSelectedZone(zone);

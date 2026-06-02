@@ -7,6 +7,7 @@ import {
   OfficerSession,
   officerEnforcementService,
 } from "@/services/officer-enforcement.service";
+import { listParkingLots, ParkingLotRecord } from "@/services/parking-lots.service";
 
 const STATUS_FILTERS = [
   { value: "All", label: "All" },
@@ -24,12 +25,17 @@ type ProcessedOfficerSession = OfficerSession & {
 export default function OfficerSessionsPage() {
   const [sessions, setSessions] = useState<OfficerSession[]>([]);
   const [selectedSession, setSelectedSession] = useState<ProcessedOfficerSession | null>(null);
+  const [parkingLots, setParkingLots] = useState<ParkingLotRecord[]>([]);
+  const [lotFilter, setLotFilter] = useState<string>("");
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState<(typeof STATUS_FILTERS)[number]["value"]>("All");
   const [sortBy, setSortBy] = useState<(typeof SORT_OPTIONS)[number]>("Start Time Latest");
 
   useEffect(() => {
     officerEnforcementService.getSessions({ limit: 100 }).then(setSessions);
+    void listParkingLots().then(setParkingLots).catch((err) => {
+      console.error("Failed to load parking lots", err);
+    });
   }, []);
 
   const now = useMemo(() => Date.now(), [sessions.length]);
@@ -66,6 +72,12 @@ export default function OfficerSessionsPage() {
             const expected = statusFilter === "Issue" ? "Ticket Issued" : statusFilter;
             if (session.status !== expected) return false;
           }
+          if (lotFilter) {
+            const lot = parkingLots.find((lotRecord) => lotRecord.id === lotFilter);
+            if (lot && !String(session.location_name ?? "").toLowerCase().includes(lot.lot_name.toLowerCase())) {
+              return false;
+            }
+          }
           if (!searchText.trim()) return true;
           const query = searchText.trim().toLowerCase();
           return (
@@ -80,7 +92,7 @@ export default function OfficerSessionsPage() {
           if (sortBy === "Expiry Time Soonest") return new Date(a.end_time).getTime() - new Date(b.end_time).getTime();
           return a.license_plate.localeCompare(b.license_plate);
         }),
-    [processedSessions, searchText, statusFilter, sortBy]
+    [processedSessions, searchText, statusFilter, sortBy, lotFilter, parkingLots]
   );
 
   const summary = useMemo(() => {
@@ -129,7 +141,7 @@ export default function OfficerSessionsPage() {
                     className="w-full bg-transparent text-sm outline-none"
                   />
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-3">
                   <select
                     value={statusFilter}
                     onChange={(event) => setStatusFilter(event.target.value as any)}
@@ -138,6 +150,18 @@ export default function OfficerSessionsPage() {
                     {STATUS_FILTERS.map((option) => (
                       <option key={option.value} value={option.value}>
                         {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={lotFilter}
+                    onChange={(event) => setLotFilter(event.target.value)}
+                    className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
+                  >
+                    <option value="">All lots</option>
+                    {parkingLots.map((lot) => (
+                      <option key={lot.id} value={lot.id}>
+                        {lot.lot_name}
                       </option>
                     ))}
                   </select>

@@ -61,12 +61,14 @@ interface ParkingBookingContextType {
   selectedDuration: DurationDetails | null;
   bookingSummary: BookingSummary | null;
   extensionDetails: ExtensionDetails | null;
+  returnUrl: string | null;
 
   setParkingDetails: (data: ParkingDetails | null) => void;
   setVehicleDetails: (data: VehicleDetails | null) => void;
   setSelectedDuration: (data: DurationDetails | null) => void;
   setBookingSummary: (data: BookingSummary | null) => void;
   setExtensionDetails: (data: ExtensionDetails | null) => void;
+  setReturnUrl: (data: string | null) => void;
 
   clearBooking: () => void;
 }
@@ -93,6 +95,7 @@ export const ParkingBookingProvider = ({
 
   const [extensionDetails, setExtensionDetails] =
     useState<ExtensionDetails | null>(null);
+  const [returnUrl, setReturnUrl] = useState<string | null>(null);
 
   const clearBooking = () => {
     setParkingDetails(null);
@@ -100,6 +103,7 @@ export const ParkingBookingProvider = ({
     setSelectedDuration(null);
     setBookingSummary(null);
     setExtensionDetails(null);
+    setReturnUrl(null);
   };
 
   const value = useMemo(
@@ -109,12 +113,14 @@ export const ParkingBookingProvider = ({
       selectedDuration,
       bookingSummary,
       extensionDetails,
+      returnUrl,
 
       setParkingDetails,
       setVehicleDetails,
       setSelectedDuration,
       setBookingSummary,
       setExtensionDetails,
+      setReturnUrl,
 
       clearBooking,
     }),
@@ -124,6 +130,7 @@ export const ParkingBookingProvider = ({
       selectedDuration,
       bookingSummary,
       extensionDetails,
+      returnUrl,
     ]
   );
 

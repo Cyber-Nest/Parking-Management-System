@@ -151,10 +151,22 @@ export interface ParkingZonePublic {
   available_spots: number;
   total_spots: number;
   spot_id: string;
+  parking_lot_id?: string | null;
   sub_zones?: ParkingZoneSubZone[];
 }
 
 export interface ParkingZoneRow extends ParkingZonePublic {}
+
+export interface ParkingLotPublic {
+  id: string;
+  owner_id?: string | null;
+  lot_name: string;
+  address?: string | null;
+  image_url?: string | null;
+  qr_code_url?: string | null;
+}
+
+export interface ParkingLotRow extends ParkingLotPublic {}
 
 export interface CustomerBookingPayload {
   zoneId: string;

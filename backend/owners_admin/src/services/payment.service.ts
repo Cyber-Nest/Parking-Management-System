@@ -18,6 +18,7 @@ export class PaymentService {
       paymentType: query.payment_type as any,
       from: query.from,
       to: query.to,
+      parkingLotId: query.parking_lot_id ?? query.parkingLotId ?? query.lotId,
     });
 
     return {
@@ -29,8 +30,10 @@ export class PaymentService {
     };
   }
 
-  async summary() {
-    return paymentRepo.summary();
+  async summary(query: Record<string, string | undefined> = {}) {
+    return paymentRepo.summary({
+      parkingLotId: query.parking_lot_id ?? query.parkingLotId ?? query.lotId,
+    });
   }
 
   async create(body: CreatePaymentBody & { status?: PaymentStatus; user_id?: string; paid_at?: string }) {

@@ -41,6 +41,8 @@ export const parkingPlanAndRulesService = {
       price: Number(p.price) || 0,
       tax: Number(p.tax_percent ?? p.tax ?? 0),
       status: (p.status as string) || "Active",
+      parking_lot_id: p.parking_lot_id ? String(p.parking_lot_id) : undefined,
+      parking_lot_name: p.parking_lot_name ? String(p.parking_lot_name) : undefined,
     })) as ParkingPlan[];
   },
   async createPlan(payload: {
@@ -50,6 +52,7 @@ export const parkingPlanAndRulesService = {
     plan_type?: string;
     tax_percent?: number;
     status?: string;
+    parking_lot_id?: string | null;
   }) {
     return await createParkingPlan(payload);
   },
@@ -62,6 +65,7 @@ export const parkingPlanAndRulesService = {
       plan_type?: string;
       tax_percent?: number;
       status?: string;
+      parking_lot_id?: string | null;
     },
   ) {
     return await updateParkingPlan(id, payload);

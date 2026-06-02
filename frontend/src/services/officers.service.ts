@@ -11,10 +11,11 @@ export interface OfficerListParams {
   q?: string;
   status?: OfficerStatusUi;
   role?: OfficerRoleUi;
+  parking_lot_id?: string;
 }
 
-export const getOfficerSummary = async () => {
-  const response = await axiosInstance.get(API_ENDPOINTS.OFFICERS.SUMMARY);
+export const getOfficerSummary = async (params: Pick<OfficerListParams, "parking_lot_id"> = {}) => {
+  const response = await axiosInstance.get(API_ENDPOINTS.OFFICERS.SUMMARY, { params });
   return getResponseData(response);
 };
 

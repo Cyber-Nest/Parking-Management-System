@@ -4,6 +4,7 @@ import { PaymentRepository } from '../repositories/payment.repository';
 import { SessionRepository } from '../repositories/session.repository';
 import { ParkingPlanRepository } from '../repositories/parkingPlan.repository';
 import { ParkingZoneRepository } from '../repositories/parkingZone.repository';
+import { ParkingLotRepository } from '../repositories/parkingLot.repository';
 import { bookingService } from './booking.service';
 import { transactionService } from './transaction.service';
 import { invoiceService } from './invoice.service';
@@ -16,6 +17,7 @@ import { sanitizeParkingImageUrl } from '../utils/parkingImages';
 import { sendEmail, paymentReceiptTemplate } from '../utils/email';
 
 const parkingZoneRepo = new ParkingZoneRepository();
+const parkingLotRepo = new ParkingLotRepository();
 const parkingPlanRepo = new ParkingPlanRepository();
 const sessionRepo = new SessionRepository();
 const paymentRepo = new PaymentRepository();
@@ -28,12 +30,45 @@ const SERVICE_FEE = 2;
 
 export class CustomerService {
   async getParkingZoneById(zoneId: string): Promise<ParkingZonePublic> {
-    const zone = await parkingZoneRepo.findById(zoneId);
+    // Try to find by zone id first.
+    let zone = await parkingZoneRepo.findById(zoneId);
+
+    // If not found by zone id, treat the provided id as a parking lot id and
+    // resolve the default zone for that lot.
     if (!zone) {
-      throw new Error('Parking zone not found');
+      const zonesByLot = await parkingZoneRepo.listByLot(zoneId, 1, 1);
+      if (zonesByLot?.items?.length) {
+        zone = zonesByLot.items[0];
+      }
     }
 
-    const subZones = await parkingZoneRepo.findCustomerSubZones(zone.id, 6);
+    if (!zone) {
+      const lot = await parkingLotRepo.findById(zoneId);
+      if (!lot) {
+        throw new Error('Parking zone or lot not found');
+      }
+
+      return {
+        id: lot.id,
+        parking_name: lot.lot_name,
+        address: lot.address ?? '',
+        image_url: sanitizeParkingImageUrl(lot.image_url ?? ''),
+        hourly_rate: 0,
+        available_spots: 0,
+        total_spots: 0,
+        spot_id: lot.id,
+        parking_lot_id: lot.id,
+        sub_zones: [],
+      };
+    }
+
+    let subZones = await parkingZoneRepo.findCustomerSubZones(zone.id, 6);
+    if (zone.parking_lot_id) {
+      const lotZones = await parkingZoneRepo.listByLot(zone.parking_lot_id, 1, 6);
+      subZones = lotZones.items
+        .filter((z) => z.id !== zone.id)
+        .slice(0, 6);
+    }
 
     return {
       id: zone.id,
@@ -44,6 +79,7 @@ export class CustomerService {
       available_spots: zone.available_spots,
       total_spots: zone.total_spots,
       spot_id: zone.spot_id,
+      parking_lot_id: zone.parking_lot_id,
       sub_zones: subZones.map((z) => ({
         id: z.id,
         parking_name: z.parking_name,

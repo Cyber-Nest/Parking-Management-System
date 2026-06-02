@@ -11,10 +11,11 @@ export interface SessionListParams {
   status?: SessionStatus;
   from?: string;
   to?: string;
+  parking_lot_id?: string;
 }
 
-export const getSessionSummary = async () => {
-  const response = await axiosInstance.get(API_ENDPOINTS.SESSIONS.SUMMARY);
+export const getSessionSummary = async (params: Pick<SessionListParams, "parking_lot_id"> = {}) => {
+  const response = await axiosInstance.get(API_ENDPOINTS.SESSIONS.SUMMARY, { params });
   return getResponseData(response);
 };
 

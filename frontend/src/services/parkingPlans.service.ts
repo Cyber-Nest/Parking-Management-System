@@ -10,6 +10,8 @@ export interface ParkingPlan {
   tax?: number;
   duration: number;
   status?: "Active" | "Inactive" | string;
+  parking_lot_id?: string | null;
+  parking_lot_name?: string | null;
   updatedDate?: string;
   updatedTime?: string;
   created_at?: string;
@@ -28,6 +30,7 @@ export const createParkingPlan = async (payload: {
   plan_type?: string;
   tax_percent?: number;
   status?: string;
+  parking_lot_id?: string | null;
 }) => {
   const response = await axiosInstance.post(API_ENDPOINTS.PARKING_PLANS.LIST, payload);
   return getResponseData(response);
@@ -42,6 +45,7 @@ export const updateParkingPlan = async (
     plan_type?: string;
     tax_percent?: number;
     status?: string;
+    parking_lot_id?: string | null;
   },
 ) => {
   const response = await axiosInstance.patch(`${API_ENDPOINTS.PARKING_PLANS.LIST}/${id}`, payload);

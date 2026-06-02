@@ -39,6 +39,10 @@ export const API_ENDPOINTS = {
     LIST: "/admin/parking-zones",
     BY_ID: (id: string) => `/admin/parking-zones/${id}`,
   },
+  PARKING_LOTS: {
+    LIST: "/admin/parking-lots",
+    BY_ID: (id: string) => `/admin/parking-lots/${id}`,
+  },
 
   PENALTY_RULES: {
     LIST: "/admin/penalty-rules",

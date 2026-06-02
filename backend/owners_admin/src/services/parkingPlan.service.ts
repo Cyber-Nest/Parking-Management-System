@@ -15,6 +15,7 @@ export class ParkingPlanService {
     plan_type?: string;
     tax_percent?: number;
     status?: string;
+    parking_lot_id?: string | null;
   }) {
     if (!body.name?.trim()) {
       throw new ValidationError('name is required');
@@ -33,6 +34,7 @@ export class ParkingPlanService {
       plan_type: body.plan_type,
       tax_percent: body.tax_percent,
       status: body.status,
+      parking_lot_id: body.parking_lot_id,
     });
     return parkingPlanRepo.findById(id);
   }
@@ -46,9 +48,13 @@ export class ParkingPlanService {
       plan_type?: string;
       tax_percent?: number;
       status?: string;
+      parking_lot_id?: string | null;
     }
   ) {
-    const affected = await parkingPlanRepo.update(id, body);
+    const affected = await parkingPlanRepo.update(id, {
+      ...body,
+      parking_lot_id: body.parking_lot_id,
+    });
     if (affected === 0) {
       const exists = await parkingPlanRepo.findById(id);
       if (!exists) throw new NotFoundError('Parking plan not found');

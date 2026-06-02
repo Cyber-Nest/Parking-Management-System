@@ -19,6 +19,8 @@ import { TableSkeleton } from "@/components/common/TableSkeleton";
 import toast from "react-hot-toast";
 import { ActionDropdown } from "@/components/active-parking/ActionDropdown";
 import { SessionDetailsDrawer } from "@/components/active-parking/SessionDetailsDrawer";
+import { ParkingLotFilter } from "@/components/common/ParkingLotFilter";
+import { listParkingLots, ParkingLotRecord } from "@/services/parking-lots.service";
 
 // Services
 import {
@@ -83,6 +85,8 @@ export default function ActiveParkingSessionsPage() {
   const [isDetailsDrawerOpen, setIsDetailsDrawerOpen] = useState(false);
   const [planFilter, setPlanFilter] = useState("All Plans");
   const [statusFilter, setStatusFilter] = useState("All Status");
+  const [parkingLots, setParkingLots] = useState<ParkingLotRecord[]>([]);
+  const [parkingLotId, setParkingLotId] = useState("");
 
   const itemsPerPage = 10;
 
@@ -98,8 +102,8 @@ export default function ActiveParkingSessionsPage() {
       try {
         setLoading(true);
         const [statsRes, sessionRes] = await Promise.all([
-          parkingService.getStats(),
-          parkingService.getParkingSessions(),
+          parkingService.getStats({ parking_lot_id: parkingLotId || undefined }),
+          parkingService.getParkingSessions({ parking_lot_id: parkingLotId || undefined }),
         ]);
         setStats(statsRes);
         setSessions(sessionRes);
@@ -111,6 +115,10 @@ export default function ActiveParkingSessionsPage() {
       }
     };
     fetchData();
+  }, [parkingLotId]);
+
+  useEffect(() => {
+    listParkingLots().then(setParkingLots).catch((error) => console.error("Failed to load parking lots", error));
   }, []);
 
   // Filtered Sessions
@@ -216,6 +224,7 @@ export default function ActiveParkingSessionsPage() {
     setSearch("");
     setPlanFilter("All Plans");
     setStatusFilter("All Status");
+    setParkingLotId("");
     setCurrentPage(1);
     showToast("All filters cleared", "info");
   };
@@ -284,6 +293,14 @@ export default function ActiveParkingSessionsPage() {
             <div className="hidden lg:block w-[1px] h-8 bg-[var(--color-border)] mx-1" />
 
             <div className="flex flex-wrap items-center gap-2">
+              <ParkingLotFilter
+                lots={parkingLots}
+                value={parkingLotId}
+                onChange={(value) => {
+                  setParkingLotId(value);
+                  setCurrentPage(1);
+                }}
+              />
               {/* Plan Filter */}
               <select
                 value={planFilter}
@@ -334,6 +351,7 @@ export default function ActiveParkingSessionsPage() {
                 <tr className="text-[11px] uppercase text-[var(--color-text-secondary)] font-bold tracking-wider">
                   <th className="px-6 py-5">Session & Plan</th>
                   <th className="px-6 py-5">License Plate</th>
+                  <th className="px-6 py-5">Parking Lot</th>
                   <th className="px-6 py-5">Time Frame</th>
                   <th className="px-6 py-5">Remaining</th>
                   <th className="px-6 py-5 text-center">Payment</th>
@@ -343,11 +361,11 @@ export default function ActiveParkingSessionsPage() {
               </thead>
               <tbody className="divide-y divide-[var(--color-border)] text-[13px]">
                 {loading ? (
-                  <TableSkeleton rows={5} cols={7} />
+                  <TableSkeleton rows={5} cols={8} />
                 ) : paginatedSessions.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={7}
+                      colSpan={8}
                       className="text-center py-16 text-sm font-semibold text-gray-400"
                     >
                       No parking sessions found.
@@ -377,6 +395,16 @@ export default function ActiveParkingSessionsPage() {
                         <div className="text-[11px] text-[var(--color-text-secondary)]">
                           {row.vehicle}
                         </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="font-bold text-[var(--color-text-primary)]">
+                          {row.parkingLotName || "Unassigned"}
+                        </div>
+                        {row.parkingLotId ? (
+                          <div className="text-[10px] text-[var(--color-text-muted)] font-mono">
+                            {row.parkingLotId}
+                          </div>
+                        ) : null}
                       </td>
                       <td className="px-6 py-4">
                         {isSameDay(row.startTime, row.expiryTime) ? (

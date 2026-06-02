@@ -27,11 +27,11 @@ export const getOfficerById = async (
 };
 
 export const getOfficerSummary = async (
-  _req: Request,
+  req: Request,
   res: Response<ApiResponse<any>>
 ): Promise<void> => {
   try {
-    const data = await officerService.summary();
+    const data = await officerService.summary(req.query as Record<string, string | undefined>);
     res.status(200).json({ success: true, message: 'Officer summary fetched', data });
   } catch (err) {
     handleError(err, res);

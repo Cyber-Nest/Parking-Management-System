@@ -18,6 +18,8 @@ import toast from "react-hot-toast";
 import { PaymentActionDropdown } from "@/components/payment/PaymentActionDropdown";
 import { PaymentDetailsDrawer } from "@/components/payment/PaymentDetailsDrawer";
 import { PaymentReceiptDrawer } from "@/components/payment/PaymentReceiptDrawer";
+import { ParkingLotFilter } from "@/components/common/ParkingLotFilter";
+import { listParkingLots, ParkingLotRecord } from "@/services/parking-lots.service";
 
 import {
   paymentService,
@@ -147,6 +149,8 @@ export default function PaymentsPage() {
 
   const [receiptPaymentId, setReceiptPaymentId] = useState<string | null>(null);
   const [receiptOpen, setReceiptOpen] = useState(false);
+  const [parkingLots, setParkingLots] = useState<ParkingLotRecord[]>([]);
+  const [parkingLotId, setParkingLotId] = useState("");
 
   const itemsPerPage = 10;
 
@@ -162,8 +166,8 @@ export default function PaymentsPage() {
       try {
         setLoading(true);
         const [statsRes, paymentsRes] = await Promise.all([
-          paymentService.getPaymentStats(),
-          paymentService.getPayments(),
+          paymentService.getPaymentStats({ parking_lot_id: parkingLotId || undefined }),
+          paymentService.getPayments({ parking_lot_id: parkingLotId || undefined }),
         ]);
         setStats(statsRes);
         setPayments(paymentsRes);
@@ -175,6 +179,10 @@ export default function PaymentsPage() {
       }
     };
     fetchData();
+  }, [parkingLotId]);
+
+  useEffect(() => {
+    listParkingLots().then(setParkingLots).catch((error) => console.error("Failed to load parking lots", error));
   }, []);
 
   // Filter by Period (Date Range)
@@ -265,6 +273,7 @@ export default function PaymentsPage() {
     setSearch("");
     setStatusFilter("All Status");
     setMethodFilter("All Methods");
+    setParkingLotId("");
     setActiveType("All Types");
     setActivePeriod("Today");
     setCustomStartDate("");
@@ -414,6 +423,15 @@ export default function PaymentsPage() {
 
             {/* Search & Filters */}
             <div className="flex flex-wrap items-end gap-3 border-t border-[var(--color-bg)] pt-4">
+              <ParkingLotFilter
+                lots={parkingLots}
+                value={parkingLotId}
+                onChange={(value) => {
+                  setParkingLotId(value);
+                  setCurrentPage(1);
+                }}
+                className="self-end"
+              />
               <div className="flex-1 min-w-[240px] relative">
                 <Search
                   className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]"
@@ -491,6 +509,7 @@ export default function PaymentsPage() {
                   <th className="px-6 py-5">Date & Time</th>
                   <th className="px-6 py-5">Plate No.</th>
                   <th className="px-6 py-5">Session ID</th>
+                  <th className="px-6 py-5">Parking Lot</th>
                   <th className="px-6 py-5">Type</th>
                   <th className="px-6 py-5">Amount</th>
                   <th className="px-6 py-5">Method</th>
@@ -500,11 +519,11 @@ export default function PaymentsPage() {
               </thead>
               <tbody className="divide-y divide-[var(--color-border)] text-[13px]">
                 {loading ? (
-                  <TableSkeleton rows={5} cols={9} />
+                  <TableSkeleton rows={5} cols={10} />
                 ) : paginatedPayments.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={9}
+                      colSpan={10}
                       className="text-center py-16 text-sm font-semibold text-gray-400"
                     >
                       No payments found.
@@ -532,6 +551,16 @@ export default function PaymentsPage() {
                       </td>
                       <td className="px-6 py-4 font-bold text-[var(--color-primary)]">
                         {row.sessionId}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="font-bold text-[var(--color-text-primary)]">
+                          {row.parkingLotName || "Unassigned"}
+                        </div>
+                        {row.parkingLotId ? (
+                          <div className="text-[10px] text-[var(--color-text-muted)] font-mono">
+                            {row.parkingLotId}
+                          </div>
+                        ) : null}
                       </td>
                       <td className="px-6 py-4">
                         <TypeBadge type={row.type} />

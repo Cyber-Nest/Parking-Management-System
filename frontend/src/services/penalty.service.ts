@@ -40,6 +40,8 @@ export interface PenaltyTicket {
   parkingStatus?: string;
   parkingStartTime?: string;
   parkingExpiryTime?: string;
+  parkingLotId?: string | null;
+  parkingLotName?: string | null;
 }
 
 export interface PenaltyStats {
@@ -135,6 +137,8 @@ export const penaltyService = {
         parkingExpiryTime: t.end_time
           ? new Date(t.end_time).toLocaleString()
           : "",
+        parkingLotId: t.parking_lot_id ?? t.parkingLotId ?? null,
+        parkingLotName: t.parking_lot_name ?? t.parkingLotName ?? null,
         photos: [],
         notes: noteLines,
         raw: t,
@@ -142,8 +146,8 @@ export const penaltyService = {
     });
   },
 
-  async getPenaltyStats(): Promise<PenaltyStats> {
-    const summary = await getTicketSummary();
+  async getPenaltyStats(params: Pick<TicketListParams, "parking_lot_id"> = {}): Promise<PenaltyStats> {
+    const summary = await getTicketSummary(params);
     return {
       totalTickets: String(summary?.totalTickets ?? summary?.totalCount ?? 0),
       unpaidTickets: String(summary?.unpaidTickets ?? summary?.unpaidCount ?? 0),

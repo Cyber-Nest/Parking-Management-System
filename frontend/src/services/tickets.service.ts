@@ -12,10 +12,11 @@ export interface TicketListParams {
   officer_id?: string;
   from?: string; // yyyy-mm-dd or datetime string (backend forwards to SQL)
   to?: string;
+  parking_lot_id?: string;
 }
 
-export const getTicketSummary = async () => {
-  const response = await axiosInstance.get(API_ENDPOINTS.TICKETS.SUMMARY);
+export const getTicketSummary = async (params: Pick<TicketListParams, "parking_lot_id"> = {}) => {
+  const response = await axiosInstance.get(API_ENDPOINTS.TICKETS.SUMMARY, { params });
   return getResponseData(response);
 };
 

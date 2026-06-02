@@ -80,8 +80,8 @@ export const officerService = {
     });
   },
 
-  async getSummary() {
-    return await getOfficerSummary();
+  async getSummary(params: Pick<OfficerListParams, "parking_lot_id"> = {}) {
+    return await getOfficerSummary(params);
   },
 
   async setOfficerStatus(id: string, status: "ACTIVE" | "DISABLED") {

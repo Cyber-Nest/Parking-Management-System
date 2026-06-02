@@ -569,6 +569,19 @@ import {
   deleteParkingZone,
   mapZoneToUi,
 } from "@/services/parking-zones.service";
+import {
+  listParkingLots,
+  createParkingLot,
+  updateParkingLot,
+  deleteParkingLot,
+} from '@/services/parking-lots.service';
+
+interface ParkingLot {
+  id: string;
+  lot_name: string;
+  address?: string | null;
+  qr_code_url?: string | null;
+}
 
 // Zone Card Component
 const ZoneCard = ({
@@ -744,12 +757,133 @@ const ZoneFormDrawer = ({
   );
 };
 
+const LotFormDrawer = ({
+  isOpen,
+  onClose,
+  onSubmit,
+  lot,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (data: { lot_name: string; address?: string }) => void;
+  lot: ParkingLot | null;
+}) => {
+  const [name, setName] = useState(lot?.lot_name || "");
+  const [address, setAddress] = useState(lot?.address || "");
+
+  useEffect(() => {
+    setName(lot?.lot_name || "");
+    setAddress(lot?.address || "");
+  }, [lot]);
+
+  const handleSubmit = () => {
+    if (!name.trim()) {
+      toast.error("Please enter lot name");
+      return;
+    }
+    onSubmit({ lot_name: name.trim(), address: address.trim() || undefined });
+    setName("");
+    setAddress("");
+    onClose();
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-md z-40 transition-all duration-300"
+          />
+          <motion.div
+            initial={{ x: "100%" }}
+            animate={{ x: 0 }}
+            exit={{ x: "100%" }}
+            transition={{ type: "spring", damping: 32, stiffness: 320 }}
+            className="fixed top-0 right-0 h-full w-full max-w-sm bg-[var(--color-bg)] shadow-2xl z-50 border-l border-[var(--color-border)]/60 flex flex-col outline-none"
+          >
+            <div className="p-6 bg-[var(--color-bg)] border-b border-[var(--color-border)]/50 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-[var(--color-text)] tracking-tight">
+                  {lot ? "Edit Parking Lot" : "Add New Parking Lot"}
+                </h2>
+                <p className="text-xs text-[var(--color-text-secondary)] mt-0.5 font-medium">
+                  {lot
+                    ? "Update the parking lot details"
+                    : "Create a new parking lot for this owner"}
+                </p>
+              </div>
+              <button
+                onClick={onClose}
+                className="p-2 rounded-xl hover:bg-[var(--color-surface-soft)] text-[var(--color-text-muted)] hover:text-[var(--color-text)] transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="p-6 flex-1 bg-[var(--color-surface-soft)]/10 space-y-4">
+              <div className="space-y-1.5 flex flex-col">
+                <label className="text-xs font-medium text-[var(--color-text-secondary)] px-0.5">
+                  Lot Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., Central Lot, North Tower"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)]/70 rounded-xl px-4 py-2.5 text-sm font-medium text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/5 transition-all duration-200"
+                  autoFocus
+                />
+              </div>
+
+              <div className="space-y-1.5 flex flex-col">
+                <label className="text-xs font-medium text-[var(--color-text-secondary)] px-0.5">
+                  Address
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., 123 Main St, Level 2"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)]/70 rounded-xl px-4 py-2.5 text-sm font-medium text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/5 transition-all duration-200"
+                />
+              </div>
+            </div>
+
+            <div className="p-5 bg-[var(--color-bg)] border-t border-[var(--color-border)]/50 flex gap-3">
+              <button
+                onClick={onClose}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-[var(--color-border)]/80 text-xs font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-soft)] transition-colors active:scale-95"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSubmit}
+                className="flex-1 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover,var(--color-primary))] text-white rounded-xl px-4 py-2.5 text-xs font-semibold shadow-md shadow-[var(--color-primary)]/10 transition-colors active:scale-[0.98]"
+              >
+                {lot ? "Save Changes" : "Create Lot"}
+              </button>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+};
+
 export default function MyParkingLotPage() {
   const [loading, setLoading] = useState(true);
   const [parkingOwner, setParkingOwner] = useState<ParkingOwner | null>(null);
   const [zones, setZones] = useState<ParkingZone[]>([]);
+  const [lots, setLots] = useState<ParkingLot[]>([]);
+  const [selectedLot, setSelectedLot] = useState<ParkingLot | null>(null);
   const [isZoneDrawerOpen, setIsZoneDrawerOpen] = useState(false);
   const [editingZone, setEditingZone] = useState<ParkingZone | null>(null);
+  const [isLotDrawerOpen, setIsLotDrawerOpen] = useState(false);
+  const [editingLot, setEditingLot] = useState<ParkingLot | null>(null);
 
   useEffect(() => {
     fetchParkingOwner();
@@ -761,8 +895,17 @@ export default function MyParkingLotPage() {
       const owner = await parkingOwnerService.getCurrentParkingOwner();
       setParkingOwner(owner);
       try {
-        const zoneRows = await listParkingZones();
-        setZones(zoneRows.length > 0 ? zoneRows.map(mapZoneToUi) : owner?.zones ?? []);
+        const fetchedLots = await listParkingLots();
+        setLots(fetchedLots);
+        if (fetchedLots && fetchedLots.length > 0) {
+          const firstLot = fetchedLots[0];
+          setSelectedLot(firstLot);
+          const zoneRows = await listParkingZones({ lotId: firstLot.id });
+          setZones(zoneRows.length > 0 ? zoneRows.map(mapZoneToUi) : owner?.zones ?? []);
+        } else {
+          const zoneRows = await listParkingZones();
+          setZones(zoneRows.length > 0 ? zoneRows.map(mapZoneToUi) : owner?.zones ?? []);
+        }
       } catch {
         setZones(owner?.zones ?? []);
       }
@@ -774,9 +917,79 @@ export default function MyParkingLotPage() {
     }
   };
 
+  const fetchZonesForLot = async (lot: ParkingLot | null) => {
+    if (!lot) return;
+    try {
+      setLoading(true);
+      const zoneRows = await listParkingZones({ lotId: lot.id });
+      setZones(zoneRows.length > 0 ? zoneRows.map(mapZoneToUi) : []);
+      setSelectedLot(lot);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to load zones for selected lot");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddLot = () => {
+    setEditingLot(null);
+    setIsLotDrawerOpen(true);
+  };
+
   const handleAddZone = () => {
     setEditingZone(null);
     setIsZoneDrawerOpen(true);
+  };
+
+  const handleEditLot = (lot: ParkingLot) => {
+    setEditingLot(lot);
+    setIsLotDrawerOpen(true);
+  };
+
+  const handleSaveLot = async (data: { lot_name: string; address?: string }) => {
+    try {
+      let lotToRefresh: ParkingLot | null = null;
+      if (editingLot) {
+        const updated = await updateParkingLot(editingLot.id, data);
+        setLots((prev) => prev.map((item) => (item.id === editingLot.id ? updated : item)));
+        if (selectedLot?.id === editingLot.id) {
+          setSelectedLot(updated);
+        }
+        lotToRefresh = updated;
+        toast.success("Parking lot updated");
+      } else {
+        const created = await createParkingLot(data as any);
+        setLots((prev) => [created, ...prev]);
+        setSelectedLot(created);
+        lotToRefresh = created;
+        toast.success("Parking lot created");
+      }
+      setIsLotDrawerOpen(false);
+      setEditingLot(null);
+      if (lotToRefresh) {
+        await fetchZonesForLot(lotToRefresh);
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to save parking lot");
+    }
+  };
+
+  const handleDeleteLot = async (lotId: string) => {
+    if (!confirm("Are you sure you want to delete this parking lot?")) return;
+    try {
+      await deleteParkingLot(lotId);
+      setLots((prev) => prev.filter((item) => item.id !== lotId));
+      if (selectedLot?.id === lotId) {
+        setSelectedLot(null);
+        setZones([]);
+      }
+      toast.success("Parking lot deleted");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to delete parking lot");
+    }
   };
 
   const handleEditZone = (zone: ParkingZone) => {
@@ -792,6 +1005,7 @@ export default function MyParkingLotPage() {
             name: data.name,
             isActive: editingZone.isActive,
             hourlyRate: editingZone.rate,
+            parkingLotId: selectedLot?.id,
           });
           setZones((prev) =>
             prev.map((z) => (z.id === editingZone.id ? mapZoneToUi(updated) : z)),
@@ -809,6 +1023,7 @@ export default function MyParkingLotPage() {
         try {
           const created = await createParkingZone({
             name: data.name,
+            parkingLotId: selectedLot?.id,
             address: parkingOwner?.parkingAddress,
             hourlyRate: parkingOwner ? 4.5 : undefined,
             availableSpots: 10,
@@ -863,6 +1078,7 @@ export default function MyParkingLotPage() {
           name: zone.name,
           isActive: !zone.isActive,
           hourlyRate: zone.rate,
+          parkingLotId: selectedLot?.id,
         });
         setZones((prev) => prev.map((z) => (z.id === zoneId ? mapZoneToUi(updated) : z)));
       } catch {
@@ -880,9 +1096,12 @@ export default function MyParkingLotPage() {
   };
 
   const handleDownloadQR = async () => {
-    if (parkingOwner?.qrCodeUrl) {
-      window.open(parkingOwner.qrCodeUrl, "_blank");
+    const qrUrl = selectedLot ? selectedLot.qr_code_url : parkingOwner?.qrCodeUrl;
+    if (qrUrl) {
+      window.open(qrUrl, "_blank");
       toast.success("QR code downloaded");
+    } else if (selectedLot) {
+      toast.error("Selected lot has no QR code to download");
     }
   };
 
@@ -929,6 +1148,81 @@ export default function MyParkingLotPage() {
           </p>
         </div>
 
+        {/* Parking Lot Selection */}
+        <div className="bg-[var(--color-surface)] border border-[var(--color-border)]/60 rounded-3xl p-5 shadow-sm shadow-black/[0.01]">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h2 className="text-base font-bold text-[var(--color-text)]">
+                Parking Lots
+              </h2>
+              <p className="text-xs text-[var(--color-text-secondary)] mt-1">
+                Select a parking lot to manage its zones and QR flow.
+              </p>
+            </div>
+            <button
+              onClick={handleAddLot}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-[var(--color-primary)] text-white text-xs font-semibold hover:bg-[var(--color-primary-hover,var(--color-primary))] transition-all active:scale-[0.98]"
+            >
+              <Plus size={14} strokeWidth={2.5} /> Add Parking Lot
+            </button>
+          </div>
+
+          {lots.length === 0 ? (
+            <div className="mt-5 rounded-3xl border border-dashed border-[var(--color-border)]/40 bg-[var(--color-surface-soft)] p-6 text-center">
+              <p className="text-sm font-medium text-[var(--color-text-secondary)]">
+                No parking lots created yet. Add a lot to start organizing zones.
+              </p>
+            </div>
+          ) : (
+            <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {lots.map((lot) => (
+                <div
+                  key={lot.id}
+                  onClick={() => fetchZonesForLot(lot)}
+                  className={`cursor-pointer rounded-3xl border p-4 transition-all ${
+                    selectedLot?.id === lot.id
+                      ? "border-[var(--color-primary)] bg-[var(--color-primary)]/5"
+                      : "border-[var(--color-border)]/60 bg-[var(--color-surface)]"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-bold text-[var(--color-text)] truncate">
+                        {lot.lot_name}
+                      </p>
+                      <p className="text-xs text-[var(--color-text-secondary)] mt-1 line-clamp-2">
+                        {lot.address || "No address provided"}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleEditLot(lot);
+                        }}
+                        className="p-2 rounded-xl bg-[var(--color-surface)] hover:bg-[var(--color-surface-soft)] text-[var(--color-text-muted)] transition-all"
+                        title="Edit lot"
+                      >
+                        <Edit size={14} />
+                      </button>
+                      <button
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleDeleteLot(lot.id);
+                        }}
+                        className="p-2 rounded-xl bg-red-500/[0.08] hover:bg-red-500/[0.12] text-red-500 transition-all"
+                        title="Delete lot"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Info Blocks + QR Segment Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Parking Lot Identity Block */}
@@ -939,7 +1233,7 @@ export default function MyParkingLotPage() {
               </div>
               <div className="space-y-1.5 overflow-hidden">
                 <h2 className="text-lg font-bold text-[var(--color-text)] tracking-tight truncate">
-                  {parkingOwner.parkingName}
+                  {selectedLot?.lot_name || parkingOwner.parkingName}
                 </h2>
                 <div className="flex items-start gap-2 text-[var(--color-text-secondary)]">
                   <MapPin
@@ -947,7 +1241,7 @@ export default function MyParkingLotPage() {
                     className="text-[var(--color-text-muted)] mt-0.5 shrink-0"
                   />
                   <span className="text-xs font-medium leading-relaxed line-clamp-2">
-                    {parkingOwner.parkingAddress}
+                    {selectedLot?.address || parkingOwner.parkingAddress}
                   </span>
                 </div>
               </div>
@@ -969,11 +1263,17 @@ export default function MyParkingLotPage() {
           {/* QR  */}
           <div className="bg-[var(--color-surface)] border border-[var(--color-border)]/60 rounded-2xl p-5 shadow-sm shadow-black/[0.01] flex flex-col sm:flex-row items-center gap-5">
             <div className="w-24 h-24 bg-white rounded-xl border border-[var(--color-border)]/80 p-1.5 flex items-center justify-center shrink-0 shadow-sm">
-              <img
-                src={parkingOwner.qrCodeUrl}
-                alt="QR Code Ticket flow"
-                className="w-full h-full object-contain"
-              />
+              {selectedLot?.qr_code_url ? (
+                <img
+                  src={selectedLot.qr_code_url}
+                  alt="Selected lot QR Code"
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-[var(--color-text-muted)] text-[10px] font-semibold tracking-wide text-center px-2">
+                  {selectedLot ? "Selected lot has no QR yet" : "No QR available"}
+                </div>
+              )}
             </div>
             <div className="flex-1 text-center sm:text-left space-y-3 flex flex-col justify-between h-full">
               <div className="space-y-0.5">
@@ -1053,6 +1353,12 @@ export default function MyParkingLotPage() {
         onClose={() => setIsZoneDrawerOpen(false)}
         onSubmit={handleSaveZone}
         zone={editingZone}
+      />
+      <LotFormDrawer
+        isOpen={isLotDrawerOpen}
+        onClose={() => setIsLotDrawerOpen(false)}
+        onSubmit={handleSaveLot}
+        lot={editingLot}
       />
     </div>
   );

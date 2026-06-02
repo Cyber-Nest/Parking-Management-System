@@ -11,6 +11,7 @@ export interface PaymentListFilters {
   paymentType?: PaymentType;
   from?: string;
   to?: string;
+  parkingLotId?: string;
 }
 
 export interface PaymentRow {
@@ -28,6 +29,8 @@ export interface PaymentRow {
   receipt_number: string | null;
   receipt_date: Date | null;
   created_at: Date;
+  parking_lot_id?: string | null;
+  parking_lot_name?: string | null;
 }
 
 interface CountRow {
@@ -39,33 +42,48 @@ interface AmountRow {
 }
 
 export class PaymentRepository {
-  private buildWhere(filters: PaymentListFilters): { clause: string; values: any[] } {
+  private buildWhere(filters: PaymentListFilters, paymentAlias = ''): { clause: string; values: any[] } {
     const conditions: string[] = [];
     const values: any[] = [];
+    const col = (name: string) => `${paymentAlias}${name}`;
 
     if (filters.q) {
-      conditions.push('(license_plate LIKE ? OR id LIKE ?)');
+      conditions.push(`(${col('license_plate')} LIKE ? OR ${col('id')} LIKE ?)`);
       values.push(`%${filters.q}%`, `%${filters.q}%`);
     }
     if (filters.status) {
-      conditions.push('status = ?');
+      conditions.push(`${col('status')} = ?`);
       values.push(filters.status);
     }
     if (filters.paymentMethod) {
-      conditions.push('payment_method = ?');
+      conditions.push(`${col('payment_method')} = ?`);
       values.push(filters.paymentMethod);
     }
     if (filters.paymentType) {
-      conditions.push('payment_type = ?');
+      conditions.push(`${col('payment_type')} = ?`);
       values.push(filters.paymentType);
     }
     if (filters.from) {
-      conditions.push('created_at >= ?');
+      conditions.push(`${col('created_at')} >= ?`);
       values.push(filters.from);
     }
     if (filters.to) {
-      conditions.push('created_at <= ?');
+      conditions.push(`${col('created_at')} <= ?`);
       values.push(filters.to);
+    }
+    if (filters.parkingLotId) {
+      conditions.push(`(
+        ${col('session_id')} IN (
+          SELECT id FROM parking_sessions
+          WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
+             OR plan_id IN (SELECT id FROM parking_plans WHERE parking_lot_id = ?)
+        )
+        OR ${col('ticket_id')} IN (
+          SELECT id FROM penalty_tickets
+          WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
+        )
+      )`);
+      values.push(filters.parkingLotId, filters.parkingLotId, filters.parkingLotId);
     }
 
     return {
@@ -75,15 +93,23 @@ export class PaymentRepository {
   }
 
   async list(filters: PaymentListFilters): Promise<{ items: PaymentRow[]; total: number }> {
-    const { clause, values } = this.buildWhere(filters);
+    const { clause, values } = this.buildWhere(filters, 'p.');
     const offset = (filters.page - 1) * filters.limit;
 
     const items = await queryRows<PaymentRow>(
-      `SELECT id, session_id, ticket_id, user_id, license_plate, amount, payment_method, payment_type,
-              status, transaction_ref, paid_at, receipt_number, receipt_date, created_at
-       FROM payments
+      `SELECT p.id, p.session_id, p.ticket_id, p.user_id, p.license_plate, p.amount, p.payment_method, p.payment_type,
+              p.status, p.transaction_ref, p.paid_at, p.receipt_number, p.receipt_date, p.created_at,
+              COALESCE(sz.parking_lot_id, pp.parking_lot_id, tz.parking_lot_id) AS parking_lot_id,
+              pl.lot_name AS parking_lot_name
+       FROM payments p
+       LEFT JOIN parking_sessions ps ON ps.id = p.session_id
+       LEFT JOIN parking_zones sz ON sz.parking_name = ps.location_name
+       LEFT JOIN parking_plans pp ON pp.id = ps.plan_id
+       LEFT JOIN penalty_tickets pt ON pt.id = p.ticket_id
+       LEFT JOIN parking_zones tz ON tz.parking_name = pt.location_name
+       LEFT JOIN parking_lots pl ON pl.id = COALESCE(sz.parking_lot_id, pp.parking_lot_id, tz.parking_lot_id)
        ${clause}
-       ORDER BY created_at DESC
+       ORDER BY p.created_at DESC
        LIMIT ? OFFSET ?`,
       [...values, filters.limit, offset]
     );
@@ -108,7 +134,7 @@ export class PaymentRepository {
     return rows[0] ?? null;
   }
 
-  async summary(): Promise<{
+  async summary(filters: { parkingLotId?: string } = {}): Promise<{
     todayPayments: number;
     todayAmount: number;
     todayRevenue: number;
@@ -117,36 +143,56 @@ export class PaymentRepository {
     pendingAmount: number;
     failedAmount: number;
   }> {
+    const lotClause = filters.parkingLotId
+      ? ` AND (
+          session_id IN (
+            SELECT id FROM parking_sessions
+            WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
+               OR plan_id IN (SELECT id FROM parking_plans WHERE parking_lot_id = ?)
+          )
+          OR ticket_id IN (
+            SELECT id FROM penalty_tickets
+            WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
+          )
+        )`
+      : '';
+    const lotValues = filters.parkingLotId ? [filters.parkingLotId, filters.parkingLotId, filters.parkingLotId] : [];
     const todayCountRows = await queryRows<CountRow>(
       `SELECT COUNT(*) AS total
        FROM payments
-       WHERE DATE(created_at) = CURDATE()`
+       WHERE DATE(created_at) = CURDATE()${lotClause}`,
+      lotValues
     );
     const todayAmountRows = await queryRows<AmountRow>(
       `SELECT COALESCE(SUM(amount), 0) AS total_amount
        FROM payments
-       WHERE DATE(created_at) = CURDATE()`
+       WHERE DATE(created_at) = CURDATE()${lotClause}`,
+      lotValues
     );
     const parkingRevenueRows = await queryRows<AmountRow>(
       `SELECT COALESCE(SUM(amount), 0) AS total_amount
        FROM payments
-       WHERE payment_type = 'parking' AND status = 'success'`
+       WHERE payment_type = 'parking' AND status = 'success'${lotClause}`,
+      lotValues
     );
     const penaltyRevenueRows = await queryRows<AmountRow>(
       `SELECT COALESCE(SUM(amount), 0) AS total_amount
        FROM payments
-       WHERE payment_type = 'penalty' AND status = 'success'`
+       WHERE payment_type = 'penalty' AND status = 'success'${lotClause}`,
+      lotValues
     );
     const pendingRows = await queryRows<AmountRow>(
       `SELECT COALESCE(SUM(amount), 0) AS total_amount
        FROM payments
-       WHERE status = 'pending'`
+       WHERE status = 'pending'${lotClause}`,
+      lotValues
     );
 
     const failedRows = await queryRows<AmountRow>(
       `SELECT COALESCE(SUM(amount), 0) AS total_amount
        FROM payments
-       WHERE status = 'failed'`
+       WHERE status = 'failed'${lotClause}`,
+      lotValues
     );
 
     const todayAmount = Number(todayAmountRows[0]?.total_amount ?? 0);

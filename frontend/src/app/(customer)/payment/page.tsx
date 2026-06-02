@@ -40,6 +40,7 @@ interface CheckoutFormProps {
   bookingSummary: BookingSummary | null;
   extensionDetails: ExtensionDetails | null;
   clearBooking: () => void;
+  returnUrl: string | null;
   onComplete: () => void;
 }
 
@@ -50,6 +51,7 @@ function CheckoutForm({
   bookingSummary,
   extensionDetails,
   clearBooking,
+  returnUrl,
   onComplete,
 }: CheckoutFormProps) {
   const stripe = useStripe();
@@ -85,7 +87,7 @@ function CheckoutForm({
         },
       });
 
-      router.push("/");
+      router.push(returnUrl || "/");
 
       return;
     }
@@ -108,7 +110,7 @@ function CheckoutForm({
     }, 6000);
 
     return () => clearTimeout(timer);
-  }, [showSuccess, clearBooking, router]);
+  }, [showSuccess, clearBooking, returnUrl, router]);
 
   const handlePayment = async () => {
     try {
@@ -242,7 +244,7 @@ function CheckoutForm({
 
   const handleReturnHome = () => {
     clearBooking();
-    router.push("/");
+    router.push(returnUrl || "/");
   };
 
   const handleDownloadInvoice = async () => {
@@ -533,6 +535,7 @@ export default function PaymentPageWrapper() {
     selectedDuration,
     bookingSummary,
     extensionDetails,
+    returnUrl,
     clearBooking,
   } = useParkingBooking();
 
@@ -598,6 +601,7 @@ export default function PaymentPageWrapper() {
         selectedDuration={selectedDuration}
         bookingSummary={bookingSummary}
         extensionDetails={extensionDetails}
+        returnUrl={returnUrl}
         clearBooking={clearBooking}
         onComplete={() => {}}
       />

@@ -17,7 +17,8 @@ export class ParkingZoneService {
   async list(query: Record<string, string | undefined>) {
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(200, Math.max(1, Number(query.limit) || 100));
-    return parkingZoneRepository.list({ page, limit, q: query.q });
+    const lotId = query.lotId ?? query.lotID ?? query.parking_lot_id;
+    return parkingZoneRepository.list({ page, limit, q: query.q, lotId });
   }
 
   async getById(id: string) {
@@ -48,6 +49,7 @@ export class ParkingZoneService {
       total_spots: Number.isFinite(totalSpots) ? totalSpots : 10,
       spot_id: spotId,
       status,
+      parking_lot_id: body.parking_lot_id !== undefined ? String(body.parking_lot_id) : body.lotId !== undefined ? String(body.lotId) : undefined,
     });
 
     return parkingZoneRepository.findById(id);
@@ -70,6 +72,7 @@ export class ParkingZoneService {
       available_spots: body.available_spots !== undefined ? Number(body.available_spots) : undefined,
       total_spots: body.total_spots !== undefined ? Number(body.total_spots) : undefined,
       spot_id: body.spot_id !== undefined ? String(body.spot_id) : undefined,
+      parking_lot_id: body.parking_lot_id !== undefined ? (body.parking_lot_id === null ? null : String(body.parking_lot_id)) : undefined,
       status:
         body.status !== undefined
           ? (body.status === 'inactive' ? 'inactive' : 'active')

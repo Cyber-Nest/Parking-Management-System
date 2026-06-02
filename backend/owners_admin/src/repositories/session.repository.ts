@@ -9,6 +9,7 @@ export interface SessionListFilters {
   status?: SessionStatus;
   from?: string; // start_time >= from
   to?: string;   // end_time <= to
+  parkingLotId?: string;
 }
 
 export interface SessionRow {
@@ -26,6 +27,8 @@ export interface SessionRow {
   amount: number;
   created_by_officer: string | null;
   created_at: Date;
+  parking_lot_id?: string | null;
+  parking_lot_name?: string | null;
 }
 
 interface CountRow {
@@ -53,6 +56,13 @@ export class SessionRepository {
       conditions.push('end_time <= ?');
       values.push(filters.to);
     }
+    if (filters.parkingLotId) {
+      conditions.push(`(
+        location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
+        OR plan_id IN (SELECT id FROM parking_plans WHERE parking_lot_id = ?)
+      )`);
+      values.push(filters.parkingLotId, filters.parkingLotId);
+    }
 
     return {
       clause: conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '',
@@ -66,13 +76,18 @@ export class SessionRepository {
 
     const items = await queryRows<SessionRow>(
       `SELECT
-        id, user_id, vehicle_id, license_plate, plan_id, plan_name,
-        start_time, end_time, duration_minutes, status, notes,
-        COALESCE((SELECT SUM(amount) FROM payments p WHERE p.session_id = parking_sessions.id AND p.status = 'success'), 0) AS amount,
-        created_by_officer, created_at
-       FROM parking_sessions
+        ps.id, ps.user_id, ps.vehicle_id, ps.license_plate, ps.plan_id, ps.plan_name,
+        ps.start_time, ps.end_time, ps.duration_minutes, ps.status, ps.notes,
+        COALESCE((SELECT SUM(amount) FROM payments p WHERE p.session_id = ps.id AND p.status = 'success'), 0) AS amount,
+        ps.created_by_officer, ps.created_at,
+        COALESCE(z.parking_lot_id, pp.parking_lot_id) AS parking_lot_id,
+        pl.lot_name AS parking_lot_name
+       FROM parking_sessions ps
+       LEFT JOIN parking_zones z ON z.parking_name = ps.location_name
+       LEFT JOIN parking_plans pp ON pp.id = ps.plan_id
+       LEFT JOIN parking_lots pl ON pl.id = COALESCE(z.parking_lot_id, pp.parking_lot_id)
        ${clause}
-       ORDER BY start_time DESC
+       ORDER BY ps.start_time DESC
        LIMIT ? OFFSET ?`,
       [...values, filters.limit, offset]
     );
@@ -87,19 +102,26 @@ export class SessionRepository {
     return { items, total: countRows[0]?.total ?? 0 };
   }
 
-  async summary(): Promise<{
+  async summary(filters: { parkingLotId?: string } = {}): Promise<{
     totalToday: number;
     activeCount: number;
     expiredCount: number;
     extendedCount: number;
     cancelledCount: number;
   }> {
+    const lotClause = filters.parkingLotId
+      ? ` AND (
+          location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
+          OR plan_id IN (SELECT id FROM parking_plans WHERE parking_lot_id = ?)
+        )`
+      : '';
+    const lotValues = filters.parkingLotId ? [filters.parkingLotId, filters.parkingLotId] : [];
     const [todayRows, activeRows, expiredRows, extendedRows, cancelledRows] = await Promise.all([
-      queryRows<CountRow>(`SELECT COUNT(*) AS total FROM parking_sessions WHERE DATE(start_time) = CURDATE()`),
-      queryRows<CountRow>(`SELECT COUNT(*) AS total FROM parking_sessions WHERE status = 'active'`),
-      queryRows<CountRow>(`SELECT COUNT(*) AS total FROM parking_sessions WHERE status = 'expired'`),
-      queryRows<CountRow>(`SELECT COUNT(*) AS total FROM parking_sessions WHERE status = 'extended'`),
-      queryRows<CountRow>(`SELECT COUNT(*) AS total FROM parking_sessions WHERE status = 'cancelled'`),
+      queryRows<CountRow>(`SELECT COUNT(*) AS total FROM parking_sessions WHERE DATE(start_time) = CURDATE()${lotClause}`, lotValues),
+      queryRows<CountRow>(`SELECT COUNT(*) AS total FROM parking_sessions WHERE status = 'active'${lotClause}`, lotValues),
+      queryRows<CountRow>(`SELECT COUNT(*) AS total FROM parking_sessions WHERE status = 'expired'${lotClause}`, lotValues),
+      queryRows<CountRow>(`SELECT COUNT(*) AS total FROM parking_sessions WHERE status = 'extended'${lotClause}`, lotValues),
+      queryRows<CountRow>(`SELECT COUNT(*) AS total FROM parking_sessions WHERE status = 'cancelled'${lotClause}`, lotValues),
     ]);
 
     return {

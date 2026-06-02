@@ -15,6 +15,7 @@ export class SessionService {
       status: (query.status as SessionStatus) || undefined,
       from: query.from,
       to: query.to,
+      parkingLotId: query.parking_lot_id ?? query.parkingLotId ?? query.lotId,
     });
 
     const mapped: SessionPublic[] = items.map((s) => ({
@@ -39,8 +40,10 @@ export class SessionService {
     };
   }
 
-  async summary() {
-    return sessionRepo.summary();
+  async summary(query: Record<string, string | undefined> = {}) {
+    return sessionRepo.summary({
+      parkingLotId: query.parking_lot_id ?? query.parkingLotId ?? query.lotId,
+    });
   }
 }
 

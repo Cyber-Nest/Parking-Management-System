@@ -8,6 +8,7 @@ import { getApiErrorMessage } from "@/lib/api-error";
 import { getReviewBlockMessage } from "@/lib/officer-ticket-review";
 import { fileToDataUrl } from "@/lib/upload-media";
 import { OfficerTicket, officerEnforcementService } from "@/services/officer-enforcement.service";
+import { listParkingLots, ParkingLotRecord } from "@/services/parking-lots.service";
 import { PAYMENT_METHOD_OPTIONS } from "@/services/payments.service";
 
 const currentOfficerName = "Officer John";
@@ -36,6 +37,8 @@ export default function OfficerTicketsPage() {
   const [statusFilter, setStatusFilter] = useState<string>("");
   const [violationFilter, setViolationFilter] = useState<string>("");
   const [locationFilter, setLocationFilter] = useState<string>("");
+  const [lotFilter, setLotFilter] = useState<string>("");
+  const [parkingLots, setParkingLots] = useState<ParkingLotRecord[]>([]);
   const [searchText, setSearchText] = useState<string>("");
   const [dateFrom, setDateFrom] = useState<string>("");
   const [dateTo, setDateTo] = useState<string>("");
@@ -88,6 +91,12 @@ export default function OfficerTicketsPage() {
       .finally(() => setIsLoading(false));
   }, [statusFilter, violationFilter, locationFilter, searchText, dateFrom, dateTo]);
 
+  useEffect(() => {
+    void listParkingLots().then(setParkingLots).catch((err) => {
+      console.error("Failed to load parking lots", err);
+    });
+  }, []);
+
   const filteredTickets = useMemo(() => {
     const active = tickets.filter((ticket) => {
       if (activeTab === "my") {
@@ -98,15 +107,22 @@ export default function OfficerTicketsPage() {
       }
       return true;
     });
-    if (!searchText.trim()) return active;
+    const lotSelected = parkingLots.find((lot) => lot.id === lotFilter);
+    const withLotFilter = lotFilter
+      ? active.filter((ticket) =>
+          ticket.location_name?.toLowerCase().includes(lotSelected?.lot_name.toLowerCase() ?? "")
+        )
+      : active;
+
+    if (!searchText.trim()) return withLotFilter;
     const query = searchText.trim().toLowerCase();
-    return active.filter((ticket) =>
+    return withLotFilter.filter((ticket) =>
       [ticket.ticket_number, ticket.license_plate, ticket.reason, ticket.location_name]
         .join(" ")
         .toLowerCase()
         .includes(query),
     );
-  }, [activeTab, tickets, searchText]);
+  }, [activeTab, tickets, searchText, lotFilter, parkingLots]);
 
   const totals = useMemo(
     () => ({
@@ -504,6 +520,22 @@ export default function OfficerTicketsPage() {
               <div>
                 <label className="block text-xs font-semibold text-slate-500">Location</label>
                 <input value={locationFilter} onChange={(event) => setLocationFilter(event.target.value)} placeholder="Main St. Zone A" className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none" />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-500">Parking Lot</label>
+                <select
+                  value={lotFilter}
+                  onChange={(event) => setLotFilter(event.target.value)}
+                  className="mt-2 w-full rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none"
+                >
+                  <option value="">All lots</option>
+                  {parkingLots.map((lot) => (
+                    <option key={lot.id} value={lot.id}>
+                      {lot.lot_name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div className="grid gap-2">

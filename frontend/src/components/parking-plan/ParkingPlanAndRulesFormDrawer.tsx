@@ -10,6 +10,7 @@ interface PlanFormData {
   price: string;
   tax: string;
   status: string;
+  parkingLotId?: string;
 }
 
 interface RuleFormData {
@@ -29,6 +30,7 @@ interface ParkingPlanAndRulesFormDrawerProps {
   editingItem: any;
   planForm: PlanFormData;
   ruleForm: RuleFormData;
+  parkingLots?: Array<{ id: string; lot_name: string }>;
   onPlanChange: (data: PlanFormData) => void;
   onRuleChange: (data: RuleFormData) => void;
 }
@@ -36,6 +38,7 @@ interface ParkingPlanAndRulesFormDrawerProps {
 export const ParkingPlanAndRulesFormDrawer = ({
   isOpen,
   onClose,
+  parkingLots,
   onSubmit,
   activeTab,
   editingItem,
@@ -106,6 +109,20 @@ export const ParkingPlanAndRulesFormDrawer = ({
                       <option>Hourly</option>
                       <option>Daily</option>
                       <option>Monthly</option>
+                    </select>
+                    <select
+                      className="input"
+                      value={planForm.parkingLotId ?? ""}
+                      onChange={(e) =>
+                        onPlanChange({ ...planForm, parkingLotId: e.target.value || undefined })
+                      }
+                    >
+                      <option value="">All lots</option>
+                      {parkingLots?.map((lot) => (
+                        <option key={lot.id} value={lot.id}>
+                          {lot.lot_name}
+                        </option>
+                      ))}
                     </select>
                     <input
                       type="number"

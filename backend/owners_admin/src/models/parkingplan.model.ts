@@ -8,7 +8,8 @@ export const ParkingPlan = sequelize.define("ParkingPlan", {
   duration: DataTypes.INTEGER,
   plan_type: DataTypes.STRING,
   tax_percent: DataTypes.FLOAT,
-  status: DataTypes.STRING
+  status: DataTypes.STRING,
+  parking_lot_id: DataTypes.STRING,
 }, {
   tableName: 'parking_plans',
   timestamps: false,

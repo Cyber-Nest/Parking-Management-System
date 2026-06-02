@@ -10,6 +10,7 @@ export interface OfficerListFilters {
   q?: string;
   status?: UiOfficerStatus;
   role?: OfficerRole;
+  parkingLotId?: string;
 }
 
 export interface OfficerRow {
@@ -51,6 +52,18 @@ export class OfficerRepository {
         conditions.push(`status <> 'active'`);
       }
     }
+    if (filters.parkingLotId) {
+      conditions.push(`id IN (
+        SELECT DISTINCT officer_id FROM penalty_tickets
+        WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
+           OR session_id IN (
+            SELECT id FROM parking_sessions
+            WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
+               OR plan_id IN (SELECT id FROM parking_plans WHERE parking_lot_id = ?)
+          )
+      )`);
+      values.push(filters.parkingLotId, filters.parkingLotId, filters.parkingLotId);
+    }
 
     return {
       clause: conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '',
@@ -70,12 +83,18 @@ export class OfficerRepository {
        LEFT JOIN (
          SELECT officer_id, COUNT(*) AS tickets_issued
          FROM penalty_tickets
+         ${filters.parkingLotId ? `WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
+            OR session_id IN (
+              SELECT id FROM parking_sessions
+              WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
+                 OR plan_id IN (SELECT id FROM parking_plans WHERE parking_lot_id = ?)
+            )` : ''}
          GROUP BY officer_id
        ) t ON t.officer_id = o.id
        ${clause}
        ORDER BY o.created_at DESC
        LIMIT ? OFFSET ?`,
-      [...values, filters.limit, offset]
+      [...(filters.parkingLotId ? [filters.parkingLotId, filters.parkingLotId, filters.parkingLotId] : []), ...values, filters.limit, offset]
     );
 
     const countRows = await queryRows<CountRow>(
@@ -139,17 +158,39 @@ export class OfficerRepository {
     await execute(`UPDATE officers SET last_login_at = NOW() WHERE id = ?`, [id]);
   }
 
-  async summary(): Promise<{
+  async summary(filters: { parkingLotId?: string } = {}): Promise<{
     totalOfficers: number;
     activeOfficers: number;
     disabledOfficers: number;
     ticketsIssuedToday: number;
   }> {
+    const lotOfficerClause = filters.parkingLotId
+      ? ` WHERE id IN (
+          SELECT DISTINCT officer_id FROM penalty_tickets
+          WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
+             OR session_id IN (
+              SELECT id FROM parking_sessions
+              WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
+                 OR plan_id IN (SELECT id FROM parking_plans WHERE parking_lot_id = ?)
+            )
+        )`
+      : '';
+    const lotTicketClause = filters.parkingLotId
+      ? ` AND (
+          location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
+          OR session_id IN (
+            SELECT id FROM parking_sessions
+            WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
+               OR plan_id IN (SELECT id FROM parking_plans WHERE parking_lot_id = ?)
+          )
+        )`
+      : '';
+    const lotValues = filters.parkingLotId ? [filters.parkingLotId, filters.parkingLotId, filters.parkingLotId] : [];
     const [totalRows, activeRows, disabledRows, ticketsTodayRows] = await Promise.all([
-      queryRows<CountRow>(`SELECT COUNT(*) AS total FROM officers`),
-      queryRows<CountRow>(`SELECT COUNT(*) AS total FROM officers WHERE status = 'active'`),
-      queryRows<CountRow>(`SELECT COUNT(*) AS total FROM officers WHERE status <> 'active'`),
-      queryRows<CountRow>(`SELECT COUNT(*) AS total FROM penalty_tickets WHERE DATE(date_issued) = CURDATE()`),
+      queryRows<CountRow>(`SELECT COUNT(*) AS total FROM officers${lotOfficerClause}`, lotValues),
+      queryRows<CountRow>(`SELECT COUNT(*) AS total FROM officers${lotOfficerClause ? `${lotOfficerClause} AND status = 'active'` : ` WHERE status = 'active'`}`, lotValues),
+      queryRows<CountRow>(`SELECT COUNT(*) AS total FROM officers${lotOfficerClause ? `${lotOfficerClause} AND status <> 'active'` : ` WHERE status <> 'active'`}`, lotValues),
+      queryRows<CountRow>(`SELECT COUNT(*) AS total FROM penalty_tickets WHERE DATE(date_issued) = CURDATE()${lotTicketClause}`, lotValues),
     ]);
 
     return {

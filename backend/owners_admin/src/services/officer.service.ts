@@ -26,8 +26,10 @@ export class OfficerService {
     };
   }
 
-  async summary() {
-    return officerRepo.summary();
+  async summary(query: Record<string, string | undefined> = {}) {
+    return officerRepo.summary({
+      parkingLotId: query.parking_lot_id ?? query.parkingLotId ?? query.lotId,
+    });
   }
 
   async list(query: Record<string, string | undefined>) {
@@ -40,6 +42,7 @@ export class OfficerService {
       q: query.q?.trim() || undefined,
       status: (query.status as UiOfficerStatus) || undefined,
       role: (query.role as OfficerRole) || undefined,
+      parkingLotId: query.parking_lot_id ?? query.parkingLotId ?? query.lotId,
     });
 
     const mapped = items.map((o) => ({
