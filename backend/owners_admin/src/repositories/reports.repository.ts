@@ -1,6 +1,54 @@
 import { queryRows } from '../config/database';
 
 export class ReportsRepository {
+    private appendCondition(whereClause: string, values: any[], condition?: string, conditionValues: any[] = []) {
+        if (!condition) return { clause: whereClause, values };
+        return {
+            clause: whereClause ? `${whereClause} AND ${condition}` : `WHERE ${condition}`,
+            values: [...values, ...conditionValues],
+        };
+    }
+
+    private sessionLotCondition(alias = ''): string {
+        const p = alias ? `${alias}.` : '';
+        return `(
+            ${p}location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
+            OR ${p}plan_id IN (SELECT id FROM parking_plans WHERE parking_lot_id = ?)
+        )`;
+    }
+
+    private ticketLotCondition(alias = ''): string {
+        const p = alias ? `${alias}.` : '';
+        return `(
+            ${p}location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
+            OR ${p}session_id IN (
+                SELECT id FROM parking_sessions
+                WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
+                   OR plan_id IN (SELECT id FROM parking_plans WHERE parking_lot_id = ?)
+            )
+        )`;
+    }
+
+    private paymentLotCondition(alias = ''): string {
+        const p = alias ? `${alias}.` : '';
+        return `(
+            ${p}session_id IN (
+                SELECT id FROM parking_sessions
+                WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
+                   OR plan_id IN (SELECT id FROM parking_plans WHERE parking_lot_id = ?)
+            )
+            OR ${p}ticket_id IN (
+                SELECT id FROM penalty_tickets
+                WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
+            )
+        )`;
+    }
+
+    private lotValues(parkingLotId: string | undefined, count: number): any[] {
+        const lotId = parkingLotId?.trim();
+        return lotId ? Array(count).fill(lotId) : [];
+    }
+
     private sessionOverlapWhere(from?: string, to?: string, tableAlias = ''): { clause: string; values: any[] } {
         const p = tableAlias ? `${tableAlias}.` : '';
         const conditions: string[] = [];
@@ -19,17 +67,21 @@ export class ReportsRepository {
         };
     }
 
-    async getRevenue(from?: string, to?: string) {
+    async getRevenue(from?: string, to?: string, parkingLotId?: string) {
         const conditions: string[] = [];
         const values: any[] = [];
 
         if (from) {
-            conditions.push('paid_at >= ?');
+            conditions.push('p.paid_at >= ?');
             values.push(from);
         }
         if (to) {
-            conditions.push('paid_at <= ?');
+            conditions.push('p.paid_at <= ?');
             values.push(to);
+        }
+        if (parkingLotId?.trim()) {
+            conditions.push(this.paymentLotCondition('p'));
+            values.push(...this.lotValues(parkingLotId, 3));
         }
 
         const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -47,7 +99,7 @@ export class ReportsRepository {
          SUM(status = 'success') AS successful_transactions,
          SUM(status = 'failed') AS failed_transactions,
          COALESCE(SUM(CASE WHEN status = 'refunded' THEN amount ELSE 0 END), 0) AS refunded_amount
-       FROM payments
+       FROM payments p
        ${whereClause}`,
             values
         );
@@ -58,12 +110,12 @@ export class ReportsRepository {
             transaction_count: number;
         }>(
             `SELECT
-         DATE(paid_at) AS report_date,
+         DATE(p.paid_at) AS report_date,
          COALESCE(SUM(amount), 0) AS total_amount,
          COUNT(*) AS transaction_count
-       FROM payments
+       FROM payments p
        ${whereClause}
-       GROUP BY DATE(paid_at)
+       GROUP BY DATE(p.paid_at)
        ORDER BY report_date DESC
        LIMIT 14`,
             values
@@ -81,9 +133,21 @@ export class ReportsRepository {
         };
     }
 
-    async getUsage(from?: string, to?: string) {
-        const { clause: whereClause, values } = this.sessionOverlapWhere(from, to);
-        const { clause: wherePs, values: valuesPs } = this.sessionOverlapWhere(from, to, 'ps');
+    async getUsage(from?: string, to?: string, parkingLotId?: string) {
+        const base = this.sessionOverlapWhere(from, to, 'ps');
+        const { clause: whereClause, values } = this.appendCondition(
+            base.clause,
+            base.values,
+            parkingLotId?.trim() ? this.sessionLotCondition('ps') : undefined,
+            this.lotValues(parkingLotId, 2),
+        );
+        const basePs = this.sessionOverlapWhere(from, to, 'ps');
+        const { clause: wherePs, values: valuesPs } = this.appendCondition(
+            basePs.clause,
+            basePs.values,
+            parkingLotId?.trim() ? this.sessionLotCondition('ps') : undefined,
+            this.lotValues(parkingLotId, 2),
+        );
 
         const sessionTotals = await queryRows<{
             status: string;
@@ -91,6 +155,7 @@ export class ReportsRepository {
         }>(
             `SELECT status, COUNT(*) AS count
        FROM parking_sessions
+       ps
        ${whereClause}
        GROUP BY status`,
             values
@@ -103,6 +168,7 @@ export class ReportsRepository {
         }>(
             `SELECT COALESCE(plan_name, 'Unassigned') AS plan_name, COUNT(*) AS sessions, COALESCE(SUM(duration_minutes), 0) AS total_duration
        FROM parking_sessions
+       ps
        ${whereClause}
        GROUP BY plan_name
        ORDER BY sessions DESC
@@ -139,7 +205,7 @@ export class ReportsRepository {
 
         const hourlyHistogram = await queryRows<{ hour: number; session_count: number }>(
             `SELECT HOUR(start_time) AS hour, COUNT(*) AS session_count
-       FROM parking_sessions
+       FROM parking_sessions ps
        ${whereClause}
        GROUP BY HOUR(start_time)
        ORDER BY hour`,
@@ -148,7 +214,7 @@ export class ReportsRepository {
 
         const heatmapRows = await queryRows<{ weekday: number; hour: number; session_count: number }>(
             `SELECT WEEKDAY(start_time) AS weekday, HOUR(start_time) AS hour, COUNT(*) AS session_count
-       FROM parking_sessions
+       FROM parking_sessions ps
        ${whereClause}
        GROUP BY WEEKDAY(start_time), HOUR(start_time)`,
             values
@@ -174,7 +240,7 @@ export class ReportsRepository {
         };
     }
 
-    async getPenalty(from?: string, to?: string) {
+    async getPenalty(from?: string, to?: string, parkingLotId?: string) {
         const conditions: string[] = [];
         const values: any[] = [];
 
@@ -185,6 +251,10 @@ export class ReportsRepository {
         if (to) {
             conditions.push('date_issued <= ?');
             values.push(to);
+        }
+        if (parkingLotId?.trim()) {
+            conditions.push(this.ticketLotCondition());
+            values.push(...this.lotValues(parkingLotId, 3));
         }
 
         const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -221,7 +291,7 @@ export class ReportsRepository {
         };
     }
 
-    async getPerformance(from?: string, to?: string) {
+    async getPerformance(from?: string, to?: string, parkingLotId?: string) {
         const joinConditions: string[] = ['t.officer_id = o.id'];
         const joinValues: any[] = [];
 
@@ -232,6 +302,10 @@ export class ReportsRepository {
         if (to) {
             joinConditions.push('t.date_issued <= ?');
             joinValues.push(to);
+        }
+        if (parkingLotId?.trim()) {
+            joinConditions.push(this.ticketLotCondition('t'));
+            joinValues.push(...this.lotValues(parkingLotId, 3));
         }
 
         const officerPerformance = await queryRows<{
@@ -254,17 +328,21 @@ export class ReportsRepository {
         return { officerPerformance };
     }
 
-    async getPaymentReconciliation(from?: string, to?: string) {
+    async getPaymentReconciliation(from?: string, to?: string, parkingLotId?: string) {
         const conditions: string[] = [];
         const values: any[] = [];
 
         if (from) {
-            conditions.push('paid_at >= ?');
+            conditions.push('p.paid_at >= ?');
             values.push(from);
         }
         if (to) {
-            conditions.push('paid_at <= ?');
+            conditions.push('p.paid_at <= ?');
             values.push(to);
+        }
+        if (parkingLotId?.trim()) {
+            conditions.push(this.paymentLotCondition('p'));
+            values.push(...this.lotValues(parkingLotId, 3));
         }
 
         const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -277,6 +355,7 @@ export class ReportsRepository {
         }>(
             `SELECT payment_type, status, COUNT(*) AS count, COALESCE(SUM(amount), 0) AS total_amount
        FROM payments
+       p
        ${whereClause}
        GROUP BY payment_type, status`,
             values
@@ -285,7 +364,7 @@ export class ReportsRepository {
         return { reconciliation };
     }
 
-    async getDue(from?: string, to?: string) {
+    async getDue(from?: string, to?: string, parkingLotId?: string) {
         const conditions: string[] = ['status = \'unpaid\''];
         const values: any[] = [];
 
@@ -296,6 +375,10 @@ export class ReportsRepository {
         if (to) {
             conditions.push('date_issued <= ?');
             values.push(to);
+        }
+        if (parkingLotId?.trim()) {
+            conditions.push(this.ticketLotCondition());
+            values.push(...this.lotValues(parkingLotId, 3));
         }
 
         const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -323,8 +406,21 @@ export class ReportsRepository {
         return { dueTickets };
     }
 
-    async getLocationPerformance(from?: string, to?: string) {
+    async getLocationPerformance(from?: string, to?: string, parkingLotId?: string) {
         const { clause: whereClause, values } = this.sessionOverlapWhere(from, to, 'ps');
+        const lotId = parkingLotId?.trim();
+        const lotCondition = lotId
+            ? `(
+                ps.location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
+                OR ps.plan_id IN (SELECT id FROM parking_plans WHERE parking_lot_id = ?)
+              )`
+            : '';
+        const finalWhere = lotCondition
+            ? whereClause
+                ? `${whereClause} AND ${lotCondition}`
+                : `WHERE ${lotCondition}`
+            : whereClause;
+        const finalValues = lotId ? [...values, lotId, lotId] : values;
 
         const locationData = await queryRows<{
             location_key: string;
@@ -338,18 +434,24 @@ export class ReportsRepository {
          COALESCE(SUM(CASE WHEN p.status = 'success' THEN p.amount ELSE 0 END), 0) AS revenue
        FROM parking_sessions ps
        LEFT JOIN payments p ON p.session_id = ps.id
-       ${whereClause}
+       ${finalWhere}
        GROUP BY COALESCE(NULLIF(TRIM(location_name), ''), plan_name, 'Unassigned')
        ORDER BY sessions DESC
        LIMIT 20`,
-            values
+            finalValues
         );
 
         return { locationData };
     }
 
-    async getOccupancy(from?: string, to?: string) {
-        const { clause: whereClause, values } = this.sessionOverlapWhere(from, to);
+    async getOccupancy(from?: string, to?: string, parkingLotId?: string) {
+        const base = this.sessionOverlapWhere(from, to, 'ps');
+        const { clause: whereClause, values } = this.appendCondition(
+            base.clause,
+            base.values,
+            parkingLotId?.trim() ? this.sessionLotCondition('ps') : undefined,
+            this.lotValues(parkingLotId, 2),
+        );
 
         const occupancy = await queryRows<{
             status: string;
@@ -357,6 +459,7 @@ export class ReportsRepository {
         }>(
             `SELECT status, COUNT(*) AS count
        FROM parking_sessions
+       ps
        ${whereClause}
        GROUP BY status`,
             values
@@ -367,6 +470,7 @@ export class ReportsRepository {
         }>(
             `SELECT COALESCE(AVG(duration_minutes), 0) AS average_duration
        FROM parking_sessions
+       ps
        ${whereClause}`,
             values
         );
@@ -377,8 +481,14 @@ export class ReportsRepository {
         };
     }
 
-    async getPlanPerformance(from?: string, to?: string) {
-        const { clause: whereClause, values } = this.sessionOverlapWhere(from, to, 'ps');
+    async getPlanPerformance(from?: string, to?: string, parkingLotId?: string) {
+        const base = this.sessionOverlapWhere(from, to, 'ps');
+        const { clause: whereClause, values } = this.appendCondition(
+            base.clause,
+            base.values,
+            parkingLotId?.trim() ? this.sessionLotCondition('ps') : undefined,
+            this.lotValues(parkingLotId, 2),
+        );
 
         const planData = await queryRows<{
             plan_id: string | null;
@@ -446,7 +556,7 @@ export class ReportsRepository {
         return { summary: summary[0] ?? { total_logs: 0, success_count: 0, failure_count: 0 }, recentActivity };
     }
 
-    async getVehicleHistory(licensePlate: string, from?: string, to?: string, location?: string) {
+    async getVehicleHistory(licensePlate: string, from?: string, to?: string, location?: string, parkingLotId?: string) {
         const plate = licensePlate.trim();
         if (!plate) {
             return {
@@ -489,6 +599,16 @@ export class ReportsRepository {
             return { sql: ` AND ${alias}.location_name LIKE ?`, vals: [`%${location.trim()}%`] };
         };
 
+        const lotTicketSql = parkingLotId?.trim()
+            ? { sql: ` AND ${this.ticketLotCondition('t')}`, vals: this.lotValues(parkingLotId, 3) }
+            : { sql: '', vals: [] };
+        const lotSessionSql = parkingLotId?.trim()
+            ? { sql: ` AND ${this.sessionLotCondition('ps')}`, vals: this.lotValues(parkingLotId, 2) }
+            : { sql: '', vals: [] };
+        const lotPaymentSql = parkingLotId?.trim()
+            ? { sql: ` AND ${this.paymentLotCondition('p')}`, vals: this.lotValues(parkingLotId, 3) }
+            : { sql: '', vals: [] };
+
         const dTicket = dateParts('t', 'date_issued');
         const lTicket = locSql('t');
         const history = await queryRows<{
@@ -512,10 +632,10 @@ export class ReportsRepository {
        FROM penalty_tickets t
        LEFT JOIN payments p ON p.id = t.payment_id
        WHERE LOWER(TRIM(t.license_plate)) = LOWER(TRIM(?))
-       ${dTicket.sql}${lTicket.sql}
+       ${dTicket.sql}${lTicket.sql}${lotTicketSql.sql}
        ORDER BY t.date_issued DESC
        LIMIT 200`,
-            [plate, ...dTicket.vals, ...lTicket.vals]
+            [plate, ...dTicket.vals, ...lTicket.vals, ...lotTicketSql.vals]
         );
 
         const dPs = dateParts('ps', 'start_time');
@@ -541,10 +661,10 @@ export class ReportsRepository {
         (SELECT p2.receipt_number FROM payments p2 WHERE p2.session_id = ps.id ORDER BY p2.paid_at DESC LIMIT 1) AS receipt_number
        FROM parking_sessions ps
        WHERE LOWER(TRIM(ps.license_plate)) = LOWER(TRIM(?))
-       ${dPs.sql}${lPs.sql}
+       ${dPs.sql}${lPs.sql}${lotSessionSql.sql}
        ORDER BY ps.start_time DESC
        LIMIT 200`,
-            [plate, ...dPs.vals, ...lPs.vals]
+            [plate, ...dPs.vals, ...lPs.vals, ...lotSessionSql.vals]
         );
 
         const dPay = dateParts('p', 'paid_at');
@@ -566,10 +686,10 @@ export class ReportsRepository {
        FROM payments p
        WHERE LOWER(TRIM(p.license_plate)) = LOWER(TRIM(?))
          AND p.status <> 'refunded'
-       ${dPay.sql}
+       ${dPay.sql}${lotPaymentSql.sql}
        ORDER BY p.paid_at DESC
        LIMIT 200`,
-            [plate, ...dPay.vals]
+            [plate, ...dPay.vals, ...lotPaymentSql.vals]
         );
 
         const dRefund = dateParts('p', 'paid_at');
@@ -591,10 +711,10 @@ export class ReportsRepository {
        FROM payments p
        WHERE LOWER(TRIM(p.license_plate)) = LOWER(TRIM(?))
          AND p.status = 'refunded'
-       ${dRefund.sql}
+       ${dRefund.sql}${lotPaymentSql.sql}
        ORDER BY p.paid_at DESC
        LIMIT 200`,
-            [plate, ...dRefund.vals]
+            [plate, ...dRefund.vals, ...lotPaymentSql.vals]
         );
 
         const total_penalty_amount = history.reduce((s, r) => s + (Number(r.amount) || 0), 0);
@@ -613,19 +733,19 @@ export class ReportsRepository {
               COALESCE(SUM(ps.duration_minutes), 0) AS total_duration_minutes
        FROM parking_sessions ps
        WHERE LOWER(TRIM(ps.license_plate)) = LOWER(TRIM(?))
-       ${dPs.sql}${lPs.sql}`,
-            [plate, ...dPs.vals, ...lPs.vals]
+       ${dPs.sql}${lPs.sql}${lotSessionSql.sql}`,
+            [plate, ...dPs.vals, ...lPs.vals, ...lotSessionSql.vals]
         );
 
         const fav = await queryRows<{ location_name: string | null; c: number }>(
             `SELECT ps.location_name, COUNT(*) AS c
        FROM parking_sessions ps
        WHERE LOWER(TRIM(ps.license_plate)) = LOWER(TRIM(?))
-       ${dPs.sql}${lPs.sql}
+       ${dPs.sql}${lPs.sql}${lotSessionSql.sql}
        GROUP BY ps.location_name
        ORDER BY c DESC
        LIMIT 1`,
-            [plate, ...dPs.vals, ...lPs.vals]
+            [plate, ...dPs.vals, ...lPs.vals, ...lotSessionSql.vals]
         );
 
         let vehicle =
@@ -668,14 +788,31 @@ export class ReportsRepository {
         };
     }
 
-    async getRefunds(limit = 50) {
+    async getRefunds(limit = 50, from?: string, to?: string, parkingLotId?: string) {
+        const conditions: string[] = [`p.status = 'refunded'`];
+        const values: any[] = [];
+        if (from) {
+            conditions.push('p.paid_at >= ?');
+            values.push(from);
+        }
+        if (to) {
+            conditions.push('p.paid_at <= ?');
+            values.push(to);
+        }
+        if (parkingLotId?.trim()) {
+            conditions.push(this.paymentLotCondition('p'));
+            values.push(...this.lotValues(parkingLotId, 3));
+        }
+        const whereClause = `WHERE ${conditions.join(' AND ')}`;
+
         const summary = await queryRows<{
             refund_count: number;
             total_refunded: number;
         }>(
             `SELECT COUNT(*) AS refund_count, COALESCE(SUM(amount), 0) AS total_refunded
-       FROM payments
-       WHERE status = 'refunded'`
+       FROM payments p
+       ${whereClause}`,
+            values
         );
 
         const records = await queryRows<{
@@ -690,11 +827,11 @@ export class ReportsRepository {
             status: string;
         }>(
             `SELECT id, ticket_id, session_id, license_plate, amount, payment_method, transaction_ref, paid_at, status
-       FROM payments
-       WHERE status = 'refunded'
+       FROM payments p
+       ${whereClause}
        ORDER BY paid_at DESC
        LIMIT ?`,
-            [limit]
+            [...values, limit]
         );
 
         return { summary: summary[0] ?? { refund_count: 0, total_refunded: 0 }, records };
