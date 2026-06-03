@@ -153,9 +153,10 @@ const mapTaxToFrontend = (t: {
     refundApprovalRequired: t.refund_approval_required ? 'yes' : 'no',
 });
 
-export const getTaxPricing = async (_req: Request, res: Response<ApiResponse<any>>): Promise<void> => {
+export const getTaxPricing = async (req: Request, res: Response<ApiResponse<any>>): Promise<void> => {
     try {
-        const t = await settingsService.getTaxPricing();
+        const parkingLotId = req.query.parking_lot_id as string | undefined;
+        const t = await settingsService.getTaxPricing(parkingLotId);
         res.status(200).json({ success: true, message: 'Tax settings fetched', data: mapTaxToFrontend(t) });
     } catch (err) {
         handleError(err, res);
@@ -164,6 +165,7 @@ export const getTaxPricing = async (_req: Request, res: Response<ApiResponse<any
 
 export const updateTaxPricing = async (req: Request, res: Response<ApiResponse<any>>): Promise<void> => {
     try {
+        const parkingLotId = (req.body.parking_lot_id || req.query.parking_lot_id) as string | undefined;
         const b = req.body as Record<string, any>;
         await settingsService.updateTaxPricing({
             tax_rate_percent: Number(b.taxRate ?? b.tax_rate_percent ?? 0),
@@ -173,8 +175,8 @@ export const updateTaxPricing = async (req: Request, res: Response<ApiResponse<a
             refund_allowed: (b.refundAllowed ?? b.refund_allowed) === 'yes' || b.refund_allowed === 1 ? 1 : 0,
             refund_approval_required:
                 (b.refundApprovalRequired ?? b.refund_approval_required) === 'yes' || b.refund_approval_required === 1 ? 1 : 0,
-        });
-        const t = await settingsService.getTaxPricing();
+        }, parkingLotId);
+        const t = await settingsService.getTaxPricing(parkingLotId);
         res.status(200).json({ success: true, message: 'Tax settings updated', data: mapTaxToFrontend(t) });
     } catch (err) {
         handleError(err, res);
@@ -221,8 +223,8 @@ export const createAdminUser = async (req: Request, res: Response<ApiResponse<an
             role === 'Admin' || role === 'owner'
                 ? 'owner'
                 : role === 'Inspector' || role === 'inspector'
-                  ? 'inspector'
-                  : 'user';
+                    ? 'inspector'
+                    : 'user';
         const { id } = await settingsService.createAdmin({
             full_name: name,
             email,
@@ -247,8 +249,8 @@ export const updateAdminUser = async (req: Request, res: Response<ApiResponse<an
                 role === 'Admin' || role === 'owner'
                     ? 'owner'
                     : role === 'Inspector' || role === 'inspector'
-                      ? 'inspector'
-                      : 'user';
+                        ? 'inspector'
+                        : 'user';
             const roleId = await settingsService.findRoleIdByName(roleName);
             if (!roleId) {
                 res.status(400).json({ success: false, message: 'Invalid role' });

@@ -4,6 +4,7 @@ import { AdminRepository } from '../repositories/admin.repository';
 import { OfficerRole } from '../types';
 import { NotFoundError, ValidationError } from './commonErrors';
 import { env } from '../config/env';
+import { sendEmail, officerWelcomeTemplate } from '../utils/email';
 
 const officerRepo = new OfficerRepository();
 const adminRepo = new AdminRepository();
@@ -109,13 +110,26 @@ export class OfficerService {
         parkingLotId: body.parking_lot_id,
       });
 
+      // Send welcome email with credentials (best-effort)
+      try {
+        await sendEmail({
+          to: body.email,
+          subject: 'ParkSmart — Officer Account Created',
+          html: officerWelcomeTemplate(body.full_name, body.email, rawPassword, env.frontendUrl),
+          emailType: 'officer_created',
+          relatedId: id,
+        });
+      } catch (mailErr) {
+        console.error('[OfficerService] Failed to send welcome email:', mailErr);
+      }
+
       return { id, password: rawPassword };
     } catch (e: unknown) {
       const err = e as { code?: string; errno?: number; sqlMessage?: string; message?: string };
       if (err.code === 'ER_DUP_ENTRY' || err.errno === 1062) {
         const msg = String(err.sqlMessage ?? err.message ?? '').toLowerCase();
         if (msg.includes('email')) {
-          throw new ValidationError('An officer with this email already exists');
+          throw new ValidationError('Email already exists');
         }
         throw new ValidationError('This officer conflicts with existing data (duplicate unique field)');
       }

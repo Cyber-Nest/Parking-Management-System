@@ -21,6 +21,7 @@ import { useEffect } from "react";
 
 import { GeneralSettings } from "@/components/all-settings/GeneralSettings";
 import { TaxSettings } from "@/components/all-settings/TaxSettings";
+import { PricingSettings } from "@/components/all-settings/PricingSettings";
 import { SystemSettingsComponent as SystemSettings } from "@/components/all-settings/SystemSettings";
 import { UsersRolesSettings } from "@/components/all-settings/UsersRolesSettings";
 import { SecuritySettings } from "@/components/all-settings/SecuritySettings";
@@ -32,7 +33,8 @@ import { OwnerProfileSettings } from "@/components/all-settings/OwnerProfileSett
 import { ReportParkingLotFilter } from "@/components/reports/ReportParkingLotFilter";
 const TABS = [
   { id: "general", label: "General", icon: Settings },
-  { id: "tax", label: "Tax & Pricing", icon: Receipt },
+  { id: "tax", label: "Tax", icon: Receipt },
+  { id: "pricing", label: "Pricing", icon: Receipt },
   { id: "owner-profile", label: "Owner Profile", icon: Users },
   // { id: "system", label: "System", icon: Clock },
   { id: "users", label: "Users & Roles", icon: Users },
@@ -83,6 +85,8 @@ function SettingsContent() {
         return <OwnerProfileSettings />;
       case "tax":
         return <TaxSettings parkingLotId={parkingLotId} />;
+      case "pricing":
+        return <PricingSettings parkingLotId={parkingLotId} />;
       // case "system":
       //   return <SystemSettings />;
       case "users":
@@ -134,11 +138,10 @@ function SettingsContent() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`relative flex items-center gap-1.5 px-3 py-2 text-[11px] lg:text-[12px] font-bold rounded-[var(--radius-sm)] transition-all whitespace-nowrap flex-1 justify-center ${
-                  isActive
+                className={`relative flex items-center gap-1.5 px-3 py-2 text-[11px] lg:text-[12px] font-bold rounded-[var(--radius-sm)] transition-all whitespace-nowrap flex-1 justify-center ${isActive
                     ? "bg-white text-[var(--color-primary)] shadow-sm border border-[var(--color-border)]/50"
                     : "text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]"
-                }`}
+                  }`}
               >
                 <Icon
                   size={14}
@@ -165,19 +168,19 @@ function SettingsContent() {
 
       {/* Animated Content Area */}
       <div className="min-h-[400px]">
-      {!PARKING_LOT_FILTER_EXCLUDED_TABS.has(activeTab) && (
-        <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 shadow-[var(--shadow-card)]">
-          <div>
-            <p className="text-xs font-black uppercase tracking-widest text-[var(--color-text-muted)]">
-              Parking Lot Scope
-            </p>
+        {!PARKING_LOT_FILTER_EXCLUDED_TABS.has(activeTab) && (
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 shadow-[var(--shadow-card)]">
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-[var(--color-text-muted)]">
+                Parking Lot Scope
+              </p>
+            </div>
+            <ReportParkingLotFilter
+              value={parkingLotId}
+              onChange={setParkingLotId}
+            />
           </div>
-          <ReportParkingLotFilter
-            value={parkingLotId}
-            onChange={setParkingLotId}
-          />
-        </div>
-      )}
+        )}
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}

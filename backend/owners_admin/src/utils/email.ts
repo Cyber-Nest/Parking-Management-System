@@ -7,55 +7,55 @@ import { SendEmailOptions } from '../types';
 import { env } from '../config/env';
 
 const transporter = nodemailer.createTransport({
-    host: env.smtp.host,
-    port: env.smtp.port,
-    secure: env.smtp.secure,
-    auth: {
-        user: env.smtp.user,
-        pass: env.smtp.pass,
-    },
+  host: env.smtp.host,
+  port: env.smtp.port,
+  secure: env.smtp.secure,
+  auth: {
+    user: env.smtp.user,
+    pass: env.smtp.pass,
+  },
 });
 
 /**
  * Send an email and log result to email_logs table
  */
 export const sendEmail = async (options: SendEmailOptions): Promise<boolean> => {
-    const { to, subject, html, emailType, relatedId, attachments } = options;
-    let status: 'sent' | 'failed' = 'sent';
-    let errorMessage: string | null = null;
+  const { to, subject, html, emailType, relatedId, attachments } = options;
+  let status: 'sent' | 'failed' = 'sent';
+  let errorMessage: string | null = null;
 
-    try {
-        const mailOptions: any = {
-            from: env.smtp.from,
-            to,
-            subject,
-            html,
-        };
+  try {
+    const mailOptions: any = {
+      from: env.smtp.from,
+      to,
+      subject,
+      html,
+    };
 
-        if (attachments && attachments.length > 0) {
-            mailOptions.attachments = attachments;
-        }
-
-        await transporter.sendMail(mailOptions);
-        console.log(`[Email] Successfully sent "${emailType}" email to ${to}`);
-    } catch (err) {
-        status = 'failed';
-        errorMessage = err instanceof Error ? err.message : 'Unknown error';
-        console.error('[Email] Failed to send:', errorMessage, '| To:', to, '| Type:', emailType);
+    if (attachments && attachments.length > 0) {
+      mailOptions.attachments = attachments;
     }
 
-    // Log to DB regardless of success
-    try {
-        await execute(
-            `INSERT INTO email_logs (recipient_email, email_type, subject, related_id, status, error_message)
+    await transporter.sendMail(mailOptions);
+    console.log(`[Email] Successfully sent "${emailType}" email to ${to}`);
+  } catch (err) {
+    status = 'failed';
+    errorMessage = err instanceof Error ? err.message : 'Unknown error';
+    console.error('[Email] Failed to send:', errorMessage, '| To:', to, '| Type:', emailType);
+  }
+
+  // Log to DB regardless of success
+  try {
+    await execute(
+      `INSERT INTO email_logs (recipient_email, email_type, subject, related_id, status, error_message)
        VALUES (?, ?, ?, ?, ?, ?)`,
-            [to, emailType, subject, relatedId ?? null, status, errorMessage]
-        );
-    } catch (dbErr) {
-        console.error('[Email] Failed to log email to DB:', dbErr);
-    }
+      [to, emailType, subject, relatedId ?? null, status, errorMessage]
+    );
+  } catch (dbErr) {
+    console.error('[Email] Failed to log email to DB:', dbErr);
+  }
 
-    return status === 'sent';
+  return status === 'sent';
 };
 
 // ─── Email Templates ──────────────────────────────────────────
@@ -152,7 +152,7 @@ export const paymentReceiptTemplate = (data: PaymentReceiptData): string => {
   const startTimeStr = data.startTime.toLocaleString();
   const endTimeStr = data.endTime.toLocaleString();
   const amountStr = `$${data.totalAmount.toFixed(2)}`;
-  const extendBookingUrl = data.bookingId && data.frontendUrl 
+  const extendBookingUrl = data.bookingId && data.frontendUrl
     ? `${data.frontendUrl}/customer/bookings/${data.bookingId}/extend`
     : null;
 
@@ -323,7 +323,7 @@ export interface PenaltyNoticeData {
 }
 
 export const penaltyNoticeTemplate = (data: PenaltyNoticeData): string => {
-  const paymentUrl = data.frontendUrl 
+  const paymentUrl = data.frontendUrl
     ? `${data.frontendUrl}/customer/penalties/${data.ticketNumber}`
     : null;
 
@@ -586,3 +586,47 @@ export const penaltyPaymentTemplate = (data: PenaltyPaymentData): string => {
 </html>
 `;
 };
+
+export const officerWelcomeTemplate = (name: string, email: string, password: string, frontendUrl?: string): string => `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="margin:0;padding:0;background:#f0f2f5;font-family:Arial,sans-serif">
+  <table width="100%" cellpadding="0" cellspacing="0" style="padding:40px 20px">
+    <tr>
+      <td align="center">
+        <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%">
+          <tr>
+            <td style="background:#006B5E;padding:28px 32px;border-radius:10px 10px 0 0;text-align:center">
+              <h1 style="color:white;margin:0;font-size:26px;letter-spacing:1px">🅿️ ParkSmart</h1>
+              <p style="color:rgba(255,255,255,0.8);margin:6px 0 0;font-size:14px">Officer Account Created</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background:white;padding:36px 32px;border:1px solid #e0e0e0">
+              <h2 style="color:#1a1a2e;margin:0 0 16px;font-size:20px">Welcome to ParkSmart</h2>
+              <p style="color:#444;line-height:1.7;margin:0 0 12px">Hi <strong>${name}</strong>,</p>
+              <p style="color:#444;line-height:1.7;margin:0 0 12px">An officer account has been created for you. Use the credentials below to sign in to the Officer Portal.</p>
+              <table style="margin:12px 0 20px;background:#f7f7f7;padding:12px;border-radius:6px;width:100%">
+                <tr><td style="font-weight:bold">Email:</td><td style="text-align:right">${email}</td></tr>
+                <tr><td style="font-weight:bold">Password:</td><td style="text-align:right">${password}</td></tr>
+              </table>
+              ${frontendUrl ? `<p style="margin:0 0 16px">Sign in here: <a href="${frontendUrl}" style="color:#006B5E">${frontendUrl}</a></p>` : ''}
+              <p style="color:#666;font-size:13px;margin:6px 0 0">For security, please change your password after first login.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#f8f9fa;padding:18px 32px;border-radius:0 0 10px 10px;text-align:center">
+              <p style="margin:0;color:#999;font-size:12px">© 2026 ParkSmart Systems. All rights reserved.</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+`;

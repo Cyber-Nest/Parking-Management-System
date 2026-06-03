@@ -109,7 +109,7 @@ import app from "./app";
 
 import { env } from "./config/env";
 import { connectDatabase } from "./config/database";
-import { ensureParkingPlanSchema } from "./config/schema-migration";
+import { ensureParkingPlanSchema, ensureSystemSettingsSchema } from "./config/schema-migration";
 
 import {
   getCloudinarySetupError,
@@ -122,6 +122,7 @@ const startServer = async (): Promise<void> => {
   try {
     await connectDatabase();
     await ensureParkingPlanSchema();
+    await ensureSystemSettingsSchema();
 
     app.listen(env.port, () => {
       console.log(

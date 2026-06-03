@@ -10,6 +10,7 @@ export interface Pricing {
   tax_id?: string | null;
   is_active?: boolean;
   isActive?: boolean;
+  parking_lot_id?: string | null;
   created_at?: string;
   updated_at?: string;
 }

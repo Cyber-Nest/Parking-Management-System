@@ -97,7 +97,7 @@ export class OfficerRepository {
 
     const countRows = await queryRows<CountRow>(
       `SELECT COUNT(*) AS total
-       FROM officers
+       FROM officers o
        ${clause}`,
       values
     );

@@ -132,7 +132,7 @@ export class SettingsRepository {
         return settings;
     }
 
-    async getTaxPricing(): Promise<{
+    async getTaxPricing(parkingLotId?: string): Promise<{
         tax_rate_percent: number;
         currency: string;
         service_fee: number;
@@ -141,16 +141,51 @@ export class SettingsRepository {
         refund_allowed: number;
         refund_approval_required: number;
     }> {
-        const row = (await this.getSystemSettings()) as SystemSettingsPublic & Record<string, unknown>;
-        return {
-            tax_rate_percent: Number(row.tax_rate_percent ?? 5),
-            currency: row.currency,
-            service_fee: Number(row.service_fee ?? 0),
-            rounding_rule: String(row.rounding_rule ?? 'nearest_cent'),
-            prices_include_tax: Number(row.prices_include_tax ?? 1),
-            refund_allowed: Number(row.refund_allowed ?? 1),
-            refund_approval_required: Number(row.refund_approval_required ?? 1),
-        };
+        try {
+            if (parkingLotId) {
+                // Try to get parking lot specific tax pricing
+                const rows = await queryRows<any>(
+                    `SELECT tax_rate_percent, currency, service_fee, rounding_rule, prices_include_tax, refund_allowed, refund_approval_required
+                     FROM system_settings WHERE parking_lot_id = ? LIMIT 1`,
+                    [parkingLotId]
+                );
+                if (rows.length > 0) {
+                    const row = rows[0];
+                    return {
+                        tax_rate_percent: Number(row.tax_rate_percent ?? 5),
+                        currency: row.currency || 'CAD',
+                        service_fee: Number(row.service_fee ?? 0),
+                        rounding_rule: String(row.rounding_rule ?? 'nearest_cent'),
+                        prices_include_tax: Number(row.prices_include_tax ?? 1),
+                        refund_allowed: Number(row.refund_allowed ?? 1),
+                        refund_approval_required: Number(row.refund_approval_required ?? 1),
+                    };
+                }
+            }
+            // Fall back to global settings
+            const row = (await this.getSystemSettings()) as SystemSettingsPublic & Record<string, unknown>;
+            return {
+                tax_rate_percent: Number(row.tax_rate_percent ?? 5),
+                currency: row.currency,
+                service_fee: Number(row.service_fee ?? 0),
+                rounding_rule: String(row.rounding_rule ?? 'nearest_cent'),
+                prices_include_tax: Number(row.prices_include_tax ?? 1),
+                refund_allowed: Number(row.refund_allowed ?? 1),
+                refund_approval_required: Number(row.refund_approval_required ?? 1),
+            };
+        } catch (err) {
+            console.error('[SettingsRepository] getTaxPricing error:', (err as Error).message);
+            // Return defaults on error
+            return {
+                tax_rate_percent: 5,
+                currency: 'CAD',
+                service_fee: 0,
+                rounding_rule: 'nearest_cent',
+                prices_include_tax: 1,
+                refund_allowed: 1,
+                refund_approval_required: 1,
+            };
+        }
     }
 
     async updateTaxPricing(patch: {
@@ -160,10 +195,70 @@ export class SettingsRepository {
         prices_include_tax?: number;
         refund_allowed?: number;
         refund_approval_required?: number;
-    }): Promise<void> {
-        const current = (await this.getSystemSettings()) as SystemSettingsPublic & Record<string, unknown>;
-        const merged = { ...current, ...patch } as SystemSettingsPublic;
-        await this.updateSystemSettings(merged);
+    }, parkingLotId?: string): Promise<void> {
+        if (parkingLotId) {
+            // Update or insert parking lot specific settings
+            const existing = await queryRows<any>(
+                'SELECT id FROM system_settings WHERE parking_lot_id = ?',
+                [parkingLotId]
+            );
+
+            if (existing.length === 0) {
+                // Insert new parking lot settings
+                const current = await this.getTaxPricing(); // Get defaults
+                const merged = { ...current, ...patch };
+                const settingsId = parkingLotId + '-' + Date.now();
+
+                await execute(
+                    `INSERT INTO system_settings (id, timezone, language, date_format, time_format, week_starts_on, currency, session_expiry_display,
+                     tax_rate_percent, service_fee, rounding_rule, prices_include_tax, refund_allowed, refund_approval_required, parking_lot_id)
+                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                    [
+                        settingsId,
+                        'UTC',
+                        'en',
+                        'YYYY-MM-DD',
+                        '24h',
+                        'monday',
+                        merged.currency,
+                        3600,
+                        merged.tax_rate_percent,
+                        merged.service_fee,
+                        merged.rounding_rule,
+                        merged.prices_include_tax,
+                        merged.refund_allowed,
+                        merged.refund_approval_required,
+                        parkingLotId,
+                    ]
+                );
+            } else {
+                // Update existing parking lot settings
+                await execute(
+                    `UPDATE system_settings SET 
+                     tax_rate_percent = COALESCE(?, tax_rate_percent),
+                     service_fee = COALESCE(?, service_fee),
+                     rounding_rule = COALESCE(?, rounding_rule),
+                     prices_include_tax = COALESCE(?, prices_include_tax),
+                     refund_allowed = COALESCE(?, refund_allowed),
+                     refund_approval_required = COALESCE(?, refund_approval_required)
+                     WHERE parking_lot_id = ?`,
+                    [
+                        patch.tax_rate_percent,
+                        patch.service_fee,
+                        patch.rounding_rule,
+                        patch.prices_include_tax,
+                        patch.refund_allowed,
+                        patch.refund_approval_required,
+                        parkingLotId,
+                    ]
+                );
+            }
+        } else {
+            // Update global settings
+            const current = (await this.getSystemSettings()) as SystemSettingsPublic & Record<string, unknown>;
+            const merged = { ...current, ...patch } as SystemSettingsPublic;
+            await this.updateSystemSettings(merged);
+        }
     }
 
     async listAdmins(): Promise<
