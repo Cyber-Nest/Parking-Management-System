@@ -1,6 +1,7 @@
 import { bookingRepository } from '../repositories/booking.repository';
 
 export interface CreateBookingDTO {
+  parkingLotId?: string;
   parkingZoneId: string;
   parkingName: string;
   parkingLocation?: string;
@@ -27,6 +28,7 @@ export class BookingService {
     const bookingReference = `PS-${Date.now()}-${Math.random().toString(36).substring(7)}`;
 
     const result = await bookingRepository.createBooking({
+      parking_lot_id: dto.parkingLotId ?? null,
       booking_reference: bookingReference,
       parking_zone_id: dto.parkingZoneId,
       parking_name: dto.parkingName,

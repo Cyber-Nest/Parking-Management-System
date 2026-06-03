@@ -36,6 +36,7 @@ export interface DurationDetails {
 export interface BookingSummary {
   subtotal: number;
   serviceFee: number;
+  taxAmount?: number;
   total: number;
   startTime: string;
   endTime: string;

@@ -39,6 +39,18 @@ export class ParkingPlanRepository {
     return rows[0] ?? null;
   }
 
+  async listByLotId(lotId: string): Promise<ParkingPlanRow[]> {
+    return queryRows<ParkingPlanRow>(
+      `SELECT p.id, p.name, p.price, p.duration, p.plan_type, p.tax_percent, p.status,
+              p.parking_lot_id, l.lot_name AS parking_lot_name, p.created_at, p.updated_at
+       FROM parking_plans p
+       LEFT JOIN parking_lots l ON p.parking_lot_id = l.id
+       WHERE p.status = 'Active' AND (p.parking_lot_id = ? OR p.parking_lot_id IS NULL)
+       ORDER BY p.duration ASC, p.price ASC`,
+      [lotId]
+    );
+  }
+
   async findByPriceAndDuration(price: number, duration: number): Promise<ParkingPlanRow | null> {
     const rows = await queryRows<ParkingPlanRow>(
       `SELECT p.id, p.name, p.price, p.duration, p.plan_type, p.tax_percent, p.status,

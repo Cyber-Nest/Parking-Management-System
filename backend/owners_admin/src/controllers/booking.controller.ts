@@ -5,6 +5,7 @@ export class BookingController {
   async createBooking(req: Request, res: Response) {
     try {
       const {
+        parkingLotId,
         parkingZoneId, parkingName, parkingLocation, customerEmail,
         vehicleModel, vehiclePlateNumber, vehicleColor, startTime,
         endTime, durationMinutes, durationLabel, hourlyRate, basePrice,
@@ -19,6 +20,7 @@ export class BookingController {
       }
 
       const booking = await bookingService.createBooking({
+        parkingLotId,
         parkingZoneId,
         parkingName,
         parkingLocation,

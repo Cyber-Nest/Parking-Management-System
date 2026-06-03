@@ -173,7 +173,7 @@ export interface ParkingLotCustomerResponse {
   }[];
 }
 
-export interface ParkingZoneRow extends ParkingZonePublic {}
+export interface ParkingZoneRow extends ParkingZonePublic { }
 
 export interface ParkingLotPublic {
   id: string;
@@ -184,10 +184,12 @@ export interface ParkingLotPublic {
   qr_code_url?: string | null;
 }
 
-export interface ParkingLotRow extends ParkingLotPublic {}
+export interface ParkingLotRow extends ParkingLotPublic { }
 
 export interface CustomerBookingPayload {
   zoneId: string;
+  lotId?: string;
+  planId?: string;
   email: string;
   vehicleModel: string;
   plateNumber: string;

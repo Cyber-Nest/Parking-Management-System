@@ -71,6 +71,7 @@ export const API_ENDPOINTS = {
     BOOKING_BY_ID: (id: string) => `/customer/bookings/${id}`,
     BOOKING_BY_REFERENCE: (reference: string) => `/customer/bookings/reference/${reference}`,
     BOOKING_EXTEND: (id: string) => `/customer/bookings/${id}/extend`,
+    PARKING_PLANS: '/customer/parking-plans',
     PENALTY: (id: string) => `/customer/penalties/${id}`,
     PENALTY_RECEIPT: (id: string) => `/customer/penalties/${id}/receipt`,
     PENALTY_PAY: (id: string) => `/customer/penalties/${id}/pay`,

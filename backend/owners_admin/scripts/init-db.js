@@ -325,6 +325,7 @@ const run = async () => {
     CREATE TABLE IF NOT EXISTS bookings (
       id CHAR(36) PRIMARY KEY,
       booking_reference VARCHAR(100) NOT NULL UNIQUE,
+      parking_lot_id CHAR(36) NULL,
       parking_zone_id CHAR(36) NOT NULL,
       parking_name VARCHAR(191) NOT NULL,
       parking_location VARCHAR(255) NULL,

@@ -2,16 +2,16 @@ import Stripe from 'stripe';
 import { env } from '../config/env';
 import { PaymentRepository } from '../repositories/payment.repository';
 import { SessionRepository } from '../repositories/session.repository';
-import { ParkingPlanRepository } from '../repositories/parkingPlan.repository';
+import { ParkingPlanRepository, ParkingPlanRow } from '../repositories/parkingPlan.repository';
 import { ParkingZoneRepository } from '../repositories/parkingZone.repository';
 import { ParkingLotRepository } from '../repositories/parkingLot.repository';
 import { bookingService } from './booking.service';
 import { transactionService } from './transaction.service';
 import { invoiceService } from './invoice.service';
+import { SettingsService } from './settings.service';
 import {
   CustomerBookingPayload,
   CustomerBookingResponse,
-  ParkingZonePublic,
   ParkingLotCustomerResponse,
 } from '../types';
 import { sanitizeParkingImageUrl } from '../utils/parkingImages';
@@ -28,6 +28,7 @@ const formatDateTime = (date: Date): string =>
   date.toISOString().slice(0, 19).replace('T', ' ');
 
 const SERVICE_FEE = 2;
+const settingsService = new SettingsService();
 
 export class CustomerService {
   async getParkingZoneById(lotId: string): Promise<ParkingLotCustomerResponse> {
@@ -98,6 +99,10 @@ export class CustomerService {
     return {
       stripePublishableKey: env.stripe.publishableKey,
     };
+  }
+
+  async getParkingPlansForLot(lotId: string): Promise<ParkingPlanRow[]> {
+    return parkingPlanRepo.listByLotId(lotId);
   }
 
   async getBookingByReference(reference: string) {
@@ -263,13 +268,33 @@ export class CustomerService {
     const paidAt = formatDateTime(new Date());
 
     const basePrice = Number(payload.price);
-    const serviceFee = SERVICE_FEE;
-    const taxAmount = 0;
-    const totalAmount = basePrice + serviceFee;
+    // Fetch tax/pricing for the parking lot (may include lot-specific overrides)
+    const taxPricing = await settingsService.getTaxPricing(payload.lotId);
+    const settingsServiceFee = Number(taxPricing?.service_fee ?? SERVICE_FEE);
 
-    const matchingPlan =
-      (await parkingPlanRepo.findForBooking(payload.durationMinutes, payload.price)) ??
+    const matchingPlan = payload.planId
+      ? await parkingPlanRepo.findById(payload.planId)
+      : (await parkingPlanRepo.findForBooking(payload.durationMinutes, payload.price)) ??
       (await parkingPlanRepo.findByPriceAndDuration(payload.price, payload.durationMinutes));
+
+    // Determine applicable tax rate: plan override wins, else lot/global setting
+    const matchingPlanTax = matchingPlan?.tax_percent ?? null;
+    const taxRatePercent = Number(matchingPlanTax && matchingPlanTax > 0 ? matchingPlanTax : taxPricing?.tax_rate_percent ?? 0);
+
+    const pricesIncludeTax = Number(taxPricing?.prices_include_tax ?? 1) === 1;
+
+    let taxAmount = 0;
+    let serviceFee = settingsServiceFee;
+    let totalAmount = 0;
+
+    if (pricesIncludeTax) {
+      // basePrice already includes tax -> extract tax portion
+      taxAmount = Number((basePrice - basePrice / (1 + taxRatePercent / 100)).toFixed(2));
+      totalAmount = Number((basePrice + serviceFee).toFixed(2));
+    } else {
+      taxAmount = Number(((basePrice * taxRatePercent) / 100).toFixed(2));
+      totalAmount = Number((basePrice + taxAmount + serviceFee).toFixed(2));
+    }
 
     const planId = matchingPlan?.id ?? null;
     const planName = matchingPlan?.name ?? payload.durationLabel;
@@ -297,6 +322,7 @@ export class CustomerService {
     });
 
     const booking = await bookingService.createBooking({
+      parkingLotId: payload.lotId ?? undefined,
       parkingZoneId: zone.id,
       parkingName: zone.parking_name,
       parkingLocation: zone.address,

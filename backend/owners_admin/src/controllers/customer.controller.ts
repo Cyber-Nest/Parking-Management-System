@@ -5,7 +5,7 @@ import { customerService } from '../services/customer.service';
 import { invoiceService } from '../services/invoice.service';
 import { TicketService } from '../services/ticket.service';
 import { ensureCloudinaryUrl } from '../services/cloudinary.service';
-import { ApiResponse, CustomerBookingResponse, ParkingZonePublic, ParkingLotCustomerResponse } from '../types';
+import { ApiResponse, CustomerBookingResponse, ParkingLotCustomerResponse } from '../types';
 import { NotFoundError, ValidationError } from '../services/commonErrors';
 import { enforcementRepository } from '../repositories/enforcement.repository';
 
@@ -47,6 +47,24 @@ export const getStripeConfig = async (
   }
 };
 
+export const getParkingPlansForLot = async (
+  req: Request,
+  res: Response<ApiResponse<any>>
+): Promise<void> => {
+  try {
+    const lotId = String(req.query.lotId ?? '');
+    if (!lotId) {
+      res.status(400).json({ success: false, message: 'lotId query parameter is required' });
+      return;
+    }
+    const data = await customerService.getParkingPlansForLot(lotId);
+    res.status(200).json({ success: true, message: 'Parking plans fetched', data });
+  } catch (err) {
+    console.error('[CustomerController] getParkingPlansForLot error:', err);
+    res.status(500).json({ success: false, message: String(err instanceof Error ? err.message : 'Failed to fetch parking plans') });
+  }
+};
+
 export const createPaymentIntent = async (
   req: Request,
   res: Response<ApiResponse<{ clientSecret: string; amount: number; currency: string }>>
@@ -73,6 +91,7 @@ export const createBooking = async (
   try {
     const {
       zoneId,
+      lotId,
       email,
       vehicleModel,
       plateNumber,
@@ -86,6 +105,7 @@ export const createBooking = async (
     const missingFields: string[] = [];
 
     if (!zoneId) missingFields.push('zoneId');
+    if (!lotId) missingFields.push('lotId');
     if (!email) missingFields.push('email');
     if (!vehicleModel) missingFields.push('vehicleModel');
     if (!plateNumber) missingFields.push('plateNumber');
@@ -104,6 +124,7 @@ export const createBooking = async (
 
     const data = await customerService.createBooking({
       zoneId,
+      lotId,
       email,
       vehicleModel,
       plateNumber,

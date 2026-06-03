@@ -229,12 +229,12 @@ function CheckoutForm({
         | Error;
       const backendMessage =
         axiosError &&
-        "response" in axiosError &&
-        axiosError.response?.data?.message
+          "response" in axiosError &&
+          axiosError.response?.data?.message
           ? axiosError.response.data.message
           : error instanceof Error
-          ? error.message
-          : "Payment processing failed. Please try again.";
+            ? error.message
+            : "Payment processing failed. Please try again.";
 
       toast.error(backendMessage);
     } finally {
@@ -382,6 +382,14 @@ function CheckoutForm({
                   </span>
                 </div>
               ) : null}
+              {!extensionDetails ? (
+                <div className="flex justify-between text-xs text-[#9CA3AF]">
+                  <span>Tax</span>
+                  <span className="text-white font-mono">
+                    ${(bookingSummary?.taxAmount ?? 0).toFixed(2)}
+                  </span>
+                </div>
+              ) : null}
               <div className="h-px bg-white/5 my-1" />
               <div className="flex justify-between items-end">
                 <div>
@@ -406,11 +414,10 @@ function CheckoutForm({
               <button
                 disabled={isProcessing}
                 onClick={handlePayment}
-                className={`w-full py-4 rounded-full font-black text-base transition-all flex items-center justify-center gap-3 ${
-                  isProcessing
+                className={`w-full py-4 rounded-full font-black text-base transition-all flex items-center justify-center gap-3 ${isProcessing
                     ? "bg-[#1A1A1A] text-[#4B5563]"
                     : "bg-[#C6F432] text-black shadow-[0_8px_30px_rgba(198,244,50,0.2)] hover:scale-[1.02] active:scale-[0.98]"
-                }`}
+                  }`}
               >
                 {isProcessing ? (
                   <span className="flex items-center gap-2">
@@ -603,7 +610,7 @@ export default function PaymentPageWrapper() {
         extensionDetails={extensionDetails}
         returnUrl={returnUrl}
         clearBooking={clearBooking}
-        onComplete={() => {}}
+        onComplete={() => { }}
       />
     </Elements>
   );

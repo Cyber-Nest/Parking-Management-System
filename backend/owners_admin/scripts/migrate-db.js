@@ -46,6 +46,7 @@ const run = async () => {
 
   await addColumn('parking_sessions', 'location_name', '`location_name` VARCHAR(150) NULL AFTER `plan_name`');
   await addColumn('bookings', 'parking_plan_id', '`parking_plan_id` CHAR(36) NULL AFTER `duration_label`');
+  await addColumn('bookings', 'parking_lot_id', '`parking_lot_id` CHAR(36) NULL AFTER `booking_reference`');
   await addColumn(
     'parking_zones',
     'status',
