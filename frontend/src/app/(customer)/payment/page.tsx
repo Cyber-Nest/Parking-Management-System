@@ -106,7 +106,7 @@ function CheckoutForm({
     const timer = setTimeout(() => {
       clearBooking();
 
-      router.push(`/?zone=ZONE-201`);
+      router.push(`${returnUrl}`);
     }, 6000);
 
     return () => clearTimeout(timer);

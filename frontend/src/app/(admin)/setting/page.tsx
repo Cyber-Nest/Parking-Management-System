@@ -34,7 +34,7 @@ import { ReportParkingLotFilter } from "@/components/reports/ReportParkingLotFil
 const TABS = [
   { id: "general", label: "General", icon: Settings },
   { id: "tax", label: "Tax", icon: Receipt },
-  { id: "pricing", label: "Pricing", icon: Receipt },
+  // { id: "pricing", label: "Pricing", icon: Receipt },
   { id: "owner-profile", label: "Owner Profile", icon: Users },
   // { id: "system", label: "System", icon: Clock },
   { id: "users", label: "Users & Roles", icon: Users },
@@ -85,8 +85,8 @@ function SettingsContent() {
         return <OwnerProfileSettings />;
       case "tax":
         return <TaxSettings parkingLotId={parkingLotId} />;
-      case "pricing":
-        return <PricingSettings parkingLotId={parkingLotId} />;
+      // case "pricing":
+      //   return <PricingSettings parkingLotId={parkingLotId} />;
       // case "system":
       //   return <SystemSettings />;
       case "users":

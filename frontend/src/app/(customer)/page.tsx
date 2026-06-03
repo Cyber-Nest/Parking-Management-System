@@ -205,8 +205,8 @@ export default function LandingPage() {
               ) : (
                 <>
                   <img
-                    src={parkingData?.image}
-                    alt={parkingData?.parkingName ?? "Premium Parking"}
+                    src={selectedZone?.image || parkingData?.image}
+                    alt={(selectedZone?.zoneName || parkingData?.parkingName) ?? "Premium Parking"}
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-70"
                     onError={(e) => {
                       e.currentTarget.onerror = null;
@@ -258,7 +258,9 @@ export default function LandingPage() {
                       <MapPin size={18} className="text-[#C6F432]" />
 
                       <span className="text-sm md:text-base font-light italic">
-                        {parkingData?.address}
+                        {/* {selectedZone?.address || parkingData?.address} */}
+                                                {parkingData?.address}
+
                       </span>
                     </div>
                   </>
@@ -303,14 +305,26 @@ export default function LandingPage() {
                               {zone.zoneName}
                             </span>
 
+                            {/* Address */}
+                            {zone.address && (
+                              <span
+                              className={`text-[10px] font-mono font-bold ${
+                                isActive ? "text-black/60" : "text-[#4B5563]"
+                              }`}
+                                title={zone.address}
+                              >
+                                {zone.address}
+                              </span>
+                            )}
+
                             {/* Spot Code */}
-                            <span
+                            {/* <span
                               className={`text-[10px] font-mono font-bold ${
                                 isActive ? "text-black/60" : "text-[#4B5563]"
                               }`}
                             >
                               {zone.spotId}
-                            </span>
+                            </span> */}
                           </button>
                         );
                       })}

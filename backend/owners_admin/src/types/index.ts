@@ -155,6 +155,24 @@ export interface ParkingZonePublic {
   sub_zones?: ParkingZoneSubZone[];
 }
 
+export interface ParkingLotCustomerResponse {
+  lot_id: string;
+  lot_name: string;
+  address: string;
+  image_url: string;
+  zones: {
+    id: string;
+    parking_name: string;
+    address: string;
+    image_url: string;
+    hourly_rate: number;
+    available_spots: number;
+    total_spots: number;
+    spot_id: string;
+    parking_lot_id?: string | null;
+  }[];
+}
+
 export interface ParkingZoneRow extends ParkingZonePublic {}
 
 export interface ParkingLotPublic {

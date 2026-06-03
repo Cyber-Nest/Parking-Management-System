@@ -5,7 +5,7 @@ import { customerService } from '../services/customer.service';
 import { invoiceService } from '../services/invoice.service';
 import { TicketService } from '../services/ticket.service';
 import { ensureCloudinaryUrl } from '../services/cloudinary.service';
-import { ApiResponse, CustomerBookingResponse, ParkingZonePublic } from '../types';
+import { ApiResponse, CustomerBookingResponse, ParkingZonePublic, ParkingLotCustomerResponse } from '../types';
 import { NotFoundError, ValidationError } from '../services/commonErrors';
 import { enforcementRepository } from '../repositories/enforcement.repository';
 
@@ -22,7 +22,7 @@ const handleError = (err: unknown, res: Response, fallbackMessage: string) => {
 
 export const getParkingZoneById = async (
   req: Request,
-  res: Response<ApiResponse<ParkingZonePublic>>
+  res: Response<ApiResponse<ParkingLotCustomerResponse>>
 ): Promise<void> => {
   try {
     const { id } = req.params;

@@ -8,6 +8,7 @@ import React, {
 } from "react";
 
 export interface ParkingDetails {
+  lotId: any;
   zoneId: string;
   parkingName: string;
   address: string;

@@ -23,6 +23,7 @@ export default function VehicleDetailsPage() {
     setVehicleDetails,
     setSelectedDuration,
     setBookingSummary,
+    returnUrl,
   } = useParkingBooking();
 
   const durations = customerService.getDurationOptions();
@@ -54,7 +55,7 @@ export default function VehicleDetailsPage() {
         },
       });
 
-      router.push(`/?zone=ZONE-201`);
+      router.push(`${returnUrl}`);
 
       return; 
     }
@@ -168,7 +169,7 @@ export default function VehicleDetailsPage() {
         {/* Header */}
         <div className="flex items-center gap-4 mb-8">
           <Link
-            href={`/?zone=ZONE-201`}
+            href={`${returnUrl}`}
             className="w-9 h-9 rounded-full bg-[#1A1A1A] flex items-center justify-center border border-white/5 hover:bg-white/5 transition-colors"
           >
             <ArrowLeft size={18} />

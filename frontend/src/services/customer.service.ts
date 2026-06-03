@@ -1,9 +1,11 @@
-﻿import axiosInstance from "@/lib/axios";
+import axiosInstance from "@/lib/axios";
 import { API_ENDPOINTS } from "./api";
 
 export interface ParkingZone {
   zoneId: string;
   zoneName: string;
+  address: string;
+  image: string;
   hourlyRate: number;
   availableSpots: number;
   totalSpots: number;
@@ -11,6 +13,7 @@ export interface ParkingZone {
 }
 
 export interface ParkingDetails {
+  lotId: any;
   zoneId: string;
   parkingName: string;
   address: string;
@@ -176,46 +179,40 @@ function sanitizeParkingImageUrl(url: string | undefined | null): string {
 }
 
 class CustomerService {
-  async getParkingZoneById(zoneId: string): Promise<ParkingDetails> {
-    const response = await axiosInstance.get(API_ENDPOINTS.CUSTOMER.PARKING_ZONE(zoneId));
+  async getParkingZoneById(lotId: string): Promise<ParkingDetails> {
+    const response = await axiosInstance.get(API_ENDPOINTS.CUSTOMER.PARKING_ZONE(lotId));
     const data = response.data?.data;
 
     if (!data) {
-      throw new Error("Parking zone not found");
+      throw new Error("Parking lot not found");
     }
 
-    const subZones = Array.isArray(data.sub_zones) ? data.sub_zones : [];
+    const zonesArray = Array.isArray(data.zones) ? data.zones : [];
     const zones: ParkingZone[] | undefined =
-      subZones.length > 0
-        ? [
-            {
-              zoneId: data.id ?? zoneId,
-              zoneName: data.parking_name ?? "Main",
-              hourlyRate: Number(data.hourly_rate ?? 0),
-              availableSpots: Number(data.available_spots ?? 0),
-              totalSpots: Number(data.total_spots ?? 0),
-              spotId: data.spot_id ?? "",
-            },
-            ...subZones.map((z: Record<string, unknown>) => ({
-              zoneId: String(z.id),
-              zoneName: String(z.parking_name ?? "Zone"),
-              hourlyRate: Number(z.hourly_rate ?? 0),
-              availableSpots: Number(z.available_spots ?? 0),
-              totalSpots: Number(z.total_spots ?? 0),
-              spotId: String(z.spot_id ?? ""),
-            })),
-          ]
+      zonesArray.length > 0
+        ? zonesArray.map((z: Record<string, unknown>) => ({
+            zoneId: String(z.id),
+            zoneName: String(z.parking_name ?? "Zone"),
+            address: String(z.address ?? ""),
+            image: sanitizeParkingImageUrl(String(z.image_url ?? "")),
+            hourlyRate: Number(z.hourly_rate ?? 0),
+            availableSpots: Number(z.available_spots ?? 0),
+            totalSpots: Number(z.total_spots ?? 0),
+            spotId: String(z.spot_id ?? ""),
+          }))
         : undefined;
 
     return {
-      zoneId: data.id ?? zoneId,
-      parkingName: data.parking_name ?? "Parking Zone",
+      lotId: data.lot_id ?? lotId,
+      zoneId: data.lot_id ?? lotId,
+      
+      parkingName: data.lot_name ?? "Parking Lot",
       address: data.address ?? "",
       image: sanitizeParkingImageUrl(data.image_url),
-      hourlyRate: Number(data.hourly_rate ?? 0),
-      availableSpots: Number(data.available_spots ?? 0),
-      totalSpots: Number(data.total_spots ?? 0),
-      spotId: data.spot_id ?? "",
+      hourlyRate: zones?.[0]?.hourlyRate ?? 0,
+      availableSpots: zones?.reduce((acc: number, z: ParkingZone) => acc + z.availableSpots, 0) ?? 0,
+      totalSpots: zones?.reduce((acc: number, z: ParkingZone) => acc + z.totalSpots, 0) ?? 0,
+      spotId: data.lot_id ?? "",
       zones,
     };
   }
@@ -354,6 +351,7 @@ class CustomerService {
   ): Promise<BookingResponse> {
     const response = await axiosInstance.post(API_ENDPOINTS.CUSTOMER.BOOKINGS, {
       zoneId: payload.parkingDetails.zoneId,
+      lotId: payload.parkingDetails.lotId,
       email: payload.vehicleDetails.email,
       vehicleModel: payload.vehicleDetails.vehicleModel,
       plateNumber: payload.vehicleDetails.plateNumber,

@@ -26,7 +26,10 @@ export interface ParkingZoneFormInput {
   isActive?: boolean;
 }
 
-export const listParkingZones = async (opts?: { lotId?: string; limit?: number }): Promise<ParkingZoneRecord[]> => {
+export const listParkingZones = async (opts?: {
+  lotId?: string;
+  limit?: number;
+}): Promise<ParkingZoneRecord[]> => {
   const response = await axiosInstance.get(API_ENDPOINTS.PARKING_ZONES.LIST, {
     params: { limit: opts?.limit ?? 200, lotId: opts?.lotId },
   });
@@ -34,7 +37,9 @@ export const listParkingZones = async (opts?: { lotId?: string; limit?: number }
   return (data?.items ?? data ?? []) as ParkingZoneRecord[];
 };
 
-export const createParkingZone = async (input: ParkingZoneFormInput): Promise<ParkingZoneRecord> => {
+export const createParkingZone = async (
+  input: ParkingZoneFormInput,
+): Promise<ParkingZoneRecord> => {
   const response = await axiosInstance.post(API_ENDPOINTS.PARKING_ZONES.LIST, {
     parking_name: input.name,
     address: input.address,
@@ -52,16 +57,19 @@ export const updateParkingZone = async (
   id: string,
   input: Partial<ParkingZoneFormInput>,
 ): Promise<ParkingZoneRecord> => {
-  const response = await axiosInstance.patch(API_ENDPOINTS.PARKING_ZONES.BY_ID(id), {
-    parking_name: input.name,
-    address: input.address,
-    image_url: input.imageUrl,
-    hourly_rate: input.hourlyRate,
-    available_spots: input.availableSpots,
-    total_spots: input.totalSpots,
-    parking_lot_id: input.parkingLotId,
-    isActive: input.isActive,
-  });
+  const response = await axiosInstance.patch(
+    API_ENDPOINTS.PARKING_ZONES.BY_ID(id),
+    {
+      parking_name: input.name,
+      address: input.address,
+      image_url: input.imageUrl,
+      hourly_rate: input.hourlyRate,
+      available_spots: input.availableSpots,
+      total_spots: input.totalSpots,
+      parking_lot_id: input.parkingLotId,
+      isActive: input.isActive,
+    },
+  );
   return getResponseData(response) as ParkingZoneRecord;
 };
 
@@ -72,6 +80,7 @@ export const deleteParkingZone = async (id: string): Promise<void> => {
 export const mapZoneToUi = (zone: ParkingZoneRecord) => ({
   id: zone.id,
   name: zone.parking_name,
+  address: zone.address,
   isActive: (zone.status ?? "active") === "active",
   rate: Number(zone.hourly_rate),
 });

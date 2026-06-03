@@ -1,545 +1,3 @@
-// "use client";
-
-// import { useEffect, useMemo, useState } from "react";
-
-// import {
-//   Building2,
-//   Download,
-//   Edit,
-//   Plus,
-//   Power,
-//   Search,
-//   MapPin,
-//   QrCode,
-//   DollarSign,
-//   Eye,
-//   ChevronLeft,
-//   ChevronRight,
-// } from "lucide-react";
-
-// import { motion, AnimatePresence } from "framer-motion";
-// import toast from "react-hot-toast";
-
-// import {
-//   parkingOwnerService,
-//   ParkingOwner,
-//   ParkingZone,
-// } from "@/services/parking-owner.service";
-
-// import {
-//   ParkingOwnerFormDrawer,
-//   ParkingOwnerFormData,
-// } from "@/components/parking-owners/ParkingOwnerFormDrawer";
-
-// import { StatCard } from "@/components/common/StatCard";
-
-// const defaultFormData: ParkingOwnerFormData = {
-//   ownerName: "",
-//   ownerEmail: "",
-//   ownerPhone: "",
-//   companyName: "",
-//   parkingName: "",
-//   parkingAddress: "",
-//   parkingImage: null,
-//   averageRate: "",
-//   zones: [],
-//   isActive: true,
-// };
-
-// export default function ParkingOwnersPage() {
-//   const [loading, setLoading] = useState(true);
-//   const [search, setSearch] = useState("");
-//   const [parkingOwners, setParkingOwners] = useState<ParkingOwner[]>([]);
-//   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-//   const [editingParkingOwner, setEditingParkingOwner] =
-//     useState<ParkingOwner | null>(null);
-//   const [formData, setFormData] =
-//     useState<ParkingOwnerFormData>(defaultFormData);
-//   const [currentPage, setCurrentPage] = useState(1);
-//   const itemsPerPage = 9; // 3x3 grid
-
-//   const [isViewDrawerOpen, setIsViewDrawerOpen] = useState(false);
-//   const [selectedOwner, setSelectedOwner] = useState<ParkingOwner | null>(null);
-
-//   useEffect(() => {
-//     fetchParkingOwners();
-//   }, []);
-
-//   const fetchParkingOwners = async () => {
-//     try {
-//       setLoading(true);
-//       const response = await parkingOwnerService.getParkingOwners();
-//       setParkingOwners(response);
-//     } catch (error) {
-//       console.error(error);
-//       toast.error("Failed to load parking owners");
-//     } finally {
-//       setLoading(false);
-//     }
-//   };
-
-//   const filteredParkingOwners = useMemo(() => {
-//     return parkingOwners.filter((owner) => {
-//       const searchValue = search.toLowerCase();
-//       return (
-//         owner.ownerName.toLowerCase().includes(searchValue) ||
-//         owner.parkingName.toLowerCase().includes(searchValue) ||
-//         owner.ownerEmail.toLowerCase().includes(searchValue)
-//       );
-//     });
-//   }, [parkingOwners, search]);
-
-//   const totalPages = Math.ceil(filteredParkingOwners.length / itemsPerPage);
-//   const paginatedOwners = useMemo(() => {
-//     const start = (currentPage - 1) * itemsPerPage;
-//     return filteredParkingOwners.slice(start, start + itemsPerPage);
-//   }, [filteredParkingOwners, currentPage]);
-
-//   // Reset page when search changes
-//   useEffect(() => {
-//     setCurrentPage(1);
-//   }, [search]);
-
-//   const handleOpenCreate = () => {
-//     setEditingParkingOwner(null);
-//     setFormData(defaultFormData);
-//     setIsDrawerOpen(true);
-//   };
-
-//   const handleEdit = (parkingOwner: ParkingOwner) => {
-//     setEditingParkingOwner(parkingOwner);
-//     setFormData({
-//       ownerName: parkingOwner.ownerName,
-//       ownerEmail: parkingOwner.ownerEmail,
-//       ownerPhone: parkingOwner.ownerPhone,
-//       companyName: parkingOwner.companyName || "",
-//       parkingName: parkingOwner.parkingName,
-//       parkingAddress: parkingOwner.parkingAddress,
-//       parkingImage: parkingOwner.parkingImage,
-//       averageRate: parkingOwner.averageRate.toString(),
-//       zones: parkingOwner.zones,
-//       isActive: parkingOwner.isActive,
-//     });
-//     setIsDrawerOpen(true);
-//   };
-
-//   const handleFormChange = (field: keyof ParkingOwnerFormData, value: any) => {
-//     setFormData((prev) => ({ ...prev, [field]: value }));
-//   };
-
-//   const handleSubmit = async (data: ParkingOwnerFormData) => {
-//     try {
-//       if (!data.ownerName || !data.ownerEmail || !data.ownerPhone) {
-//         toast.error("Please complete owner details");
-//         return;
-//       }
-
-//       if (!data.parkingName || !data.parkingAddress) {
-//         toast.error("Please complete parking details");
-//         return;
-//       }
-
-//       if (!data.zones.length) {
-//         toast.error("Please add at least one parking zone");
-//         return;
-//       }
-
-//       const payload: ParkingOwner = {
-//         id: editingParkingOwner?.id || `PO-${Date.now()}`,
-//         ownerName: data.ownerName,
-//         ownerEmail: data.ownerEmail,
-//         ownerPhone: data.ownerPhone,
-//         companyName: data.companyName,
-//         parkingName: data.parkingName,
-//         parkingAddress: data.parkingAddress,
-//         parkingImage: data.parkingImage || "",
-//         averageRate: Number(data.averageRate),
-//         zones: data.zones,
-//         qrCodeUrl:
-//           editingParkingOwner?.qrCodeUrl ||
-//           `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://parksmart.com/${Date.now()}`,
-//         isActive: data.isActive,
-//         createdAt: editingParkingOwner?.createdAt || new Date().toISOString(),
-//         updatedAt: new Date().toISOString(),
-//       };
-
-//       if (editingParkingOwner) {
-//         await parkingOwnerService.updateParkingOwner(
-//           editingParkingOwner.id,
-//           payload,
-//         );
-//         toast.success("Parking owner updated");
-//         setParkingOwners((prev) =>
-//           prev.map((item) =>
-//             item.id === editingParkingOwner.id ? payload : item,
-//           ),
-//         );
-//       } else {
-//         await parkingOwnerService.createParkingOwner(payload);
-//         toast.success("Parking owner created");
-//         setParkingOwners((prev) => [payload, ...prev]);
-//       }
-
-//       setIsDrawerOpen(false);
-//     } catch (error) {
-//       console.error(error);
-//       toast.error("Something went wrong");
-//     }
-//   };
-
-//   const handleToggleStatus = async (id: string) => {
-//     try {
-//       await parkingOwnerService.toggleParkingOwnerStatus(id);
-//       setParkingOwners((prev) =>
-//         prev.map((item) =>
-//           item.id === id ? { ...item, isActive: !item.isActive } : item,
-//         ),
-//       );
-//       toast.success("Parking owner status updated");
-//     } catch (error) {
-//       console.error(error);
-//       toast.error("Failed to update status");
-//     }
-//   };
-
-//   const handleDownloadQR = async (qrUrl: string) => {
-//     try {
-//       const qr = await parkingOwnerService.downloadQRCode(qrUrl);
-//       window.open(qr, "_blank");
-//       toast.success("QR downloaded");
-//     } catch (error) {
-//       console.error(error);
-//       toast.error("Failed to download QR");
-//     }
-//   };
-
-//   const handleViewDetails = (owner: ParkingOwner) => {
-//     setSelectedOwner(owner);
-//     setIsViewDrawerOpen(true);
-//   };
-
-//   const totalOwners = parkingOwners.length;
-//   const activeParking = parkingOwners.filter((item) => item.isActive).length;
-//   const totalZones = parkingOwners.reduce(
-//     (acc, item) => acc + item.zones.length,
-//     0,
-//   );
-//   const averageRate =
-//     parkingOwners.length > 0
-//       ? (
-//           parkingOwners.reduce((acc, item) => acc + item.averageRate, 0) /
-//           parkingOwners.length
-//         ).toFixed(1)
-//       : "0";
-
-//   const LoadingSkeleton = () => (
-//     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-//       {Array.from({ length: 6 }).map((_, index) => (
-//         <div
-//           key={index}
-//           className="h-[430px] rounded-3xl bg-[var(--color-surface)] border border-[var(--color-border)] animate-pulse"
-//         />
-//       ))}
-//     </div>
-//   );
-
-//   return (
-//     <>
-//       <div className="space-y-6">
-//         {/* Header */}
-//         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
-//           <div>
-//             <h1 className="text-xl md:text-3xl font-black tracking-tight text-[var(--color-text-primary)]">
-//               Parking{" "}
-//               <span className="text-[var(--color-primary)]">Owners</span>
-//             </h1>
-
-//             <p className="text-xs md:text-sm text-[var(--color-text-secondary)] font-semibold mt-1">
-//               Manage parking owners, booking zones, QR access, and customer
-//               parking setup.
-//             </p>
-//           </div>
-
-//           <button
-//             onClick={handleOpenCreate}
-//             className="btn-primary px-6 py-3 flex items-center justify-center gap-2 shadow-lg shadow-[var(--color-primary)]/20"
-//           >
-//             <Plus size={18} strokeWidth={3} />
-//             Create Parking Owner
-//           </button>
-//         </div>
-
-//         {/* Stats  */}
-//         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-//           <StatCard
-//             icon={
-//               <Building2 size={22} className="text-[var(--color-primary)]" />
-//             }
-//             title="Total Owners"
-//             value={totalOwners}
-//           />
-//           <StatCard
-//             icon={<QrCode size={22} className="text-[var(--color-primary)]" />}
-//             title="Active Parking"
-//             value={activeParking}
-//           />
-//           <StatCard
-//             icon={<MapPin size={22} className="text-[var(--color-primary)]" />}
-//             title="Total Zones"
-//             value={totalZones}
-//           />
-//           <StatCard
-//             icon={
-//               <DollarSign size={22} className="text-[var(--color-primary)]" />
-//             }
-//             title="Average Rate"
-//             value={`$${averageRate}/hr`}
-//           />
-//         </div>
-
-//         {/* Toolbar */}
-//         <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl p-4 shadow-sm flex flex-col lg:flex-row lg:items-center gap-4">
-//           <div className="relative flex-1">
-//             <Search
-//               size={18}
-//               className="absolute left-4 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)]"
-//             />
-//             <input
-//               type="text"
-//               placeholder="Search parking owners by name, parking name or email..."
-//               className="input pl-11 w-full"
-//               value={search}
-//               onChange={(e) => setSearch(e.target.value)}
-//             />
-//           </div>
-//         </div>
-
-//         {/* Cards Grid */}
-//         {loading ? (
-//           <LoadingSkeleton />
-//         ) : filteredParkingOwners.length === 0 ? (
-//           <div className="bg-[var(--color-surface)] border border-[var(--color-border)] rounded-3xl p-14 text-center">
-//             <Building2
-//               size={44}
-//               className="mx-auto text-[var(--color-text-muted)]"
-//             />
-//             <h3 className="text-xl font-black text-[var(--color-text-primary)] mt-5">
-//               No Parking Owners Found
-//             </h3>
-//             <p className="text-sm text-[var(--color-text-secondary)] mt-2">
-//               Create your first parking owner to enable customer QR booking
-//               flow.
-//             </p>
-//           </div>
-//         ) : (
-//           <>
-//             <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-//               {filteredParkingOwners.map((owner) => (
-//                 <div
-//                   key={owner.id}
-//                   className="bg-[var(--color-surface)] border border-[var(--color-border)]/60 rounded-3xl overflow-hidden shadow-sm shadow-black/[0.01] hover:shadow-md hover:border-[var(--color-border)] transition-all duration-300 flex flex-col group"
-//                 >
-//                   {/* Image Banner Section */}
-//                   <div className="relative h-48 overflow-hidden bg-[var(--color-surface-soft)]">
-//                     <img
-//                       src={owner.parkingImage || "/placeholder-parking.jpg"}
-//                       alt={owner.parkingName}
-//                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-//                     />
-
-//                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-
-//                     {/* Dynamic Status Badge */}
-//                     <div className="absolute top-4 right-4">
-//                       <span
-//                         className={`px-2.5 py-1 rounded-xl text-[10px] font-bold uppercase tracking-wider backdrop-blur-md border ${
-//                           owner.isActive
-//                             ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-//                             : "bg-red-500/10 border-red-500/30 text-red-400"
-//                         }`}
-//                       >
-//                         {owner.isActive ? "Active" : "Disabled"}
-//                       </span>
-//                     </div>
-
-//                     {/* Banner Details */}
-//                     <div className="absolute bottom-4 left-5 right-5 space-y-0.5">
-//                       <h3 className="text-xl font-bold text-white tracking-tight drop-shadow-sm truncate">
-//                         {owner.parkingName}
-//                       </h3>
-//                       <p className="text-xs text-white/70 font-medium truncate">
-//                         by {owner.ownerName}
-//                       </p>
-//                     </div>
-//                   </div>
-
-//                   {/* Card Body Component */}
-//                   <div className="p-5 flex-1 flex flex-col justify-between space-y-5">
-//                     {/* Core Info Details */}
-//                     <div className="space-y-4">
-//                       <div className="flex items-start gap-2.5 text-[var(--color-text-secondary)]">
-//                         <MapPin
-//                           size={15}
-//                           className="text-[var(--color-primary)] mt-0.5 shrink-0"
-//                         />
-//                         <p className="text-xs font-medium leading-relaxed line-clamp-2">
-//                           {owner.parkingAddress}
-//                         </p>
-//                       </div>
-
-//                       {/* Stats Indicators */}
-//                       <div className="grid grid-cols-2 gap-4 bg-[var(--color-surface-soft)]/40 border border-[var(--color-border)]/40 rounded-2xl px-4 py-3">
-//                         <div>
-//                           <p className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] font-bold">
-//                             Avg Hourly Rate
-//                           </p>
-//                           <p className="text-base font-bold text-[var(--color-text)] mt-0.5">
-//                             ${owner.averageRate}
-//                             <span className="text-xs font-medium text-[var(--color-text-muted)]">
-//                               /hr
-//                             </span>
-//                           </p>
-//                         </div>
-
-//                         <div className="text-right">
-//                           <p className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] font-bold">
-//                             Total Zones
-//                           </p>
-//                           <p className="text-base font-bold text-[var(--color-text)] mt-0.5">
-//                             {owner.zones.length < 10
-//                               ? `0${owner.zones.length}`
-//                               : owner.zones.length}
-//                           </p>
-//                         </div>
-//                       </div>
-//                     </div>
-
-//                     {/* Parking Zones Badges */}
-//                     {owner.zones.length > 0 && (
-//                       <div className="flex flex-wrap gap-1.5 max-h-[64px] overflow-y-auto no-scrollbar">
-//                         {owner.zones.map((zone) => (
-//                           <span
-//                             key={zone.id}
-//                             className={`px-2.5 py-1 rounded-lg text-[11px] font-medium border transition-colors ${
-//                               zone.isActive
-//                                 ? "bg-[var(--color-primary)]/[0.04] border-[var(--color-primary)]/15 text-[var(--color-primary)]"
-//                                 : "bg-red-500/[0.03] border-red-500/10 text-red-500/80"
-//                             }`}
-//                           >
-//                             {zone.name}
-//                           </span>
-//                         ))}
-//                       </div>
-//                     )}
-
-//                     {/* Actions Section */}
-//                     <div className="grid grid-cols-3 gap-2.5 pt-1">
-//                       <button
-//                         onClick={() => handleEdit(owner)}
-//                         className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border border-[var(--color-border)] hover:bg-[var(--color-surface-soft)] text-xs font-semibold text-[var(--color-text)] shadow-sm transition-all duration-200 active:scale-95"
-//                       >
-//                         <Edit size={13} strokeWidth={2} />
-//                         Edit
-//                       </button>
-
-//                       <button
-//                         onClick={() => handleToggleStatus(owner.id)}
-//                         className={`flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl border text-xs font-semibold shadow-sm transition-all duration-200 active:scale-95 ${
-//                           owner.isActive
-//                             ? "bg-red-500/[0.03] border-red-500/20 text-red-500 hover:bg-red-500/[0.07]"
-//                             : "bg-emerald-500/[0.03] border-emerald-500/20 text-emerald-500 hover:bg-emerald-500/[0.07]"
-//                         }`}
-//                       >
-//                         <Power size={13} strokeWidth={2} />
-//                         {owner.isActive ? "Disable" : "Enable"}
-//                       </button>
-
-//                       <button
-//                         onClick={() => handleDownloadQR(owner.qrCodeUrl)}
-//                         className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-[var(--color-primary)] text-white text-xs font-semibold hover:bg-[var(--color-primary-hover,var(--color-primary))] shadow-sm transition-all duration-200 active:scale-[0.97]"
-//                       >
-//                         <Download size={13} strokeWidth={2.5} />
-//                         QR
-//                       </button>
-//                     </div>
-//                   </div>
-//                 </div>
-//               ))}
-//             </div>
-
-//             {/* Pagination */}
-//             {totalPages > 1 && (
-//               <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-6 border-t border-[var(--color-border)]">
-//                 <p className="text-[12px] font-medium text-[var(--color-text-secondary)]">
-//                   Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
-//                   {Math.min(
-//                     currentPage * itemsPerPage,
-//                     filteredParkingOwners.length,
-//                   )}{" "}
-//                   of {filteredParkingOwners.length} owners
-//                 </p>
-//                 <div className="flex items-center gap-1.5">
-//                   <button
-//                     disabled={currentPage === 1}
-//                     onClick={() => setCurrentPage((p) => p - 1)}
-//                     className="p-2 rounded-lg hover:bg-[var(--color-surface-soft)] border border-[var(--color-border)] transition-all disabled:opacity-40"
-//                   >
-//                     <ChevronLeft size={16} />
-//                   </button>
-//                   {Array.from(
-//                     { length: Math.min(totalPages, 5) },
-//                     (_, i) => i + 1,
-//                   ).map((page) => (
-//                     <button
-//                       key={page}
-//                       onClick={() => setCurrentPage(page)}
-//                       className={`w-9 h-9 rounded-lg text-xs font-bold transition-all ${
-//                         currentPage === page
-//                           ? "bg-[var(--color-primary)] text-white shadow-md"
-//                           : "hover:bg-[var(--color-surface-soft)] text-[var(--color-text-secondary)]"
-//                       }`}
-//                     >
-//                       {page}
-//                     </button>
-//                   ))}
-//                   {totalPages > 5 && (
-//                     <span className="text-[var(--color-text-muted)]">...</span>
-//                   )}
-//                   {totalPages > 5 && (
-//                     <button
-//                       onClick={() => setCurrentPage(totalPages)}
-//                       className="w-9 h-9 rounded-lg text-xs font-bold hover:bg-[var(--color-surface-soft)] text-[var(--color-text-secondary)]"
-//                     >
-//                       {totalPages}
-//                     </button>
-//                   )}
-//                   <button
-//                     disabled={currentPage === totalPages}
-//                     onClick={() => setCurrentPage((p) => p + 1)}
-//                     className="p-2 rounded-lg hover:bg-[var(--color-surface-soft)] border border-[var(--color-border)] transition-all disabled:opacity-40"
-//                   >
-//                     <ChevronRight size={16} />
-//                   </button>
-//                 </div>
-//               </div>
-//             )}
-//           </>
-//         )}
-//       </div>
-
-//       {/* Create/Edit Drawer */}
-//       <ParkingOwnerFormDrawer
-//         isOpen={isDrawerOpen}
-//         onClose={() => setIsDrawerOpen(false)}
-//         onSubmit={handleSubmit}
-//         editingParkingOwner={editingParkingOwner}
-//         formData={formData}
-//         onFormChange={handleFormChange}
-//       />
-//     </>
-//   );
-// }
-
 "use client";
 
 import { useEffect, useState } from "react";
@@ -553,6 +11,7 @@ import {
   Power,
   Building2,
   X,
+  Hash,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import toast from "react-hot-toast";
@@ -574,7 +33,7 @@ import {
   createParkingLot,
   updateParkingLot,
   deleteParkingLot,
-} from '@/services/parking-lots.service';
+} from "@/services/parking-lots.service";
 
 interface ParkingLot {
   id: string;
@@ -600,52 +59,82 @@ const ZoneCard = ({
   <motion.div
     initial={{ opacity: 0, y: 8 }}
     animate={{ opacity: 1, y: 0 }}
-    className="bg-[var(--color-surface)] border border-[var(--color-border)]/60 rounded-2xl p-5 shadow-sm shadow-black/[0.01] hover:shadow-md transition-all duration-300"
+    className="group bg-[var(--color-surface)] border border-[var(--color-border)]/60 rounded-2xl p-5 shadow-[0_2px_8px_rgba(0,0,0,0.01)] hover:shadow-[0_12px_24px_rgba(0,0,0,0.04)] hover:border-[var(--color-border)] transition-all duration-300 flex flex-col justify-between min-h-[180px]"
   >
-    <div className="flex items-center justify-between mb-4">
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-xl bg-[var(--color-primary)]/[0.06] border border-[var(--color-primary)]/10 flex items-center justify-center">
-          <span className="text-xs font-bold text-[var(--color-primary)]">
+    {/* Top Row: Title & Action Buttons */}
+    <div className="flex items-start justify-between gap-4 mb-4">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="w-8 h-8 rounded-xl bg-[var(--color-primary)]/[0.06] border border-[var(--color-primary)]/10 flex items-center justify-center shrink-0">
+          <span className="text-xs font-bold text-[var(--color-primary)] tracking-tight">
             {String(index + 1).padStart(2, "0")}
           </span>
         </div>
-        <h4 className="font-bold text-[var(--color-text)] tracking-tight text-sm">
+        <h4 className="font-semibold text-[var(--color-text)] tracking-tight text-sm truncate">
           {zone.name}
         </h4>
       </div>
-      <div className="flex items-center gap-1">
+
+      <div className="flex items-center gap-1 shrink-0 opacity-60 group-hover:opacity-100 transition-opacity duration-200">
         <button
           onClick={() => onEdit(zone)}
           className="p-2 rounded-xl hover:bg-[var(--color-surface-soft)] transition-colors text-[var(--color-text-muted)] hover:text-[var(--color-text)] active:scale-95"
           title="Edit Zone"
         >
-          <Edit size={14} />
+          <Edit size={14} strokeWidth={2.2} />
         </button>
         <button
           onClick={() => onDelete(zone.id)}
-          className="p-2 rounded-xl bg-red-500/[0.03] hover:bg-red-500/[0.08] text-red-500/80 hover:text-red-500 transition-colors border border-transparent hover:border-red-500/10 active:scale-95"
+          className="p-2 rounded-xl text-neutral-400 hover:text-red-500 hover:bg-red-500/[0.06] transition-colors active:scale-95"
           title="Delete Zone"
         >
-          <Trash2 size={14} />
+          <Trash2 size={14} strokeWidth={2.2} />
         </button>
       </div>
     </div>
 
-    <div className="flex items-center justify-between pt-3 border-t border-[var(--color-border)]/40">
+    {/* Middle Row: Info / Stats */}
+    <div className="space-y-2 flex-grow mb-4">
+      <div className="flex items-center gap-2 text-xs text-[var(--color-text-secondary)]">
+        <MapPin size={13} className="text-[var(--color-text-muted)] shrink-0" />
+        <span className="truncate">
+          {(zone as any).address || "No Address"}
+        </span>
+      </div>
+
+      <div className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--color-primary)] bg-[var(--color-primary)]/[0.04] px-2.5 py-1 rounded-lg border border-[var(--color-primary)]/10">
+        <span>{(zone as any).rate || 0}</span>
+        <span className="text-[var(--color-text-muted)] font-normal">
+          /hour
+        </span>
+      </div>
+    </div>
+
+    {/* Bottom Row: Status & Toggle Button */}
+    <div className="flex items-center justify-between pt-3 border-t border-[var(--color-border)]/40 mt-auto">
       <div className="flex items-center gap-2">
-        <div
-          className={`w-1.5 h-1.5 rounded-full transition-transform duration-300 ${zone.isActive ? "bg-emerald-500" : "bg-neutral-400 dark:bg-neutral-600"}`}
-        />
+        <span className="relative flex h-2 w-2">
+          {zone.isActive && (
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          )}
+          <span
+            className={`relative inline-flex rounded-full h-2 w-2 transition-colors duration-300 ${
+              zone.isActive
+                ? "bg-emerald-500"
+                : "bg-neutral-400 dark:bg-neutral-600"
+            }`}
+          />
+        </span>
         <span className="text-xs font-medium text-[var(--color-text-secondary)]">
           {zone.isActive ? "Active" : "Inactive"}
         </span>
       </div>
+
       <button
         onClick={() => onToggleStatus(zone.id)}
         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold tracking-wider uppercase border transition-all active:scale-95 ${
           zone.isActive
-            ? "bg-red-500/[0.02] border-red-500/20 text-red-500 hover:bg-red-500/[0.06]"
-            : "bg-emerald-500/[0.02] border-emerald-500/20 text-emerald-500 hover:bg-emerald-500/[0.06]"
+            ? "bg-red-50 border-red-200 text-red-500 hover:text-red-500 hover:bg-red-500/[0.04] hover:border-red-500/20"
+            : "bg-emerald-500 text-white border-transparent hover:bg-emerald-600 shadow-sm shadow-emerald-500/10"
         }`}
       >
         <Power size={11} strokeWidth={2.5} />
@@ -664,22 +153,46 @@ const ZoneFormDrawer = ({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: { name: string }) => void;
+  onSubmit: (data: {
+    name: string;
+    address?: string;
+    hourlyRate?: number;
+    isActive: boolean;
+    // availableSpots?: number;
+    // totalSpots?: number;
+  }) => void;
   zone: ParkingZone | null;
 }) => {
   const [name, setName] = useState(zone?.name || "");
 
+  const [address, setAddress] = useState("");
+  const [hourlyRate, setHourlyRate] = useState("");
+  const [isActive, setIsActive] = useState(true);
+
+  // const [availableSpots, setAvailableSpots] = useState("10");
+  // const [totalSpots, setTotalSpots] = useState("10");
+
   useEffect(() => {
     setName(zone?.name || "");
+    setAddress((zone as any)?.address || "");
+    setHourlyRate((zone as any)?.rate ? String((zone as any).rate) : "");
+    setIsActive(zone?.isActive ?? true);
   }, [zone]);
-
   const handleSubmit = () => {
     if (!name.trim()) {
       toast.error("Please enter zone name");
       return;
     }
-    onSubmit({ name: name.trim() });
+    onSubmit({
+      name: name.trim(),
+      address: address.trim() || undefined,
+      hourlyRate: hourlyRate ? Number(hourlyRate) : undefined,
+      isActive,
+    });
     setName("");
+    setAddress("");
+    setHourlyRate("");
+    setIsActive(true);
     onClose();
   };
 
@@ -733,6 +246,71 @@ const ZoneFormDrawer = ({
                   className="w-full bg-[var(--color-surface)] border border-[var(--color-border)]/70 rounded-xl px-4 py-2.5 text-sm font-medium text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/5 transition-all duration-200"
                   autoFocus
                 />
+              </div>
+              <div className="space-y-1.5 flex flex-col">
+                <label className="text-xs font-medium text-[var(--color-text-secondary)] px-0.5">
+                  Address
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g., 123 Parking St, Level 2"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="w-full bg-[var(--color-surface)] border border-[var(--color-border)]/70 rounded-xl px-4 py-2.5 text-sm font-medium text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/5 transition-all duration-200"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5 flex flex-col">
+                  <label className="text-xs font-medium text-[var(--color-text-secondary)] px-0.5">
+                    Hourly Rate
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="30"
+                    value={hourlyRate}
+                    onChange={(e) => setHourlyRate(e.target.value)}
+                    className="w-full bg-[var(--color-surface)] border border-[var(--color-border)]/70 rounded-xl px-4 py-2.5 text-sm font-medium text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/5 transition-all duration-200"
+                  />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-[var(--color-text-secondary)] px-0.5">
+                  Zone Status
+                </label>
+                <div className="flex items-center gap-3 p-3 bg-[var(--color-surface)] border border-[var(--color-border)]/70 rounded-xl">
+                  <div className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      id="zone-active"
+                      name="zone-status"
+                      checked={isActive}
+                      onChange={() => setIsActive(true)}
+                      className="w-4 h-4 text-[var(--color-primary)] bg-gray-100 border-gray-300 focus:ring-primary"
+                    />
+                    <label
+                      htmlFor="zone-active"
+                      className="text-sm font-medium text-[var(--color-text)]"
+                    >
+                      Active
+                    </label>
+                  </div>
+                  <div className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      id="zone-inactive"
+                      name="zone-status"
+                      checked={!isActive}
+                      onChange={() => setIsActive(false)}
+                      className="w-4 h-4 text-[var(--color-primary)] bg-gray-100 border-gray-300 focus:ring-primary"
+                    />
+                    <label
+                      htmlFor="zone-inactive"
+                      className="text-sm font-medium text-[var(--color-text)]"
+                    >
+                      Inactive
+                    </label>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -901,10 +479,18 @@ export default function MyParkingLotPage() {
           const firstLot = fetchedLots[0];
           setSelectedLot(firstLot);
           const zoneRows = await listParkingZones({ lotId: firstLot.id });
-          setZones(zoneRows.length > 0 ? zoneRows.map(mapZoneToUi) : owner?.zones ?? []);
+          setZones(
+            zoneRows.length > 0
+              ? zoneRows.map(mapZoneToUi)
+              : (owner?.zones ?? []),
+          );
         } else {
           const zoneRows = await listParkingZones();
-          setZones(zoneRows.length > 0 ? zoneRows.map(mapZoneToUi) : owner?.zones ?? []);
+          setZones(
+            zoneRows.length > 0
+              ? zoneRows.map(mapZoneToUi)
+              : (owner?.zones ?? []),
+          );
         }
       } catch {
         setZones(owner?.zones ?? []);
@@ -947,12 +533,17 @@ export default function MyParkingLotPage() {
     setIsLotDrawerOpen(true);
   };
 
-  const handleSaveLot = async (data: { lot_name: string; address?: string }) => {
+  const handleSaveLot = async (data: {
+    lot_name: string;
+    address?: string;
+  }) => {
     try {
       let lotToRefresh: ParkingLot | null = null;
       if (editingLot) {
         const updated = await updateParkingLot(editingLot.id, data);
-        setLots((prev) => prev.map((item) => (item.id === editingLot.id ? updated : item)));
+        setLots((prev) =>
+          prev.map((item) => (item.id === editingLot.id ? updated : item)),
+        );
         if (selectedLot?.id === editingLot.id) {
           setSelectedLot(updated);
         }
@@ -997,18 +588,26 @@ export default function MyParkingLotPage() {
     setIsZoneDrawerOpen(true);
   };
 
-  const handleSaveZone = async (data: { name: string }) => {
+  const handleSaveZone = async (data: {
+    name: string;
+    address?: string;
+    hourlyRate?: number;
+    isActive: boolean;
+  }) => {
     try {
       if (editingZone) {
         try {
           const updated = await updateParkingZone(editingZone.id, {
             name: data.name,
-            isActive: editingZone.isActive,
-            hourlyRate: editingZone.rate,
+            address: data.address,
+            hourlyRate: data.hourlyRate,
+            isActive: data.isActive,
             parkingLotId: selectedLot?.id,
           });
           setZones((prev) =>
-            prev.map((z) => (z.id === editingZone.id ? mapZoneToUi(updated) : z)),
+            prev.map((z) =>
+              z.id === editingZone.id ? mapZoneToUi(updated) : z,
+            ),
           );
           toast.success("Zone updated");
         } catch {
@@ -1024,11 +623,14 @@ export default function MyParkingLotPage() {
           const created = await createParkingZone({
             name: data.name,
             parkingLotId: selectedLot?.id,
-            address: parkingOwner?.parkingAddress,
-            hourlyRate: parkingOwner ? 4.5 : undefined,
-            availableSpots: 10,
-            totalSpots: 10,
-            isActive: true,
+
+            address: data.address,
+            hourlyRate: data.hourlyRate,
+
+            isActive: data.isActive,
+
+            // availableSpots: 10,
+            // totalSpots: 10,
           });
           setZones((prev) => [...prev, mapZoneToUi(created)]);
           toast.success("Zone added to database");
@@ -1080,7 +682,9 @@ export default function MyParkingLotPage() {
           hourlyRate: zone.rate,
           parkingLotId: selectedLot?.id,
         });
-        setZones((prev) => prev.map((z) => (z.id === zoneId ? mapZoneToUi(updated) : z)));
+        setZones((prev) =>
+          prev.map((z) => (z.id === zoneId ? mapZoneToUi(updated) : z)),
+        );
       } catch {
         const updatedZones = zones.map((z) =>
           z.id === zoneId ? { ...z, isActive: !z.isActive } : z,
@@ -1096,7 +700,9 @@ export default function MyParkingLotPage() {
   };
 
   const handleDownloadQR = async () => {
-    const qrUrl = selectedLot ? selectedLot.qr_code_url : parkingOwner?.qrCodeUrl;
+    const qrUrl = selectedLot
+      ? selectedLot.qr_code_url
+      : parkingOwner?.qrCodeUrl;
     if (qrUrl) {
       window.open(qrUrl, "_blank");
       toast.success("QR code downloaded");
@@ -1170,7 +776,8 @@ export default function MyParkingLotPage() {
           {lots.length === 0 ? (
             <div className="mt-5 rounded-3xl border border-dashed border-[var(--color-border)]/40 bg-[var(--color-surface-soft)] p-6 text-center">
               <p className="text-sm font-medium text-[var(--color-text-secondary)]">
-                No parking lots created yet. Add a lot to start organizing zones.
+                No parking lots created yet. Add a lot to start organizing
+                zones.
               </p>
             </div>
           ) : (
@@ -1190,6 +797,7 @@ export default function MyParkingLotPage() {
                       <p className="text-sm font-bold text-[var(--color-text)] truncate">
                         {lot.lot_name}
                       </p>
+
                       <p className="text-xs text-[var(--color-text-secondary)] mt-1 line-clamp-2">
                         {lot.address || "No address provided"}
                       </p>
@@ -1235,14 +843,30 @@ export default function MyParkingLotPage() {
                 <h2 className="text-lg font-bold text-[var(--color-text)] tracking-tight truncate">
                   {selectedLot?.lot_name || parkingOwner.parkingName}
                 </h2>
-                <div className="flex items-start gap-2 text-[var(--color-text-secondary)]">
-                  <MapPin
-                    size={14}
-                    className="text-[var(--color-text-muted)] mt-0.5 shrink-0"
-                  />
-                  <span className="text-xs font-medium leading-relaxed line-clamp-2">
-                    {selectedLot?.address || parkingOwner.parkingAddress}
-                  </span>
+                <div className="space-y-1.5">
+                  {/* ID Row with Hash Icon */}
+                  {selectedLot?.id && (
+                    <div className="flex items-center gap-2 text-[var(--color-text-secondary)]">
+                      <Hash
+                        size={14}
+                        className="text-[var(--color-text-muted)] shrink-0"
+                      />
+                      <span className="text-xs font-mono font-medium tracking-tight truncate">
+                        {selectedLot.id}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Location Row with MapPin Icon */}
+                  <div className="flex items-start gap-2 text-[var(--color-text-secondary)]">
+                    <MapPin
+                      size={14}
+                      className="text-[var(--color-text-muted)] mt-0.5 shrink-0"
+                    />
+                    <span className="text-xs font-medium leading-relaxed line-clamp-2">
+                      {selectedLot?.address || parkingOwner.parkingAddress}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1271,7 +895,9 @@ export default function MyParkingLotPage() {
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-[var(--color-text-muted)] text-[10px] font-semibold tracking-wide text-center px-2">
-                  {selectedLot ? "Selected lot has no QR yet" : "No QR available"}
+                  {selectedLot
+                    ? "Selected lot has no QR yet"
+                    : "No QR available"}
                 </div>
               )}
             </div>
