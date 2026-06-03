@@ -8,6 +8,7 @@ export class Pricing extends Model {
     public additional_fees!: number;
     public tax_id!: string | null;
     public is_active!: boolean;
+    public parking_lot_id!: string | null;
     public readonly created_at!: Date;
     public readonly updated_at!: Date;
 }
@@ -37,6 +38,10 @@ Pricing.init(
         is_active: {
             type: DataTypes.BOOLEAN,
             defaultValue: true,
+        },
+        parking_lot_id: {
+            type: DataTypes.STRING(60),
+            allowNull: true,
         },
     },
     {

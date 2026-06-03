@@ -29,13 +29,18 @@ export class SettingsRepository {
     private settingsId = '00000000-0000-0000-0000-000000000001';
 
     async getSystemSettings(): Promise<SystemSettingsPublic | null> {
-        const rows = await queryRows<SystemSettingsPublic>(
-            `SELECT timezone, language, date_format, time_format, week_starts_on, currency, session_expiry_display,
+        try {
+            const rows = await queryRows<SystemSettingsPublic>(
+                `SELECT timezone, language, date_format, time_format, week_starts_on, currency, session_expiry_display,
               tax_rate_percent, service_fee, rounding_rule, prices_include_tax, refund_allowed, refund_approval_required
               FROM system_settings WHERE id = ?`,
-            [this.settingsId]
-        );
-        return rows[0] ?? this.getDefaultSystemSettings();
+                [this.settingsId]
+            );
+            return rows[0] ?? this.getDefaultSystemSettings();
+        } catch (err) {
+            console.error('[SettingsRepository] getSystemSettings DB error:', (err as Error).message);
+            return this.getDefaultSystemSettings();
+        }
     }
 
     async updateSystemSettings(settings: SystemSettingsPublic): Promise<SystemSettingsPublic> {
@@ -97,11 +102,16 @@ export class SettingsRepository {
     }
 
     async getBrandingSettings(): Promise<BrandingSettingsPublic | null> {
-        const rows = await queryRows<BrandingSettingsPublic>(
-            'SELECT system_name, theme_color, dark_mode, logo_url, favicon_url, sidebar_collapsed FROM branding_settings WHERE id = ?',
-            [this.settingsId]
-        );
-        return rows[0] ?? this.getDefaultBrandingSettings();
+        try {
+            const rows = await queryRows<BrandingSettingsPublic>(
+                'SELECT system_name, theme_color, dark_mode, logo_url, favicon_url, sidebar_collapsed FROM branding_settings WHERE id = ?',
+                [this.settingsId]
+            );
+            return rows[0] ?? this.getDefaultBrandingSettings();
+        } catch (err) {
+            console.error('[SettingsRepository] getBrandingSettings DB error:', (err as Error).message);
+            return this.getDefaultBrandingSettings();
+        }
     }
 
     async updateBrandingSettings(settings: BrandingSettingsPublic): Promise<BrandingSettingsPublic> {

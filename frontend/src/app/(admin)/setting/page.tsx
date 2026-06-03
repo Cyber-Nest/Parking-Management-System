@@ -77,11 +77,11 @@ function SettingsContent() {
   const renderActiveTab = () => {
     switch (activeTab) {
       case "general":
-        return <GeneralSettings />;
+        return <GeneralSettings parkingLotId={parkingLotId} />;
       case "owner-profile":
         return <OwnerProfileSettings />;
       case "tax":
-        return <TaxSettings />;
+        return <TaxSettings parkingLotId={parkingLotId} />;
       // case "system":
       //   return <SystemSettings />;
       case "users":
@@ -114,7 +114,7 @@ function SettingsContent() {
           </p>
         </div>
 
-      {!PARKING_LOT_FILTER_EXCLUDED_TABS.has(activeTab) && (
+     {/*  {!PARKING_LOT_FILTER_EXCLUDED_TABS.has(activeTab) && (
         <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 shadow-[var(--shadow-card)]">
           <div>
             <p className="text-xs font-black uppercase tracking-widest text-[var(--color-text-muted)]">
@@ -126,7 +126,7 @@ function SettingsContent() {
             onChange={setParkingLotId}
           />
         </div>
-      )}
+      )} */}
         {/* <button
           onClick={handleResetAll}
           className="flex items-center gap-2 px-5 py-2.5 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary)] transition-all text-xs font-bold shadow-sm"

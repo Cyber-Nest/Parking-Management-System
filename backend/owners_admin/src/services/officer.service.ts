@@ -20,6 +20,7 @@ export class OfficerService {
       phone: o.phone,
       role: o.role,
       status: o.status === 'active' ? 'ACTIVE' : 'DISABLED',
+      parking_lot_id: o.parking_lot_id,
       tickets_issued: o.tickets_issued ?? 0,
       last_login_at: o.last_login_at,
       created_at: o.created_at,
@@ -53,6 +54,7 @@ export class OfficerService {
       phone: o.phone,
       role: o.role,
       status: o.status === 'active' ? 'ACTIVE' : 'DISABLED',
+      parking_lot_id: o.parking_lot_id,
       tickets_issued: o.tickets_issued ?? 0,
       last_login_at: o.last_login_at,
       created_at: o.created_at,
@@ -67,7 +69,7 @@ export class OfficerService {
     };
   }
 
-  async create(adminId: string, body: { full_name: string; email: string; phone?: string; role: OfficerRole; badge_number?: string; password?: string }) {
+  async create(adminId: string, body: { full_name: string; email: string; phone?: string; role: OfficerRole; badge_number?: string; password?: string; parking_lot_id?: string }) {
     if (!body || typeof body !== 'object') {
       throw new ValidationError('Request body is required');
     }
@@ -104,6 +106,7 @@ export class OfficerService {
         badgeNumber: body.badge_number,
         role,
         passwordHash,
+        parkingLotId: body.parking_lot_id,
       });
 
       return { id, password: rawPassword };
@@ -125,12 +128,13 @@ export class OfficerService {
     }
   }
 
-  async update(id: string, body: { full_name?: string; phone?: string; role?: OfficerRole; badge_number?: string }) {
+  async update(id: string, body: { full_name?: string; phone?: string; role?: OfficerRole; badge_number?: string; parking_lot_id?: string }) {
     const affected = await officerRepo.update(id, {
       fullName: body.full_name,
       phone: body.phone,
       role: body.role,
       badgeNumber: body.badge_number,
+      parkingLotId: body.parking_lot_id,
     });
     if (affected === 0) {
       // if nothing updated, still allow idempotent calls, but validate officer exists

@@ -228,7 +228,9 @@ export function OfficerShell({ children }: { children: React.ReactNode }) {
                   <div className="hidden md:block">
                     <p className="text-sm font-bold">{profile?.fullName ?? "Officer"}</p>
                     <p className="text-xs text-slate-500">
-                      ID: {profile?.badgeNumber ?? profile?.id?.slice(0, 8) ?? "—"}
+                      {profile?.parkingLotName
+                        ? `${profile.parkingLotName} • ID: ${profile?.badgeNumber ?? profile?.id?.slice(0, 8) ?? "—"}`
+                        : `ID: ${profile?.badgeNumber ?? profile?.id?.slice(0, 8) ?? "—"}`}
                     </p>
                   </div>
                 </div>

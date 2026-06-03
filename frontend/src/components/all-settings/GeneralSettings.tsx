@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useSystem } from "@/contexts/SystemContext";
+import { listParkingLots, ParkingLotRecord } from "@/services/parking-lots.service";
+import { settingsService } from "@/services/settings.service";
 
 const FormInput = ({
   label,
@@ -83,11 +85,13 @@ const LoadingSkeleton = () => (
   </div>
 );
 
-export const GeneralSettings = () => {
+export const GeneralSettings = ({ parkingLotId }: { parkingLotId?: string }) => {
   const { branding, updateBrandingSettings, refreshSettings } = useSystem();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [parkingLots, setParkingLots] = useState<ParkingLotRecord[]>([]);
+  const [selectedParkingLotId, setSelectedParkingLotId] = useState<string>("");
 
   // Form state
   const [formData, setFormData] = useState({
@@ -119,6 +123,49 @@ export const GeneralSettings = () => {
     }
   }, [branding]);
 
+  // Load parking lots
+  useEffect(() => {
+    const loadLots = async () => {
+      try {
+        const lots = await listParkingLots();
+        setParkingLots(lots);
+        if (lots.length > 0) setSelectedParkingLotId(lots[0].id);
+      } catch (err) {
+        console.error("Failed to load parking lots", err);
+      }
+    };
+    loadLots();
+  }, []);
+
+  // Load branding for selected parking lot
+  useEffect(() => {
+    if (parkingLotId) {
+      setSelectedParkingLotId(parkingLotId);
+    }
+    const loadBrandingForLot = async () => {
+      if (!selectedParkingLotId) return;
+      try {
+        setLoading(true);
+        const brandingRes = await settingsService.getBrandingSettings(selectedParkingLotId);
+        setFormData({
+          companyName: brandingRes.systemName || "",
+          parkingLotName: brandingRes.parkingLotName || "",
+          phone: "+1 (647) 123-4567",
+          address: "123 Park Street, Suite 100, Toronto, Ontario, Canada",
+          email: "admin@parkssmart.com",
+          supportEmail: "support@parkssmart.com",
+          website: "www.parkssmart.com",
+        });
+        setLogoPreview(brandingRes.logoUrl ?? null);
+      } catch (err) {
+        toast.error("Failed to load branding for selected parking lot");
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadBrandingForLot();
+  }, [selectedParkingLotId]);
+
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -128,11 +175,17 @@ export const GeneralSettings = () => {
       setSaving(true);
 
       // Update system name in branding
-      await updateBrandingSettings({
-        systemName: formData.companyName,
-        parkingLotName: formData.parkingLotName,
-        logoUrl: logoPreview,
-      });
+      await settingsService.updateBrandingSettings(
+        {
+          systemName: formData.companyName,
+          parkingLotName: formData.parkingLotName,
+          logoUrl: logoPreview,
+        },
+        selectedParkingLotId || undefined,
+      );
+
+      // Refresh global settings/context
+      await refreshSettings();
 
       toast.success("General settings updated successfully!");
     } catch (error) {
@@ -176,6 +229,32 @@ export const GeneralSettings = () => {
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Parking Lot Selector */}
+    {/*   <div className="mb-6">
+        <div className="bg-[var(--color-surface)] p-6 rounded-[32px] border border-[var(--color-border)] shadow-[var(--shadow-card)]">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-[var(--color-primary)]/10 rounded-xl flex items-center justify-center text-[var(--color-primary)]">
+              <Building2 size={20} />
+            </div>
+            <h3 className="font-bold text-lg text-[var(--color-text-primary)] tracking-tight">Parking Lot</h3>
+          </div>
+          <div className="relative">
+            <select
+              value={selectedParkingLotId}
+              onChange={(e) => setSelectedParkingLotId(e.target.value)}
+              className="w-full px-5 py-3.5 bg-[var(--color-surface-soft)] border border-[var(--color-border)] rounded-2xl focus:border-[var(--color-primary)] transition-all outline-none text-sm font-bold appearance-none cursor-pointer"
+            >
+              <option value="">Global (All lots)</option>
+              {parkingLots.map((lot) => (
+                <option key={lot.id} value={lot.id}>
+                  {lot.lot_name} {lot.address ? `(${lot.address})` : ""}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div> */}
+
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left: Logo Card */}
         <div className="lg:col-span-4 flex flex-col gap-6">

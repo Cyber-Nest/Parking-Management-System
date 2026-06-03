@@ -36,6 +36,7 @@ export const createOfficer = async (payload: {
   role: OfficerRoleUi;
   badge_number?: string;
   password?: string;
+  parking_lot_id?: string;
 }) => {
   const response = await axiosInstance.post(API_ENDPOINTS.OFFICERS.LIST, payload);
   return getResponseData(response);
@@ -43,7 +44,7 @@ export const createOfficer = async (payload: {
 
 export const updateOfficer = async (
   id: string,
-  payload: { full_name?: string; phone?: string; role?: OfficerRoleUi; badge_number?: string },
+  payload: { full_name?: string; phone?: string; role?: OfficerRoleUi; badge_number?: string; parking_lot_id?: string },
 ) => {
   const response = await axiosInstance.patch(API_ENDPOINTS.OFFICERS.BY_ID(id), payload);
   return getResponseData(response);

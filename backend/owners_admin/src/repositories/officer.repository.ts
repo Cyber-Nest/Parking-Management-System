@@ -24,6 +24,7 @@ export interface OfficerRow {
   last_login_at: Date | null;
   created_at: Date;
   tickets_issued?: number;
+  parking_lot_id?: string | null;
 }
 
 interface CountRow {
@@ -53,16 +54,19 @@ export class OfficerRepository {
       }
     }
     if (filters.parkingLotId) {
-      conditions.push(`id IN (
-        SELECT DISTINCT officer_id FROM penalty_tickets
-        WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
-           OR session_id IN (
-            SELECT id FROM parking_sessions
-            WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
-               OR plan_id IN (SELECT id FROM parking_plans WHERE parking_lot_id = ?)
-          )
+      conditions.push(`(
+        o.parking_lot_id = ?
+        OR o.id IN (
+          SELECT DISTINCT officer_id FROM penalty_tickets
+          WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
+             OR session_id IN (
+              SELECT id FROM parking_sessions
+              WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
+                 OR plan_id IN (SELECT id FROM parking_plans WHERE parking_lot_id = ?)
+            )
+        )
       )`);
-      values.push(filters.parkingLotId, filters.parkingLotId, filters.parkingLotId);
+      values.push(filters.parkingLotId, filters.parkingLotId, filters.parkingLotId, filters.parkingLotId);
     }
 
     return {
@@ -77,24 +81,18 @@ export class OfficerRepository {
 
     const items = await queryRows<OfficerRow>(
       `SELECT
-          o.id, o.full_name, o.email, o.phone, o.badge_number, o.role, o.status, o.last_login_at, o.created_at,
+          o.id, o.full_name, o.email, o.phone, o.badge_number, o.role, o.status, o.last_login_at, o.created_at, o.parking_lot_id,
           COALESCE(t.tickets_issued, 0) AS tickets_issued
        FROM officers o
        LEFT JOIN (
          SELECT officer_id, COUNT(*) AS tickets_issued
          FROM penalty_tickets
-         ${filters.parkingLotId ? `WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
-            OR session_id IN (
-              SELECT id FROM parking_sessions
-              WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
-                 OR plan_id IN (SELECT id FROM parking_plans WHERE parking_lot_id = ?)
-            )` : ''}
          GROUP BY officer_id
        ) t ON t.officer_id = o.id
        ${clause}
        ORDER BY o.created_at DESC
        LIMIT ? OFFSET ?`,
-      [...(filters.parkingLotId ? [filters.parkingLotId, filters.parkingLotId, filters.parkingLotId] : []), ...values, filters.limit, offset]
+      [...values, filters.limit, offset]
     );
 
     const countRows = await queryRows<CountRow>(
@@ -110,7 +108,7 @@ export class OfficerRepository {
   async findById(id: string): Promise<OfficerRow | null> {
     const rows = await queryRows<OfficerRow>(
       `SELECT
-          o.id, o.full_name, o.email, o.phone, o.badge_number, o.role, o.status, o.last_login_at, o.created_at,
+          o.id, o.full_name, o.email, o.phone, o.badge_number, o.role, o.status, o.last_login_at, o.created_at, o.parking_lot_id,
           COALESCE(t.tickets_issued, 0) AS tickets_issued
        FROM officers o
        LEFT JOIN (
@@ -209,12 +207,13 @@ export class OfficerRepository {
     badgeNumber?: string;
     role: OfficerRole;
     passwordHash: string;
+    parkingLotId?: string;
   }): Promise<string> {
     const id = crypto.randomUUID();
     await execute(
       `INSERT INTO officers
-      (id, created_by_admin_id, full_name, email, phone, password_hash, badge_number, role, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active')`,
+      (id, created_by_admin_id, full_name, email, phone, password_hash, badge_number, role, status, parking_lot_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)`,
       [
         id,
         params.createdByAdminId,
@@ -224,6 +223,7 @@ export class OfficerRepository {
         params.passwordHash,
         params.badgeNumber ?? null,
         params.role,
+        params.parkingLotId ?? null,
       ]
     );
     return id;
@@ -231,7 +231,7 @@ export class OfficerRepository {
 
   async update(
     id: string,
-    params: { fullName?: string; phone?: string; role?: OfficerRole; badgeNumber?: string }
+    params: { fullName?: string; phone?: string; role?: OfficerRole; badgeNumber?: string; parkingLotId?: string }
   ): Promise<number> {
     const updates: string[] = [];
     const values: any[] = [];
@@ -251,6 +251,10 @@ export class OfficerRepository {
     if (params.role) {
       updates.push('role = ?');
       values.push(params.role);
+    }
+    if (params.parkingLotId !== undefined) {
+      updates.push('parking_lot_id = ?');
+      values.push(params.parkingLotId ?? null);
     }
 
     if (updates.length === 0) return 0;

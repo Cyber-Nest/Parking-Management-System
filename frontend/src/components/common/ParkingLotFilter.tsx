@@ -8,9 +8,10 @@ interface ParkingLotFilterProps {
   value: string;
   onChange: (value: string) => void;
   className?: string;
+  hideAllOption?: boolean;
 }
 
-export function ParkingLotFilter({ lots, value, onChange, className = "" }: ParkingLotFilterProps) {
+export function ParkingLotFilter({ lots, value, onChange, className = "", hideAllOption = false }: ParkingLotFilterProps) {
   return (
     <div className={`flex items-center gap-2 ${className}`}>
       <MapPin size={16} className="text-[var(--color-primary)]" />
@@ -19,7 +20,7 @@ export function ParkingLotFilter({ lots, value, onChange, className = "" }: Park
         onChange={(event) => onChange(event.target.value)}
         className="input w-auto min-w-[180px] text-xs font-bold bg-[var(--color-surface-soft)]"
       >
-        <option value="">All parking lots</option>
+        {!hideAllOption && <option value="">All parking lots</option>}
         {lots.map((lot) => (
           <option key={lot.id} value={lot.id}>
             {lot.lot_name}

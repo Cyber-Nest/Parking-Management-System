@@ -12,11 +12,13 @@ import {
   AlertTriangle,
   CheckCircle,
   Upload,
+  Building2,
 } from "lucide-react";
 import { Officer } from "@/services/officer.service";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { uploadFileToCloudinary } from "@/lib/upload-media";
+import { listParkingLots, ParkingLotRecord } from "@/services/parking-lots.service";
 
 export interface OfficerFormData {
   countryCode: string;
@@ -35,6 +37,7 @@ export interface OfficerFormData {
   addressProvince: string;
   addressPostalCode: string;
   profilePhoto: string | null;
+  parkingLotId: string | null;
 }
 
 interface OfficerFormDrawerProps {
@@ -110,6 +113,26 @@ export const OfficerFormDrawer = ({
   const [photoPreview, setPhotoPreview] = useState<string | null>(
     formData.profilePhoto || null,
   );
+  const [parkingLots, setParkingLots] = useState<ParkingLotRecord[]>([]);
+  const [loadingLots, setLoadingLots] = useState(false);
+
+  useEffect(() => {
+    const loadParkingLots = async () => {
+      try {
+        setLoadingLots(true);
+        const lots = await listParkingLots();
+        setParkingLots(lots);
+      } catch (error) {
+        console.error("Failed to load parking lots:", error);
+      } finally {
+        setLoadingLots(false);
+      }
+    };
+
+    if (isOpen) {
+      loadParkingLots();
+    }
+  }, [isOpen]);
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -321,6 +344,26 @@ export const OfficerFormDrawer = ({
                     </select>
                   </FieldWrapper>
                 </div>
+
+                {/* Parking Lot Selection */}
+                <FieldWrapper label="Assigned Parking Lot *">
+                  <select
+                    className="input appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%2371717a%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3e%3cpolyline points=%276 9 12 15 18 9%27%3e%3c/polyline%3e%3c/svg%3e')] bg-no-repeat bg-[length:16px] bg-[right_14px_center]"
+                    value={formData.parkingLotId || ""}
+                    onChange={(e) => onFormChange("parkingLotId" as any, e.target.value)}
+                    required
+                    disabled={loadingLots}
+                  >
+                    <option value="" disabled>
+                      {loadingLots ? "Loading parking lots..." : "Select a parking lot"}
+                    </option>
+                    {parkingLots.map((lot) => (
+                      <option key={lot.id} value={lot.id}>
+                        {lot.lot_name} {lot.address ? `(${lot.address})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </FieldWrapper>
 
                 {/* Phone */}
                 <FieldWrapper label="Primary Contact Number">

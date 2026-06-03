@@ -48,6 +48,7 @@ const initialFormData: OfficerFormData = {
   addressProvince: "",
   addressPostalCode: "",
   profilePhoto: null,
+  parkingLotId: null,
 };
 
 export default function OfficerManagementPage() {
@@ -162,6 +163,7 @@ export default function OfficerManagementPage() {
       addressProvince: officer.addressProvince || "",
       addressPostalCode: officer.addressPostalCode || "",
       profilePhoto: officer.profilePhoto || null,
+      parkingLotId: officer.parkingLotId || null,
     });
     setIsFormOpen(true);
   };
@@ -217,8 +219,8 @@ export default function OfficerManagementPage() {
   };
 
   const handleSubmitOfficer = async (data: OfficerFormData) => {
-    if (!data.name || !data.email || !data.phone || !data.role) {
-      toast.error("Please fill all required fields");
+    if (!data.name || !data.email || !data.phone || !data.role || !data.parkingLotId) {
+      toast.error("Please fill all required fields including parking lot");
       return;
     }
 
@@ -229,6 +231,7 @@ export default function OfficerManagementPage() {
           phone: data.phone,
           role: mapRole(data.role),
           badge_number: data.employeeId || undefined,
+          parking_lot_id: data.parkingLotId,
         });
         toast.success("Officer updated");
       } else {
@@ -238,6 +241,7 @@ export default function OfficerManagementPage() {
           phone: data.phone,
           role: mapRole(data.role),
           badge_number: data.employeeId || undefined,
+          parking_lot_id: data.parkingLotId,
         });
         toast.success("Officer created");
       }
@@ -433,11 +437,11 @@ export default function OfficerManagementPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="font-bold text-[var(--color-text-primary)]">
-                          {parkingLots.find((lot) => lot.id === parkingLotId)?.lot_name || "All lots"}
+                          {parkingLots.find((lot) => lot.id === officer.parkingLotId)?.lot_name || "Not assigned"}
                         </div>
-                        {parkingLotId ? (
+                        {officer.parkingLotId ? (
                           <div className="text-[10px] text-[var(--color-text-muted)] font-mono">
-                            {parkingLotId}
+                            {officer.parkingLotId}
                           </div>
                         ) : null}
                       </td>

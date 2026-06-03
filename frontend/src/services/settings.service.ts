@@ -328,13 +328,16 @@ export const settingsService = {
     return getResponseData<SystemSettings>(res);
   },
 
-  async getBrandingSettings(): Promise<BrandingSettings> {
-    const res = await axiosInstance.get(BRANDING_BASE);
+  async getBrandingSettings(parkingLotId?: string): Promise<BrandingSettings> {
+    const res = await axiosInstance.get(BRANDING_BASE, {
+      params: parkingLotId ? { parking_lot_id: parkingLotId } : {},
+    });
     return getResponseData<BrandingSettings>(res);
   },
 
-  async updateBrandingSettings(settings: BrandingSettings): Promise<BrandingSettings> {
-    const res = await axiosInstance.put(BRANDING_BASE, settings);
+  async updateBrandingSettings(settings: BrandingSettings, parkingLotId?: string): Promise<BrandingSettings> {
+    const payload = { ...settings, ...(parkingLotId && { parking_lot_id: parkingLotId }) };
+    const res = await axiosInstance.put(BRANDING_BASE, payload);
     return getResponseData<BrandingSettings>(res);
   },
 
@@ -377,9 +380,11 @@ export const settingsService = {
     return { message: "Notification settings updated", settings };
   },
 
-  async getTaxSettings(): Promise<TaxSettings> {
+  async getTaxSettings(parkingLotId?: string): Promise<TaxSettings> {
     try {
-      const res = await axiosInstance.get(API_ENDPOINTS.SETTINGS.TAX_PRICING);
+      const res = await axiosInstance.get(API_ENDPOINTS.SETTINGS.TAX_PRICING, {
+        params: parkingLotId ? { parking_lot_id: parkingLotId } : {},
+      });
       return getResponseData<TaxSettings>(res);
     } catch {
       const settings = readLS<TaxSettings | null>(LS_TAX_SETTINGS_KEY, null);
@@ -390,8 +395,11 @@ export const settingsService = {
     }
   },
 
-  async updateTaxSettings(settings: TaxSettings) {
-    const res = await axiosInstance.put(API_ENDPOINTS.SETTINGS.TAX_PRICING, settings);
+  async updateTaxSettings(settings: TaxSettings, parkingLotId?: string) {
+    const res = await axiosInstance.put(API_ENDPOINTS.SETTINGS.TAX_PRICING, {
+      ...settings,
+      ...(parkingLotId && { parking_lot_id: parkingLotId }),
+    });
     return { message: (res.data as any)?.message ?? "Tax settings updated", settings: getResponseData<TaxSettings>(res) };
   },
 

@@ -7,6 +7,7 @@ export class Tax extends Model {
     public rate!: number;
     public type!: 'percentage' | 'fixed';
     public is_active!: boolean;
+    public parking_lot_id!: string | null;
     public readonly created_at!: Date;
     public readonly updated_at!: Date;
 }
@@ -32,6 +33,10 @@ Tax.init(
         is_active: {
             type: DataTypes.BOOLEAN,
             defaultValue: true,
+        },
+        parking_lot_id: {
+            type: DataTypes.STRING(60),
+            allowNull: true,
         },
     },
     {

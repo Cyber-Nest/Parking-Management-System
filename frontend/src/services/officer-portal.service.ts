@@ -11,6 +11,8 @@ export interface OfficerProfile {
   status: string;
   assignedZone: string;
   lastLoginAt: string | null;
+  parkingLotId?: string | null;
+  parkingLotName?: string | null;
 }
 
 export interface OfficerShiftState {
