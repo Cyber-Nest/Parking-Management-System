@@ -341,16 +341,18 @@ export const settingsService = {
     return getResponseData<BrandingSettings>(res);
   },
 
-  async getIntegrationSettings(): Promise<IntegrationSettings> {
-    const settings = readLS<IntegrationSettings | null>(LS_INTEGRATIONS_KEY, null);
+  async getIntegrationSettings(parkingLotId?: string): Promise<IntegrationSettings> {
+    const key = parkingLotId ? `${LS_INTEGRATIONS_KEY}_${parkingLotId}` : LS_INTEGRATIONS_KEY;
+    const settings = readLS<IntegrationSettings | null>(key, null);
     if (settings) return settings;
     const defaultSettings = getDefaultIntegrationSettings();
-    writeLS(LS_INTEGRATIONS_KEY, defaultSettings);
+    writeLS(key, defaultSettings);
     return defaultSettings;
   },
 
-  async updateIntegrationSettings(settings: IntegrationSettings): Promise<IntegrationSettings> {
-    writeLS(LS_INTEGRATIONS_KEY, settings);
+  async updateIntegrationSettings(settings: IntegrationSettings, parkingLotId?: string): Promise<IntegrationSettings> {
+    const key = parkingLotId ? `${LS_INTEGRATIONS_KEY}_${parkingLotId}` : LS_INTEGRATIONS_KEY;
+    writeLS(key, settings);
     return settings;
   },
 
@@ -367,16 +369,18 @@ export const settingsService = {
     };
   },
 
-  async getNotificationSettings(): Promise<NotificationSettings> {
-    const settings = readLS<NotificationSettings | null>(LS_NOTIFICATION_SETTINGS_KEY, null);
+  async getNotificationSettings(parkingLotId?: string): Promise<NotificationSettings> {
+    const key = parkingLotId ? `${LS_NOTIFICATION_SETTINGS_KEY}_${parkingLotId}` : LS_NOTIFICATION_SETTINGS_KEY;
+    const settings = readLS<NotificationSettings | null>(key, null);
     if (settings) return settings;
     const defaultSettings = getDefaultNotificationSettings();
-    writeLS(LS_NOTIFICATION_SETTINGS_KEY, defaultSettings);
+    writeLS(key, defaultSettings);
     return defaultSettings;
   },
 
-  async updateNotificationSettings(settings: NotificationSettings) {
-    writeLS(LS_NOTIFICATION_SETTINGS_KEY, settings);
+  async updateNotificationSettings(settings: NotificationSettings, parkingLotId?: string) {
+    const key = parkingLotId ? `${LS_NOTIFICATION_SETTINGS_KEY}_${parkingLotId}` : LS_NOTIFICATION_SETTINGS_KEY;
+    writeLS(key, settings);
     return { message: "Notification settings updated", settings };
   },
 
@@ -403,16 +407,18 @@ export const settingsService = {
     return { message: (res.data as any)?.message ?? "Tax settings updated", settings: getResponseData<TaxSettings>(res) };
   },
 
-  async getSecuritySettings(): Promise<SecuritySettings> {
-    const settings = readLS<SecuritySettings | null>(LS_SECURITY_SETTINGS_KEY, null);
+  async getSecuritySettings(parkingLotId?: string): Promise<SecuritySettings> {
+    const key = parkingLotId ? `${LS_SECURITY_SETTINGS_KEY}_${parkingLotId}` : LS_SECURITY_SETTINGS_KEY;
+    const settings = readLS<SecuritySettings | null>(key, null);
     if (settings) return settings;
     const defaultSettings = getDefaultSecuritySettings();
-    writeLS(LS_SECURITY_SETTINGS_KEY, defaultSettings);
+    writeLS(key, defaultSettings);
     return defaultSettings;
   },
 
-  async updateSecuritySettings(settings: SecuritySettings) {
-    writeLS(LS_SECURITY_SETTINGS_KEY, settings);
+  async updateSecuritySettings(settings: SecuritySettings, parkingLotId?: string) {
+    const key = parkingLotId ? `${LS_SECURITY_SETTINGS_KEY}_${parkingLotId}` : LS_SECURITY_SETTINGS_KEY;
+    writeLS(key, settings);
     return { message: "Security settings updated", settings };
   },
 

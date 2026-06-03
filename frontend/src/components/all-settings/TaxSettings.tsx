@@ -79,15 +79,17 @@ export const TaxSettings = ({ parkingLotId }: { parkingLotId?: string }) => {
       try {
         const lots = await listParkingLots();
         setParkingLots(lots);
-        if (lots.length > 0 && !selectedParkingLotId) {
-          setSelectedParkingLotId(lots[0].id);
-        }
       } catch (error) {
         console.error("Failed to load parking lots:", error);
       }
     };
     loadParkingLots();
   }, []);
+
+  // Sync prop with state
+  useEffect(() => {
+    setSelectedParkingLotId(parkingLotId ?? "");
+  }, [parkingLotId]);
 
   // Fetch data when parking lot changes
   useEffect(() => {
@@ -102,9 +104,7 @@ export const TaxSettings = ({ parkingLotId }: { parkingLotId?: string }) => {
         setLoading(false);
       }
     };
-    if (selectedParkingLotId) {
-      fetchData();
-    }
+    fetchData();
   }, [selectedParkingLotId]);
 
   const handleChange = (field: keyof TaxSettingsType, value: string) => {
