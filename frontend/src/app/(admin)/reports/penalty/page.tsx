@@ -24,6 +24,7 @@ import { TableSkeleton } from "@/components/common/TableSkeleton";
 import { ReportParkingLotFilter } from "@/components/reports/ReportParkingLotFilter";
 import { PenaltyReportCharts } from "@/components/reports/charts/PenaltyReportCharts";
 import { PenaltyDetailsDrawer } from "@/components/reports/drawers/PenaltyDetailsDrawer";
+import { truncateId } from "@/lib/truncateId";
 
 import {
   penaltyReportService,
@@ -109,7 +110,12 @@ export default function PenaltyReport() {
   // Auto-set dates based on dateRange selection
   useEffect(() => {
     const today = new Date();
-    const formatDate = (date: Date) => date.toISOString().split('T')[0];
+    const formatDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
     
     if (filters.dateRange === "Custom Range") return;
     
@@ -508,7 +514,7 @@ export default function PenaltyReport() {
                   </div>
                 )}
                 
-                <div className="space-y-1.5">
+                {/* <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
                     Location
                   </label>
@@ -523,7 +529,7 @@ export default function PenaltyReport() {
                       <option key={opt}>{opt}</option>
                     ))}
                   </select>
-                </div>
+                </div> */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
                     Officer
@@ -722,8 +728,8 @@ export default function PenaltyReport() {
                     <td className="px-4 sm:px-6 py-4 font-medium text-[var(--color-text-primary)]">
                       {row.date}
                     </td>
-                    <td className="px-4 sm:px-6 py-4 font-bold text-[var(--color-primary)]">
-                      {row.ticketId}
+                    <td className="px-4 sm:px-6 py-4 font-bold text-[var(--color-primary)]" title={row.ticketId}>
+                      {truncateId(row.ticketId)}
                     </td>
                     <td className="px-4 sm:px-6 py-4 text-[var(--color-text-primary)]">
                       {row.violationType}

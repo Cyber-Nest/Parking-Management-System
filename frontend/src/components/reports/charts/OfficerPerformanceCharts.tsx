@@ -85,7 +85,7 @@ export const OfficerPerformanceCharts = ({
           </div>
 
           {/* Filter Buttons */}
-          <div className="flex bg-[var(--color-surface-soft)] p-1 rounded-lg">
+          {/* <div className="flex bg-[var(--color-surface-soft)] p-1 rounded-lg">
             {filterOptions.map((option) => (
               <button
                 key={option.value}
@@ -99,7 +99,7 @@ export const OfficerPerformanceCharts = ({
                 {option.label}
               </button>
             ))}
-          </div>
+          </div> */}
         </div>
 
         <div className="h-[280px] w-full">

@@ -102,7 +102,7 @@ const ZoneCard = ({
       </div>
 
       <div className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--color-primary)] bg-[var(--color-primary)]/[0.04] px-2.5 py-1 rounded-lg border border-[var(--color-primary)]/10">
-        <span>{(zone as any).rate || 0}</span>
+        <span>${(zone as any).rate || 0}</span>
         <span className="text-[var(--color-text-muted)] font-normal">
           /hour
         </span>
@@ -160,9 +160,10 @@ const ZoneFormDrawer = ({
     isActive: boolean;
     // availableSpots?: number;
     // totalSpots?: number;
-  }) => void;
+  }) => void | Promise<void>;
   zone: ParkingZone | null;
 }) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [name, setName] = useState(zone?.name || "");
 
   const [address, setAddress] = useState("");
@@ -178,22 +179,27 @@ const ZoneFormDrawer = ({
     setHourlyRate((zone as any)?.rate ? String((zone as any).rate) : "");
     setIsActive(zone?.isActive ?? true);
   }, [zone]);
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!name.trim()) {
       toast.error("Please enter zone name");
       return;
     }
-    onSubmit({
-      name: name.trim(),
-      address: address.trim() || undefined,
-      hourlyRate: hourlyRate ? Number(hourlyRate) : undefined,
-      isActive,
-    });
-    setName("");
-    setAddress("");
-    setHourlyRate("");
-    setIsActive(true);
-    onClose();
+    try {
+      setIsSubmitting(true);
+      await onSubmit({
+        name: name.trim(),
+        address: address.trim() || undefined,
+        hourlyRate: hourlyRate ? Number(hourlyRate) : undefined,
+        isActive,
+      });
+      setName("");
+      setAddress("");
+      setHourlyRate("");
+      setIsActive(true);
+      onClose();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -317,15 +323,24 @@ const ZoneFormDrawer = ({
             <div className="p-5 bg-[var(--color-bg)] border-t border-[var(--color-border)]/50 flex gap-3">
               <button
                 onClick={onClose}
-                className="flex-1 px-4 py-2.5 rounded-xl border border-[var(--color-border)]/80 text-xs font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-soft)] transition-colors active:scale-95"
+                disabled={isSubmitting}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-[var(--color-border)]/80 text-xs font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-soft)] transition-colors active:scale-95 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmit}
-                className="flex-1 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover,var(--color-primary))] text-white rounded-xl px-4 py-2.5 text-xs font-semibold shadow-md shadow-[var(--color-primary)]/10 transition-colors active:scale-[0.98]"
+                disabled={isSubmitting}
+                className="flex-1 bg-[var(--color-primary)] flex items-center justify-center gap-2 hover:bg-[var(--color-primary-hover,var(--color-primary))] text-white rounded-xl px-4 py-2.5 text-xs font-semibold shadow-md shadow-[var(--color-primary)]/10 transition-colors active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                {zone ? "Save Changes" : "Create Zone"}
+                {isSubmitting ? (
+                  <>
+                    <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    {zone ? "Saving..." : "Creating..."}
+                  </>
+                ) : (
+                  zone ? "Save Changes" : "Create Zone"
+                )}
               </button>
             </div>
           </motion.div>
@@ -343,9 +358,10 @@ const LotFormDrawer = ({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: { lot_name: string; address?: string }) => void;
+  onSubmit: (data: { lot_name: string; address?: string }) => void | Promise<void>;
   lot: ParkingLot | null;
 }) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [name, setName] = useState(lot?.lot_name || "");
   const [address, setAddress] = useState(lot?.address || "");
 
@@ -354,15 +370,20 @@ const LotFormDrawer = ({
     setAddress(lot?.address || "");
   }, [lot]);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!name.trim()) {
       toast.error("Please enter lot name");
       return;
     }
-    onSubmit({ lot_name: name.trim(), address: address.trim() || undefined });
-    setName("");
-    setAddress("");
-    onClose();
+    try {
+      setIsSubmitting(true);
+      await onSubmit({ lot_name: name.trim(), address: address.trim() || undefined });
+      setName("");
+      setAddress("");
+      onClose();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -434,15 +455,24 @@ const LotFormDrawer = ({
             <div className="p-5 bg-[var(--color-bg)] border-t border-[var(--color-border)]/50 flex gap-3">
               <button
                 onClick={onClose}
-                className="flex-1 px-4 py-2.5 rounded-xl border border-[var(--color-border)]/80 text-xs font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-soft)] transition-colors active:scale-95"
+                disabled={isSubmitting}
+                className="flex-1 px-4 py-2.5 rounded-xl border border-[var(--color-border)]/80 text-xs font-semibold text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-soft)] transition-colors active:scale-95 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmit}
-                className="flex-1 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover,var(--color-primary))] text-white rounded-xl px-4 py-2.5 text-xs font-semibold shadow-md shadow-[var(--color-primary)]/10 transition-colors active:scale-[0.98]"
+                disabled={isSubmitting}
+                className="flex-1 bg-[var(--color-primary)] flex items-center justify-center gap-2 hover:bg-[var(--color-primary-hover,var(--color-primary))] text-white rounded-xl px-4 py-2.5 text-xs font-semibold shadow-md shadow-[var(--color-primary)]/10 transition-colors active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                {lot ? "Save Changes" : "Create Lot"}
+                {isSubmitting ? (
+                  <>
+                    <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    {lot ? "Saving..." : "Creating..."}
+                  </>
+                ) : (
+                  lot ? "Save Changes" : "Create Lot"
+                )}
               </button>
             </div>
           </motion.div>
@@ -462,6 +492,7 @@ export default function MyParkingLotPage() {
   const [editingZone, setEditingZone] = useState<ParkingZone | null>(null);
   const [isLotDrawerOpen, setIsLotDrawerOpen] = useState(false);
   const [editingLot, setEditingLot] = useState<ParkingLot | null>(null);
+  const [isDownloadingQR, setIsDownloadingQR] = useState(false);
 
   useEffect(() => {
     fetchParkingOwner();
@@ -703,11 +734,32 @@ export default function MyParkingLotPage() {
     const qrUrl = selectedLot
       ? selectedLot.qr_code_url
       : parkingOwner?.qrCodeUrl;
-    if (qrUrl) {
-      window.open(qrUrl, "_blank");
-      toast.success("QR code downloaded");
-    } else if (selectedLot) {
-      toast.error("Selected lot has no QR code to download");
+
+    if (!qrUrl) {
+      toast.error("No QR code available");
+      return;
+    }
+
+    try {
+      setIsDownloadingQR(true);
+
+      const response = await fetch(qrUrl);
+      const blob = await response.blob();
+
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "parking-lot-qr.png";
+      link.click();
+
+      window.URL.revokeObjectURL(url);
+
+      toast.success("QR code downloaded successfully");
+    } catch (error) {
+      toast.error("Failed to download QR code");
+    } finally {
+      setIsDownloadingQR(false);
     }
   };
 
@@ -916,9 +968,20 @@ export default function MyParkingLotPage() {
               </div>
               <button
                 onClick={handleDownloadQR}
-                className="w-full sm:w-auto self-start flex items-center justify-center gap-2 px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover,var(--color-primary))] text-white text-xs font-semibold rounded-xl shadow-md shadow-[var(--color-primary)]/10 transition-all active:scale-[0.97]"
+                disabled={isDownloadingQR}
+                className="w-full sm:w-auto self-start flex items-center justify-center gap-2 px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover,var(--color-primary))] text-white text-xs font-semibold rounded-xl shadow-md shadow-[var(--color-primary)]/10 transition-all active:scale-[0.97] disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                <Download size={13} strokeWidth={2.5} /> Download Ticket QR
+                {isDownloadingQR ? (
+                  <>
+                    <div className="h-3.5 w-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Downloading...
+                  </>
+                ) : (
+                  <>
+                    <Download size={13} strokeWidth={2.5} />
+                    Download Ticket QR
+                  </>
+                )}
               </button>
             </div>
           </div>

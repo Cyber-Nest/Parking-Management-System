@@ -346,7 +346,7 @@ export default function OfficerManagementPage() {
         {/* Table */}
         <div className="bg-[var(--color-surface)] rounded-[var(--radius-lg)] shadow-[var(--shadow-soft)] overflow-hidden border border-[var(--color-border)]">
           <div className="overflow-x-auto no-scrollbar">
-            <table className="w-full text-left border-collapse min-w-[1000px]">
+            <table className="w-full table-fixed border-collapse">
               <thead className="bg-[var(--color-surface-soft)] border-b border-[var(--color-border)]">
                 <tr className="text-[11px] uppercase text-[var(--color-text-secondary)] font-black tracking-widest">
                   <th className="px-6 py-5">Officer ID</th>
@@ -377,8 +377,11 @@ export default function OfficerManagementPage() {
                       key={idx}
                       className="hover:bg-[var(--color-surface-soft)]/50 transition-colors"
                     >
-                      <td className="px-6 py-4 font-bold text-[var(--color-primary)]">
-                        {officer.id}
+                      <td
+                        className="px-6 py-4 font-bold text-[var(--color-primary)]"
+                        title={officer.id}
+                      >
+                        {truncateId(officer.id)}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">

@@ -33,6 +33,7 @@ import { listParkingZones, ParkingZoneRecord } from "@/services/parking-zones.se
 import { TableSkeleton } from "@/components/common/TableSkeleton";
 import { ActionButton } from "@/components/common/ActionButton";
 import toast from "react-hot-toast";
+import { truncateId } from "@/lib/truncateId";
 
 interface PlanForm {
   name: string;
@@ -470,7 +471,7 @@ export default function ParkingPlanAndRulesPage() {
                 <th className="px-6 py-5">Duration / Fine</th>
                 <th className="px-6 py-5">Price / Grace</th>
                 <th className="px-6 py-5">Status</th>
-                <th className="px-6 py-5">Updated</th>
+                {/* <th className="px-6 py-5">Updated</th> */}
                 <th className="px-6 py-5 text-center">Actions</th>
               </tr>
             </thead>
@@ -493,8 +494,8 @@ export default function ParkingPlanAndRulesPage() {
                     key={idx}
                     className="hover:bg-[var(--color-surface-soft)]/50 transition-colors"
                   >
-                    <td className="px-6 py-4 font-bold text-[var(--color-primary)]">
-                      {item.id}
+                    <td className="px-6 py-4 font-bold text-[var(--color-primary)]" title={item.id}>
+                      {truncateId(item.id)}
                     </td>
                     <td className="px-6 py-4">
                       <div className="font-bold text-[var(--color-text-primary)]">
@@ -539,12 +540,12 @@ export default function ParkingPlanAndRulesPage() {
                         {item.status}
                       </button>
                     </td>
-                    <td className="px-6 py-4">
+                    {/* <td className="px-6 py-4">
                       <div className="font-medium">{item.updatedDate}</div>
                       <div className="text-[11px] text-[var(--color-text-muted)] font-bold">
                         {item.updatedTime}
                       </div>
-                    </td>
+                    </td> */}
                     <td className="px-6 py-4">
                       <div className="flex justify-center gap-2">
                         <ActionButton

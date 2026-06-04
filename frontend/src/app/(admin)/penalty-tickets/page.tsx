@@ -39,6 +39,7 @@ import toast from "react-hot-toast";
 import { printKeyValuePayload } from "@/lib/printPayload";
 import { ParkingLotFilter } from "@/components/common/ParkingLotFilter";
 import { listParkingLots, ParkingLotRecord } from "@/services/parking-lots.service";
+import { truncateId } from "@/lib/truncateId";
 
 const PERIOD_TABS = [
   "Today",
@@ -513,7 +514,7 @@ export default function PenaltyTicketsPage() {
                   <th className="px-6 py-5">License Plate</th>
                   <th className="px-6 py-5">Violation Type</th>
                   <th className="px-6 py-5">Parking Lot</th>
-                  <th className="px-6 py-5">Location</th>
+                  {/* <th className="px-6 py-5">Location</th> */}
                   <th className="px-6 py-5">Officer</th>
                   <th className="px-6 py-5">Amount</th>
                   <th className="px-6 py-5">Status</th>
@@ -539,8 +540,8 @@ export default function PenaltyTicketsPage() {
                       key={idx}
                       className="hover:bg-[var(--color-surface-soft)]/50 transition-colors"
                     >
-                      <td className="px-6 py-4 font-bold text-[var(--color-primary)]">
-                        {ticket.ticketNo || ticket.id}
+                      <td className="px-6 py-4 font-bold text-[var(--color-primary)]" title={ticket.ticketNo || ticket.id}>
+                        {truncateId(ticket.ticketNo || ticket.id)}
                       </td>
                       <td className="px-6 py-4 font-bold text-[var(--color-text-primary)]">
                         {ticket.plate}
@@ -555,21 +556,21 @@ export default function PenaltyTicketsPage() {
                           {ticket.parkingLotName || "Unassigned"}
                         </div>
                         {ticket.parkingLotId ? (
-                          <div className="text-[10px] text-[var(--color-text-muted)] font-mono">
-                            {ticket.parkingLotId}
+                          <div className="text-[10px] text-[var(--color-text-muted)] font-mono" title={ticket.parkingLotId}>
+                            {truncateId(ticket.parkingLotId)}
                           </div>
                         ) : null}
                        </td>
-                      <td className="px-6 py-4 font-medium text-[var(--color-text-secondary)]">
+                      {/* <td className="px-6 py-4 font-medium text-[var(--color-text-secondary)]">
                         {ticket.location}
-                       </td>
+                       </td> */}
                       <td className="px-6 py-4">
                         <div>
                           <div className="font-bold text-[var(--color-text-primary)]">
                             {ticket.officer}
                           </div>
-                          <div className="text-[11px] text-[var(--color-text-muted)]">
-                            {ticket.officerId}
+                          <div className="text-[11px] text-[var(--color-text-muted)]" title={ticket.officerId}>
+                            {truncateId(ticket.officerId)}
                           </div>
                         </div>
                        </td>
