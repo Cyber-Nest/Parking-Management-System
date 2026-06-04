@@ -47,6 +47,7 @@ export const env = {
   },
 
   frontendUrl: optional("FRONTEND_URL", "http://localhost:3000"),
+  officerLoginUrl: optional("OFFICER_LOGIN_URL", "https://parkssmart.com/officer/login"),
 
   cloudinary: {
     url: optional("CLOUDINARY_URL", ""),

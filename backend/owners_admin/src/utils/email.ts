@@ -614,7 +614,7 @@ export const officerWelcomeTemplate = (name: string, email: string, password: st
                 <tr><td style="font-weight:bold">Email:</td><td style="text-align:right">${email}</td></tr>
                 <tr><td style="font-weight:bold">Password:</td><td style="text-align:right">${password}</td></tr>
               </table>
-              ${frontendUrl ? `<p style="margin:0 0 16px">Sign in here: <a href="${frontendUrl}" style="color:#006B5E">${frontendUrl}</a></p>` : ''}
+              ${frontendUrl ? `<p style="margin:0 0 16px">Sign in here: <a href="${frontendUrl}" style="color:#006B5E">${frontendUrl}</a></p>` : `<p style="margin:0 0 16px">Sign in here: <a href="https://parkssmart.com/officer/login" style="color:#006B5E">https://parkssmart.com/officer/login</a></p>`}
               <p style="color:#666;font-size:13px;margin:6px 0 0">For security, please change your password after first login.</p>
             </td>
           </tr>

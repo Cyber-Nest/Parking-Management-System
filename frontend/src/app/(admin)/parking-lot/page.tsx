@@ -731,14 +731,21 @@ export default function MyParkingLotPage() {
   };
 
   const handleDownloadQR = async () => {
-    const qrUrl = selectedLot
-      ? selectedLot.qr_code_url
-      : parkingOwner?.qrCodeUrl;
-
-    if (!qrUrl) {
+    if (!selectedLot && !parkingOwner) {
       toast.error("No QR code available");
       return;
     }
+
+    let targetLotId = "";
+    if (selectedLot) {
+      targetLotId = selectedLot.id;
+    } else if (parkingOwner) {
+      const first = parkingOwner.zones?.[0];
+      targetLotId = (first && (first as any).parking_lot_id) || first?.id || parkingOwner.id;
+    }
+
+    const targetUrl = `${window.location.origin}/?lotId=${encodeURIComponent(targetLotId)}`;
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(targetUrl)}`;
 
     try {
       setIsDownloadingQR(true);
@@ -939,19 +946,29 @@ export default function MyParkingLotPage() {
           {/* QR  */}
           <div className="bg-[var(--color-surface)] border border-[var(--color-border)]/60 rounded-2xl p-5 shadow-sm shadow-black/[0.01] flex flex-col sm:flex-row items-center gap-5">
             <div className="w-24 h-24 bg-white rounded-xl border border-[var(--color-border)]/80 p-1.5 flex items-center justify-center shrink-0 shadow-sm">
-              {selectedLot?.qr_code_url ? (
-                <img
-                  src={selectedLot.qr_code_url}
-                  alt="Selected lot QR Code"
-                  className="w-full h-full object-contain"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-[var(--color-text-muted)] text-[10px] font-semibold tracking-wide text-center px-2">
-                  {selectedLot
-                    ? "Selected lot has no QR yet"
-                    : "No QR available"}
-                </div>
-              )}
+              {(() => {
+                let targetLotId = selectedLot?.id;
+                if (!targetLotId && parkingOwner) {
+                  const first = parkingOwner.zones?.[0];
+                  targetLotId = (first && (first as any).parking_lot_id) || first?.id || parkingOwner.id;
+                }
+                const targetUrl = targetLotId && typeof window !== "undefined" ? `${window.location.origin}/?lotId=${encodeURIComponent(targetLotId)}` : "";
+                const qrUrl = targetUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(targetUrl)}` : "";
+                
+                return qrUrl ? (
+                  <img
+                    src={qrUrl}
+                    alt="Selected lot QR Code"
+                    className="w-full h-full object-contain"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-[var(--color-text-muted)] text-[10px] font-semibold tracking-wide text-center px-2">
+                    {selectedLot
+                      ? "Selected lot has no QR yet"
+                      : "No QR available"}
+                  </div>
+                );
+              })()}
             </div>
             <div className="flex-1 text-center sm:text-left space-y-3 flex flex-col justify-between h-full">
               <div className="space-y-0.5">
