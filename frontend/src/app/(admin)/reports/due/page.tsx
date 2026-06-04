@@ -33,6 +33,7 @@ import { StatCard } from "@/components/common/StatCard";
 import { TableSkeleton } from "@/components/common/TableSkeleton";
 import { ReportParkingLotFilter } from "@/components/reports/ReportParkingLotFilter";
 import { OutstandingDetailsDrawer } from "@/components/reports/drawers/OutstandingDetailsDrawer";
+import { truncateId } from "@/lib/truncateId";
 
 // Services
 import {
@@ -633,8 +634,8 @@ export default function OutstandingDueReport() {
                     key={idx}
                     className="hover:bg-[var(--color-surface-soft)]/30 transition-colors"
                   >
-                    <td className="px-4 sm:px-6 py-4 font-bold text-[var(--color-primary)]">
-                      {row.ticketId}
+                    <td className="px-4 sm:px-6 py-4 font-bold text-[var(--color-primary)]" title={row.ticketId}>
+                      {truncateId(row.ticketId)}
                     </td>
                     <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-[11px]">
                       {row.ticketDate}

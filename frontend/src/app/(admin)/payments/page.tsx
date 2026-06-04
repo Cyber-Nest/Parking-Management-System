@@ -26,6 +26,7 @@ import {
   Payment,
   PaymentStats,
 } from "@/services/payment.service";
+import { truncateId } from "@/lib/truncateId";
 
 const TYPE_TABS = ["All Types", "Parking", "Penalty", "Extension", "Refund"];
 const PERIOD_TABS = ["Today", "Yesterday", "This Week", "This Month", "Custom Range"];
@@ -535,8 +536,8 @@ export default function PaymentsPage() {
                       key={idx}
                       className="hover:bg-[var(--color-surface-soft)]/50 transition-colors"
                     >
-                      <td className="px-6 py-4 font-bold text-[var(--color-primary)]">
-                        {row.id}
+                      <td className="px-6 py-4 font-bold text-[var(--color-primary)]" title={row.id}>
+                        {truncateId(row.id)}
                       </td>
                       <td className="px-6 py-4">
                         <div className="font-medium text-[var(--color-text-primary)]">
@@ -549,16 +550,16 @@ export default function PaymentsPage() {
                       <td className="px-6 py-4 font-bold text-[var(--color-text-primary)]">
                         {row.plate}
                       </td>
-                      <td className="px-6 py-4 font-bold text-[var(--color-primary)]">
-                        {row.sessionId}
+                      <td className="px-6 py-4 font-bold text-[var(--color-primary)]" title={row.sessionId}>
+                        {truncateId(row.sessionId)}
                       </td>
                       <td className="px-6 py-4">
                         <div className="font-bold text-[var(--color-text-primary)]">
                           {row.parkingLotName || "Unassigned"}
                         </div>
                         {row.parkingLotId ? (
-                          <div className="text-[10px] text-[var(--color-text-muted)] font-mono">
-                            {row.parkingLotId}
+                          <div className="text-[10px] text-[var(--color-text-muted)] font-mono" title={row.parkingLotId}>
+                            {truncateId(row.parkingLotId)}
                           </div>
                         ) : null}
                       </td>

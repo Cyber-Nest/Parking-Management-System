@@ -24,6 +24,7 @@ import { TableSkeleton } from "@/components/common/TableSkeleton";
 import { ReportParkingLotFilter } from "@/components/reports/ReportParkingLotFilter";
 import { PenaltyReportCharts } from "@/components/reports/charts/PenaltyReportCharts";
 import { PenaltyDetailsDrawer } from "@/components/reports/drawers/PenaltyDetailsDrawer";
+import { truncateId } from "@/lib/truncateId";
 
 import {
   penaltyReportService,
@@ -722,8 +723,8 @@ export default function PenaltyReport() {
                     <td className="px-4 sm:px-6 py-4 font-medium text-[var(--color-text-primary)]">
                       {row.date}
                     </td>
-                    <td className="px-4 sm:px-6 py-4 font-bold text-[var(--color-primary)]">
-                      {row.ticketId}
+                    <td className="px-4 sm:px-6 py-4 font-bold text-[var(--color-primary)]" title={row.ticketId}>
+                      {truncateId(row.ticketId)}
                     </td>
                     <td className="px-4 sm:px-6 py-4 text-[var(--color-text-primary)]">
                       {row.violationType}

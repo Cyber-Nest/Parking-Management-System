@@ -30,6 +30,7 @@ import { TableSkeleton } from "@/components/common/TableSkeleton";
 import { ReportParkingLotFilter } from "@/components/reports/ReportParkingLotFilter";
 import { OfficerPerformanceCharts } from "@/components/reports/charts/OfficerPerformanceCharts";
 import { OfficerDetailsDrawer } from "@/components/reports/drawers/OfficerDetailsDrawer";
+import { truncateId } from "@/lib/truncateId";
 
 // Services
 import {
@@ -579,8 +580,8 @@ export default function OfficerPerformanceReport() {
                           <div className="text-[var(--color-text-primary)] font-bold text-sm">
                             {row.name}
                           </div>
-                          <div className="text-[10px] text-[var(--color-text-muted)]">
-                            {row.officerId}
+                          <div className="text-[10px] text-[var(--color-text-muted)]" title={row.officerId}>
+                            {truncateId(row.officerId)}
                           </div>
                         </div>
                       </div>

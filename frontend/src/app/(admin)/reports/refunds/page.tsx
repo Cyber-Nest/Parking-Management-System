@@ -592,7 +592,7 @@ export default function RefundsAdjustmentsReport() {
             <thead className="bg-[var(--color-surface-soft)] border-b border-[var(--color-border)]">
               <tr className="text-[10px] uppercase text-[var(--color-text-muted)] font-black tracking-widest">
                 <th className="px-4 sm:px-6 py-4">Date & Time</th>
-                <th className="px-4 sm:px-6 py-4">Type</th>
+                {/* <th className="px-4 sm:px-6 py-4">Type</th> */}
                 <th className="px-4 sm:px-6 py-4">Reference ID</th>
                 <th className="px-4 sm:px-6 py-4">Related To</th>
                 <th className="px-4 sm:px-6 py-4">Plate / User</th>
@@ -622,13 +622,13 @@ export default function RefundsAdjustmentsReport() {
                     <td className="px-4 sm:px-6 py-4 text-[11px] whitespace-nowrap">
                       {row.dateTime}
                     </td>
-                    <td className="px-4 sm:px-6 py-4">
+                    {/* <td className="px-4 sm:px-6 py-4">
                       <span
                         className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase ${row.type === "Refund" ? "bg-rose-100 text-rose-600" : "bg-blue-100 text-blue-600"}`}
                       >
                         {row.type}
                       </span>
-                    </td>
+                    </td> */}
                     <td className="px-4 sm:px-6 py-4 font-mono text-[11px] font-bold text-[var(--color-primary)]">
                       {row.referenceId}
                     </td>

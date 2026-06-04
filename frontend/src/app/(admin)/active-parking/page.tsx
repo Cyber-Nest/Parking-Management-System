@@ -28,6 +28,7 @@ import {
   ParkingSession,
   DashboardStats,
 } from "@/services/parking.service";
+import { truncateId } from "@/lib/truncateId";
 
 // Helper Functions
 const formatDate = (date: string) =>
@@ -378,8 +379,8 @@ export default function ActiveParkingSessionsPage() {
                       className="hover:bg-[var(--color-surface-soft)]/50 transition-colors"
                     >
                       <td className="px-6 py-4">
-                        <div className="font-bold text-[var(--color-primary)]">
-                          {row.id}
+                        <div className="font-bold text-[var(--color-primary)]" title={row.id}>
+                          {truncateId(row.id)}
                         </div>
                         {/* <div className="mt-1 text-[10px] text-[var(--color-text-muted)] font-mono">
                           Plan ID: {row.planId ?? "—"}
@@ -401,8 +402,8 @@ export default function ActiveParkingSessionsPage() {
                           {row.parkingLotName || "Unassigned"}
                         </div>
                         {row.parkingLotId ? (
-                          <div className="text-[10px] text-[var(--color-text-muted)] font-mono">
-                            {row.parkingLotId}
+                          <div className="text-[10px] text-[var(--color-text-muted)] font-mono" title={row.parkingLotId}>
+                            {truncateId(row.parkingLotId)}
                           </div>
                         ) : null}
                       </td>
