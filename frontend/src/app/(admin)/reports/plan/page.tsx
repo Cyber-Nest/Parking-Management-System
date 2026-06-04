@@ -428,7 +428,7 @@ export default function PlanPerformanceReport() {
                   </div>
                 )}
                 
-                <div className="space-y-1.5">
+                {/* <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
                     Location
                   </label>
@@ -443,7 +443,7 @@ export default function PlanPerformanceReport() {
                       <option key={opt}>{opt}</option>
                     ))}
                   </select>
-                </div>
+                </div> */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
                     Plan Type

@@ -167,7 +167,7 @@ export class InvoiceService {
       // Customer info
       doc.fontSize(11).font("Helvetica-Bold").text("CUSTOMER INFORMATION");
       doc.fontSize(10).font("Helvetica");
-      doc.text(`Name: ${invoice.customer_name || "N/A"}`);
+      // doc.text(`Name: ${invoice.customer_name || "N/A"}`);
       doc.text(`Email: ${invoice.customer_email}`);
       if (invoice.vehicle_plate_number) {
         doc.text(

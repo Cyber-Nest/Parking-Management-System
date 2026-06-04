@@ -102,7 +102,7 @@ const ZoneCard = ({
       </div>
 
       <div className="inline-flex items-center gap-1 text-xs font-semibold text-[var(--color-primary)] bg-[var(--color-primary)]/[0.04] px-2.5 py-1 rounded-lg border border-[var(--color-primary)]/10">
-        <span>{(zone as any).rate || 0}</span>
+        <span>${(zone as any).rate || 0}</span>
         <span className="text-[var(--color-text-muted)] font-normal">
           /hour
         </span>

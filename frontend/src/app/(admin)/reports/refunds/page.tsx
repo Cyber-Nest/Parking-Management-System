@@ -492,7 +492,7 @@ export default function RefundsAdjustmentsReport() {
                     ))}
                   </select>
                 </div>
-                <div className="space-y-1.5">
+                {/* <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
                     Location
                   </label>
@@ -507,7 +507,7 @@ export default function RefundsAdjustmentsReport() {
                       <option key={opt}>{opt}</option>
                     ))}
                   </select>
-                </div>
+                </div> */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
                     Processed By

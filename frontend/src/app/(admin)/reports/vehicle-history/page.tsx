@@ -628,7 +628,7 @@ export default function VehicleHistoryReport() {
             )}
 
             {/* Location */}
-            <div className="space-y-1.5">
+            {/* <div className="space-y-1.5">
               <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-wider flex items-center gap-1.5">
                 <MapPin size={12} /> Location
               </label>
@@ -653,7 +653,7 @@ export default function VehicleHistoryReport() {
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] pointer-events-none"
                 />
               </div>
-            </div>
+            </div> */}
 
             {/* Search In */}
             <div className="space-y-1.5">
