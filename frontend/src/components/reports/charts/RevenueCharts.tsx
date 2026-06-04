@@ -82,7 +82,7 @@ export const RevenueCharts = ({
               Income analysis over time
             </p>
           </div>
-          <div className="flex bg-[var(--color-surface-soft)] p-1 rounded-xl border border-[var(--color-border)]">
+          {/* <div className="flex bg-[var(--color-surface-soft)] p-1 rounded-xl border border-[var(--color-border)]">
             {filterOptions.map((option) => (
               <button
                 key={option.value}
@@ -96,7 +96,7 @@ export const RevenueCharts = ({
                 {option.label}
               </button>
             ))}
-          </div>
+          </div> */}
         </div>
 
         <div className="h-[240px] w-full">

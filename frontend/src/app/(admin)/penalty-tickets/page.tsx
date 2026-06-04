@@ -514,7 +514,7 @@ export default function PenaltyTicketsPage() {
                   <th className="px-6 py-5">License Plate</th>
                   <th className="px-6 py-5">Violation Type</th>
                   <th className="px-6 py-5">Parking Lot</th>
-                  <th className="px-6 py-5">Location</th>
+                  {/* <th className="px-6 py-5">Location</th> */}
                   <th className="px-6 py-5">Officer</th>
                   <th className="px-6 py-5">Amount</th>
                   <th className="px-6 py-5">Status</th>
@@ -561,9 +561,9 @@ export default function PenaltyTicketsPage() {
                           </div>
                         ) : null}
                        </td>
-                      <td className="px-6 py-4 font-medium text-[var(--color-text-secondary)]">
+                      {/* <td className="px-6 py-4 font-medium text-[var(--color-text-secondary)]">
                         {ticket.location}
-                       </td>
+                       </td> */}
                       <td className="px-6 py-4">
                         <div>
                           <div className="font-bold text-[var(--color-text-primary)]">
