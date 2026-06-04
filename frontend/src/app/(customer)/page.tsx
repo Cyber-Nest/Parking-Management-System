@@ -97,9 +97,16 @@ export default function LandingPage() {
 
         const lotId = searchParams.get("lotId");
         const zoneId = searchParams.get("zoneId");
+
+        // If no lotId or zoneId in URL, don't call any API - show "Scan QR" state
+        const lookupId = lotId || zoneId;
+        if (!lookupId) {
+          setLoading(false);
+          return;
+        }
+
         const currentUrl = `${window.location.pathname}${window.location.search}`;
         setReturnUrl(currentUrl);
-        const lookupId = lotId || zoneId || process.env.NEXT_PUBLIC_DEFAULT_ZONE_ID || "ZONE-201";
 
         const response = await customerService.getParkingZoneById(lookupId);
 
@@ -206,7 +213,10 @@ export default function LandingPage() {
                 <>
                   <img
                     src={selectedZone?.image || parkingData?.image}
-                    alt={(selectedZone?.zoneName || parkingData?.parkingName) ?? "Premium Parking"}
+                    alt={
+                      (selectedZone?.zoneName || parkingData?.parkingName) ??
+                      "Premium Parking"
+                    }
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-70"
                     onError={(e) => {
                       e.currentTarget.onerror = null;
@@ -259,8 +269,7 @@ export default function LandingPage() {
 
                       <span className="text-sm md:text-base font-light italic">
                         {/* {selectedZone?.address || parkingData?.address} */}
-                                                {parkingData?.address}
-
+                        {parkingData?.address}
                       </span>
                     </div>
                   </>
@@ -308,9 +317,9 @@ export default function LandingPage() {
                             {/* Address */}
                             {zone.address && (
                               <span
-                              className={`text-[10px] font-mono font-bold ${
-                                isActive ? "text-black/60" : "text-[#4B5563]"
-                              }`}
+                                className={`text-[10px] font-mono font-bold ${
+                                  isActive ? "text-black/60" : "text-[#4B5563]"
+                                }`}
                                 title={zone.address}
                               >
                                 {zone.address}
