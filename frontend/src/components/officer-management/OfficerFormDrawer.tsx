@@ -112,6 +112,8 @@ export const OfficerFormDrawer = ({
     formData.profilePhoto || null,
   );
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;

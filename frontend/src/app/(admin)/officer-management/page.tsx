@@ -28,6 +28,7 @@ import {
 } from "@/components/officer-management/OfficerFormDrawer";
 import { officerService, Officer } from "@/services/officer.service";
 import { createOfficer, updateOfficer } from "@/services/officers.service";
+import { truncateId } from "@/lib/truncateId";
 
 const initialFormData: OfficerFormData = {
   countryCode: "+1",
@@ -385,7 +386,7 @@ export default function OfficerManagementPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden flex items-center justify-center">
+                          {/* <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden flex items-center justify-center">
                             {officer.profilePhoto ? (
                               <img
                                 src={officer.profilePhoto}
@@ -397,7 +398,7 @@ export default function OfficerManagementPage() {
                                 {officer.name?.charAt(0)}
                               </span>
                             )}
-                          </div>
+                          </div> */}
                           <div>
                             <div className="font-black text-sm">
                               {officer.name}
