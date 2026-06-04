@@ -160,16 +160,19 @@ export default function VehicleDetailsPage() {
     (((customHours || 0) * 60 + (customMinutes || 0)) / 60) *
     (parkingDetails?.hourlyRate || 0);
 
-  const displayDurationLabel = selectedDuration?.label ?? selectedDurationValue;
   const displayPrice =
-    selectedDurationValue === 'custom'
+    selectedDurationValue === "custom"
       ? customPrice
-      : selectedDuration
-        ? parkingDetails?.hourlyRate
-          ? (selectedDuration.minutes / 60) * parkingDetails.hourlyRate
-          : selectedDuration.price
-        : 0;
+      : selectedDuration?.price || 0;
 
+  const formatDuration = (minutes: number) => {
+    const hrs = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+
+    if (hrs && mins) return `${hrs} Hr ${mins} Min`;
+    if (hrs) return `${hrs} Hr`;
+    return `${mins} Min`;
+  };
   const handleProceedToPayment = async () => {
     if (!parkingDetails) {
       toast.error("Parking details missing", {
@@ -330,7 +333,9 @@ export default function VehicleDetailsPage() {
               </label>
               <select
                 value={selectedDurationValue}
-                onChange={(event) => setSelectedDurationValue(event.target.value)}
+                onChange={(event) =>
+                  setSelectedDurationValue(event.target.value)
+                }
                 disabled={loadingPlans || durations.length === 0}
                 className="w-full bg-[#1A1A1A] border border-white/5 rounded-xl py-3.5 px-4 focus:border-[#C6F432]/40 focus:outline-none transition-all text-sm disabled:opacity-50"
               >
@@ -353,7 +358,8 @@ export default function VehicleDetailsPage() {
                   Total Due
                 </p>
                 <p className="text-lg font-bold mt-0.5">
-                  Summary for {displayDurationLabel}
+                  Summary for {formatDuration(selectedDuration?.minutes || 0)}{" "}
+                  Duration
                 </p>
                 <p className="text-[#C6F432] text-3xl font-black font-mono tracking-tighter lg:text-5xl mt-2">
                   ${displayPrice.toFixed(2)}

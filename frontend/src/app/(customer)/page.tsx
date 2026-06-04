@@ -112,7 +112,7 @@ export default function LandingPage() {
 
         setParkingData(response);
 
-        if ((response?.zones?.length ?? 0) > 1) {
+        if ((response?.zones?.length ?? 0) > 0) {
           const defaultZone = response?.zones?.[0];
 
           setSelectedZone(defaultZone);
