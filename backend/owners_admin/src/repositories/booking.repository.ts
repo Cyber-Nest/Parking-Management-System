@@ -71,7 +71,7 @@ export class BookingRepository {
         base_price, tax_amount, service_fee, total_price, currency, spot_id,
         zone_name, booking_status, payment_status, grace_period_minutes,
         stripe_payment_intent_id, metadata
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'unpaid', ?, ?, ?)`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'unpaid', ?, ?, ?)`,
       [
         id,
         booking_reference,

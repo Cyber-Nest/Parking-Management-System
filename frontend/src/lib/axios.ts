@@ -55,7 +55,9 @@ axiosInstance.interceptors.response.use(
       document.cookie = "refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
       const currentPath = window.location.pathname;
       const isAuthPath = ["/admin/login", "/officer/login", "/officer/forgot-password", "/officer/reset-password"].includes(currentPath);
-      if (!isAuthPath) {
+      // Only redirect for admin/officer routes, not for customer routes
+      const isCustomerRoute = currentPath.includes("/payment") || currentPath.includes("/vehicle-details") || currentPath.includes("/booking") || currentPath.includes("/extend") || currentPath.includes("/penalty");
+      if (!isAuthPath && !isCustomerRoute) {
         window.location.href = currentPath.startsWith("/officer") ? "/officer/login" : "/admin/login";
       }
     }
