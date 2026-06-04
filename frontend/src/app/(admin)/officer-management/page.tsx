@@ -28,8 +28,6 @@ import {
 } from "@/components/officer-management/OfficerFormDrawer";
 import { officerService, Officer } from "@/services/officer.service";
 import { createOfficer, updateOfficer } from "@/services/officers.service";
-import { ParkingLotFilter } from "@/components/common/ParkingLotFilter";
-import { listParkingLots, ParkingLotRecord } from "@/services/parking-lots.service";
 
 const initialFormData: OfficerFormData = {
   countryCode: "+1",
@@ -48,7 +46,6 @@ const initialFormData: OfficerFormData = {
   addressProvince: "",
   addressPostalCode: "",
   profilePhoto: null,
-  parkingLotId: null,
 };
 
 export default function OfficerManagementPage() {
@@ -63,8 +60,6 @@ export default function OfficerManagementPage() {
   const [roleFilter, setRoleFilter] = useState("All Roles");
   const [currentPage, setCurrentPage] = useState(1);
   const [formData, setFormData] = useState<OfficerFormData>(initialFormData);
-  const [parkingLots, setParkingLots] = useState<ParkingLotRecord[]>([]);
-  const [parkingLotId, setParkingLotId] = useState("");
 
   const itemsPerPage = 10;
 
@@ -73,7 +68,7 @@ export default function OfficerManagementPage() {
     const fetchOfficers = async () => {
       try {
         setLoading(true);
-        const items = await officerService.getOfficers({ parking_lot_id: parkingLotId || undefined });
+        const items = await officerService.getOfficers();
         setOfficers(items);
       } catch (error) {
         console.error(error);
@@ -82,10 +77,6 @@ export default function OfficerManagementPage() {
       }
     };
     fetchOfficers();
-  }, [parkingLotId]);
-
-  useEffect(() => {
-    listParkingLots().then(setParkingLots).catch((error) => console.error("Failed to load parking lots", error));
   }, []);
 
   // Stats
@@ -163,7 +154,6 @@ export default function OfficerManagementPage() {
       addressProvince: officer.addressProvince || "",
       addressPostalCode: officer.addressPostalCode || "",
       profilePhoto: officer.profilePhoto || null,
-      parkingLotId: officer.parkingLotId || null,
     });
     setIsFormOpen(true);
   };
@@ -185,7 +175,7 @@ export default function OfficerManagementPage() {
           : "DISABLED";
       await officerService.setOfficerStatus(officerId, newStatus);
       // Refresh the list
-      const items = await officerService.getOfficers({ parking_lot_id: parkingLotId || undefined });
+      const items = await officerService.getOfficers();
       setOfficers(items);
       toast.success(
         `Officer ${newStatus === "DISABLED" ? "disabled" : "enabled"} successfully`,
@@ -209,7 +199,6 @@ export default function OfficerManagementPage() {
     setSearchQuery("");
     setStatusFilter("All Status");
     setRoleFilter("All Roles");
-    setParkingLotId("");
     setCurrentPage(1);
   };
 
@@ -219,8 +208,8 @@ export default function OfficerManagementPage() {
   };
 
   const handleSubmitOfficer = async (data: OfficerFormData) => {
-    if (!data.name || !data.email || !data.phone || !data.role || !data.parkingLotId) {
-      toast.error("Please fill all required fields including parking lot");
+    if (!data.name || !data.email || !data.phone || !data.role) {
+      toast.error("Please fill all required fields");
       return;
     }
 
@@ -231,7 +220,6 @@ export default function OfficerManagementPage() {
           phone: data.phone,
           role: mapRole(data.role),
           badge_number: data.employeeId || undefined,
-          parking_lot_id: data.parkingLotId,
         });
         toast.success("Officer updated");
       } else {
@@ -241,11 +229,10 @@ export default function OfficerManagementPage() {
           phone: data.phone,
           role: mapRole(data.role),
           badge_number: data.employeeId || undefined,
-          parking_lot_id: data.parkingLotId,
         });
         toast.success("Officer created");
       }
-      const items = await officerService.getOfficers({ parking_lot_id: parkingLotId || undefined });
+      const items = await officerService.getOfficers();
       setOfficers(items);
       setIsFormOpen(false);
       resetForm();
@@ -348,14 +335,6 @@ export default function OfficerManagementPage() {
             <option>OFFICER</option>
             <option>SUPERVISOR</option>
           </select>
-          <ParkingLotFilter
-            lots={parkingLots}
-            value={parkingLotId}
-            onChange={(value) => {
-              setParkingLotId(value);
-              setCurrentPage(1);
-            }}
-          />
           <button
             onClick={handleResetFilters}
             className="p-2.5 border border-[var(--color-border)] rounded-[var(--radius-md)] text-[var(--color-text-secondary)] hover:bg-[var(--color-bg)] transition-all"
@@ -373,7 +352,6 @@ export default function OfficerManagementPage() {
                   <th className="px-6 py-5">Officer ID</th>
                   <th className="px-6 py-5">Officer Details</th>
                   <th className="px-6 py-5">Role</th>
-                  <th className="px-6 py-5">Parking Lot</th>
                   <th className="px-6 py-5">Login Status</th>
                   <th className="px-6 py-5">Access</th>
                   <th className="px-6 py-5 text-center">Tickets</th>
@@ -383,11 +361,11 @@ export default function OfficerManagementPage() {
               </thead>
               <tbody className="divide-y divide-[var(--color-border)] text-[13px]">
                 {loading ? (
-                  <TableSkeleton rows={5} cols={9} />
+                  <TableSkeleton rows={5} cols={8} />
                 ) : paginatedOfficers.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={9}
+                      colSpan={8}
                       className="text-center py-16 text-sm font-semibold text-gray-400"
                     >
                       No officers found.
@@ -434,16 +412,6 @@ export default function OfficerManagementPage() {
                         <span className="px-2.5 py-1 rounded-md bg-indigo-50 text-indigo-600 text-[10px] font-black border border-indigo-100 uppercase">
                           {officer.role}
                         </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="font-bold text-[var(--color-text-primary)]">
-                          {parkingLots.find((lot) => lot.id === officer.parkingLotId)?.lot_name || "Not assigned"}
-                        </div>
-                        {officer.parkingLotId ? (
-                          <div className="text-[10px] text-[var(--color-text-muted)] font-mono">
-                            {officer.parkingLotId}
-                          </div>
-                        ) : null}
                       </td>
                       <td className="px-6 py-4">
                         <span

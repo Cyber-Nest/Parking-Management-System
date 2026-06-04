@@ -13,6 +13,7 @@ import {
   BrandingSettings,
 } from "@/services/settings.service";
 import { getTokenValue } from "@/lib/axios";
+import axios from "axios";
 
 interface SystemContextType {
   system: SystemSettings | null;
@@ -99,9 +100,25 @@ export const SystemProvider = ({ children }: { children: React.ReactNode }) => {
       if (stored.branding) setBranding(stored.branding);
 
       const token = getTokenValue("token");
-      const isAdminArea = window.location.pathname.startsWith("/admin");
-      if (!token || !isAdminArea) {
-        // Fetch settings only for authenticated admin/admin area users.
+      const currentPath = window.location.pathname;
+      const isAuthPath = [
+        "/admin/login",
+        "/officer/login",
+        "/officer/forgot-password",
+        "/officer/reset-password",
+      ].includes(currentPath);
+      const isCustomerPath =
+        currentPath === "/" ||
+        currentPath.startsWith("/vehicle-details") ||
+        currentPath.startsWith("/payment") ||
+        currentPath.startsWith("/pay") ||
+        currentPath.startsWith("/qr") ||
+        currentPath.startsWith("/receipt") ||
+        currentPath.startsWith("/penalty-payment") ||
+        currentPath.startsWith("/penalty-dispute") ||
+        currentPath.startsWith("/customer");
+
+      if (!token || isAuthPath || isCustomerPath) {
         setLoading(false);
         return;
       }
@@ -122,6 +139,11 @@ export const SystemProvider = ({ children }: { children: React.ReactNode }) => {
       applySystemToStorage(systemRes);
       applyBrandingToStorage(brandingRes);
     } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        setSystem(null);
+        setBranding(null);
+        return;
+      }
       console.error("Failed to fetch settings:", error);
     } finally {
       setLoading(false);

@@ -16,6 +16,7 @@ export class ParkingPlanService {
     tax_percent?: number;
     status?: string;
     parking_lot_id?: string | null;
+    parking_zone_id?: string | null;
   }) {
     if (!body.name?.trim()) {
       throw new ValidationError('name is required');
@@ -35,6 +36,7 @@ export class ParkingPlanService {
       tax_percent: body.tax_percent,
       status: body.status,
       parking_lot_id: body.parking_lot_id,
+      parking_zone_id: body.parking_zone_id,
     });
     return parkingPlanRepo.findById(id);
   }
@@ -49,11 +51,13 @@ export class ParkingPlanService {
       tax_percent?: number;
       status?: string;
       parking_lot_id?: string | null;
+      parking_zone_id?: string | null;
     }
   ) {
     const affected = await parkingPlanRepo.update(id, {
       ...body,
       parking_lot_id: body.parking_lot_id,
+      parking_zone_id: body.parking_zone_id,
     });
     if (affected === 0) {
       const exists = await parkingPlanRepo.findById(id);

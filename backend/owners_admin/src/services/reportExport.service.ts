@@ -1,6 +1,7 @@
 import ExcelJS from 'exceljs';
 import PDFDocument from 'pdfkit';
 import { BadRequestError } from './commonErrors';
+import { queryRows } from '../config/database';
 
 type ExportFormat = 'pdf' | 'excel';
 type PdfDoc = InstanceType<typeof PDFDocument>;
@@ -35,6 +36,40 @@ const tableFromArray = (rows: unknown[]): { headers: string[]; body: (string | n
 };
 
 const PDF_TABLE_ROW_CAP = 200;
+
+interface ReportBusinessHeader {
+    legalName: string;
+    parkingLot: string;
+    operatingName: string;
+    address: string;
+    phone: string;
+    email: string;
+}
+
+const getReportBusinessHeader = async (parkingLotId?: string): Promise<ReportBusinessHeader> => {
+    const brandingRows = await queryRows<{ system_name?: string | null }>(
+        'SELECT system_name FROM branding_settings ORDER BY updated_at DESC LIMIT 1'
+    );
+    const lotRows = parkingLotId
+        ? await queryRows<{ lot_name?: string | null; address?: string | null }>(
+            'SELECT lot_name, address FROM parking_lots WHERE id = ? LIMIT 1',
+            [parkingLotId]
+        )
+        : [];
+    const adminRows = await queryRows<{ email?: string | null }>(
+        'SELECT email FROM admins ORDER BY created_at ASC LIMIT 1'
+    );
+    const operatingName = brandingRows[0]?.system_name?.trim() || 'ParkSmart';
+
+    return {
+        legalName: operatingName,
+        parkingLot: lotRows[0]?.lot_name?.trim() || 'All parking lots',
+        operatingName,
+        address: lotRows[0]?.address?.trim() || '',
+        phone: '',
+        email: adminRows[0]?.email?.trim() || '',
+    };
+};
 
 const ensureVerticalSpace = (doc: PdfDoc, y: number, need: number): number => {
     const bottom = doc.page.height - doc.page.margins.bottom;
@@ -185,7 +220,7 @@ const walkDataPdf = (doc: PdfDoc, data: unknown): void => {
     doc.fontSize(10).text(cellString(data) as string);
 };
 
-const buildPdf = async (reportType: string, data: unknown): Promise<Buffer> =>
+const buildPdf = async (reportType: string, data: unknown, header: ReportBusinessHeader): Promise<Buffer> =>
     new Promise((resolve, reject) => {
         const doc = new PDFDocument({ margin: 48, size: 'LETTER' });
         const chunks: Buffer[] = [];
@@ -194,6 +229,19 @@ const buildPdf = async (reportType: string, data: unknown): Promise<Buffer> =>
         doc.on('error', reject);
 
         doc.fontSize(16).text(`Parking Management — ${reportType.replace(/-/g, ' ')}`, { underline: true });
+        doc.moveDown(0.5);
+        doc.fontSize(9).fillColor('#111111');
+        [
+            ['Legal Name of Company', header.legalName],
+            ['Parking Lot', header.parkingLot],
+            ['Operating Name', header.operatingName],
+            ['Address', header.address],
+            ['Phone', header.phone],
+            ['Email', header.email],
+        ].forEach(([label, value]) => {
+            doc.font('Helvetica-Bold').text(`${label}: `, { continued: true });
+            doc.font('Helvetica').text(value || '');
+        });
         doc.moveDown(0.5);
         doc.fontSize(9).fillColor('#555').text(`Generated: ${new Date().toISOString()}`);
         doc.fillColor('#000');
@@ -234,11 +282,18 @@ const addKeyValueSheet = (workbook: ExcelJS.Workbook, sheetName: string, obj: Re
     });
 };
 
-const buildExcel = async (reportType: string, data: unknown): Promise<Buffer> => {
+const buildExcel = async (reportType: string, data: unknown, header: ReportBusinessHeader): Promise<Buffer> => {
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Parking Management';
     workbook.created = new Date();
     const meta = workbook.addWorksheet('Info');
+    meta.addRow(['Legal Name of Company', header.legalName]);
+    meta.addRow(['Parking Lot', header.parkingLot]);
+    meta.addRow(['Operating Name', header.operatingName]);
+    meta.addRow(['Address', header.address]);
+    meta.addRow(['Phone', header.phone]);
+    meta.addRow(['Email', header.email]);
+    meta.addRow([]);
     meta.addRow(['Report', reportType]);
     meta.addRow(['Generated', new Date().toISOString()]);
 
@@ -262,16 +317,17 @@ const buildExcel = async (reportType: string, data: unknown): Promise<Buffer> =>
 };
 
 export class ReportExportService {
-    async buildBuffer(reportType: string, format: string, data: unknown): Promise<{ buffer: Buffer; mime: string; ext: string }> {
+    async buildBuffer(reportType: string, format: string, data: unknown, parkingLotId?: string): Promise<{ buffer: Buffer; mime: string; ext: string }> {
         const fmt = format.toLowerCase() as ExportFormat;
         if (fmt !== 'pdf' && fmt !== 'excel') {
             throw new BadRequestError('format must be pdf or excel');
         }
+        const header = await getReportBusinessHeader(parkingLotId);
         if (fmt === 'pdf') {
-            const buffer = await buildPdf(reportType, data);
+            const buffer = await buildPdf(reportType, data, header);
             return { buffer, mime: 'application/pdf', ext: 'pdf' };
         }
-        const buffer = await buildExcel(reportType, data);
+        const buffer = await buildExcel(reportType, data, header);
         return {
             buffer,
             mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

@@ -53,11 +53,12 @@ export const getParkingPlansForLot = async (
 ): Promise<void> => {
   try {
     const lotId = String(req.query.lotId ?? '');
-    if (!lotId) {
-      res.status(400).json({ success: false, message: 'lotId query parameter is required' });
+    const zoneId = String(req.query.zoneId ?? '');
+    if (!lotId || !zoneId) {
+      res.status(400).json({ success: false, message: 'lotId and zoneId query parameters are required' });
       return;
     }
-    const data = await customerService.getParkingPlansForLot(lotId);
+    const data = await customerService.getParkingPlansForLot(lotId, zoneId);
     res.status(200).json({ success: true, message: 'Parking plans fetched', data });
   } catch (err) {
     console.error('[CustomerController] getParkingPlansForLot error:', err);
@@ -99,6 +100,7 @@ export const createBooking = async (
       durationLabel,
       durationMinutes,
       price,
+      planId,
       stripePaymentIntentId,
     } = req.body;
 
@@ -132,6 +134,7 @@ export const createBooking = async (
       durationLabel,
       durationMinutes: Number(durationMinutes),
       price: Number(price),
+      planId,
       stripePaymentIntentId,
     });
 

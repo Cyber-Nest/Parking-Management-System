@@ -10,6 +10,7 @@ export interface ParkingZone {
   availableSpots: number;
   totalSpots: number;
   spotId: string;
+  lotId?: string;
 }
 
 export interface ParkingDetails {
@@ -39,6 +40,7 @@ export interface DurationOption {
   value: string;
   price: number;
   minutes: number;
+  planId?: string;
 }
 
 export interface PaymentIntentResponse {
@@ -201,6 +203,7 @@ class CustomerService {
           availableSpots: Number(z.available_spots ?? 0),
           totalSpots: Number(z.total_spots ?? 0),
           spotId: String(z.spot_id ?? ""),
+          lotId: String(z.parking_lot_id ?? data.lot_id ?? lotId),
         }))
         : undefined;
 
@@ -308,8 +311,8 @@ class CustomerService {
     // Calculate subtotal from parking plan / zone hourly rate when available
     const hourlyRate = payload.parkingDetails?.hourlyRate ?? payload.selectedDuration.price;
     const subtotal = (payload.selectedDuration.minutes / 60) * hourlyRate;
-    const serviceFee = 2;
-    const total = subtotal + serviceFee;
+    const serviceFee = 0;
+    const total = subtotal;
 
     return {
       subtotal,
@@ -350,17 +353,17 @@ class CustomerService {
     const hourlyRate = payload.parkingDetails?.hourlyRate ?? payload.selectedDuration.price;
     const subtotal = (payload.selectedDuration.minutes / 60) * hourlyRate;
     const taxInfo = await this.getTaxPricing(payload.parkingDetails?.lotId);
-    const serviceFee = 2;
+    const serviceFee = 0;
 
     let taxAmount = 0;
     let total = 0;
 
     if (taxInfo.pricesIncludeTax) {
       taxAmount = subtotal - subtotal / (1 + taxInfo.taxRate / 100);
-      total = subtotal + serviceFee;
+      total = subtotal;
     } else {
       taxAmount = (subtotal * taxInfo.taxRate) / 100;
-      total = subtotal + taxAmount + serviceFee;
+      total = subtotal + taxAmount;
     }
 
     return {
@@ -395,9 +398,9 @@ class CustomerService {
     return response.data?.data as { stripePublishableKey: string };
   }
 
-  async getParkingPlansByLot(lotId: string): Promise<DurationOption[]> {
+  async getParkingPlansByLot(lotId: string, zoneId: string): Promise<DurationOption[]> {
     const response = await axiosInstance.get(API_ENDPOINTS.CUSTOMER.PARKING_PLANS, {
-      params: { lotId },
+      params: { lotId, zoneId },
     });
     const plans = Array.isArray(response.data?.data) ? response.data.data : [];
     return plans.map((plan: any) => ({
@@ -406,6 +409,7 @@ class CustomerService {
       value: String(plan.id ?? `${plan.duration}m-${plan.price}`),
       price: Number(plan.price ?? 0),
       minutes: Number(plan.duration ?? 0),
+      planId: String(plan.id ?? ""),
     }));
   }
 
@@ -427,6 +431,7 @@ class CustomerService {
       durationLabel: payload.selectedDuration.label,
       durationMinutes: payload.selectedDuration.minutes,
       price,
+      planId: payload.planId ?? payload.selectedDuration.planId,
       stripePaymentIntentId,
     });
 

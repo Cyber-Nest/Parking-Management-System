@@ -26,9 +26,10 @@ export default function VehicleDetailsPage() {
     returnUrl,
   } = useParkingBooking();
 
-  const durations = customerService.getDurationOptions();
+  const [durations, setDurations] = useState<DurationOption[]>([]);
+  const [loadingPlans, setLoadingPlans] = useState(false);
 
-  const [selectedDurationValue, setSelectedDurationValue] = useState("1h");
+  const [selectedDurationValue, setSelectedDurationValue] = useState("");
 
   const selectedDuration = durations.find(
     (d) => d.value === selectedDurationValue,
@@ -64,6 +65,30 @@ export default function VehicleDetailsPage() {
       return;
     }
   }, [parkingDetails, router]);
+
+  useEffect(() => {
+    const loadPlans = async () => {
+      if (!parkingDetails?.lotId || !parkingDetails?.zoneId) return;
+      try {
+        setLoadingPlans(true);
+        const plans = await customerService.getParkingPlansByLot(
+          String(parkingDetails.lotId),
+          String(parkingDetails.zoneId),
+        );
+        setDurations(plans);
+        setSelectedDurationValue(plans[0]?.value ?? "");
+      } catch (error) {
+        console.error(error);
+        toast.error("No plans found for this parking zone", {
+          ...toastStyle,
+        });
+      } finally {
+        setLoadingPlans(false);
+      }
+    };
+
+    void loadPlans();
+  }, [parkingDetails?.lotId, parkingDetails?.zoneId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({
@@ -158,11 +183,10 @@ export default function VehicleDetailsPage() {
 
     if (!isValid) return;
 
-    const selectedDurationOption =
-      selectedDuration ?? durations.find((d) => d.value === "1h");
+    const selectedDurationOption = selectedDuration;
 
     if (!selectedDurationOption) {
-      toast.error("Unable to determine parking duration", {
+      toast.error("No plan selected", {
         ...toastStyle,
       });
       return;
@@ -300,15 +324,25 @@ export default function VehicleDetailsPage() {
               </div>
             </div>
 
-            {/* Duration controls are hidden while using the simplified customer flow. */}
-
             <div className="space-y-4">
-              <p className="text-sm text-[#9CA3AF]">
-                Duration options are currently simplified. The default duration is set to "1h".
-              </p>
-              <p className="text-sm text-[#9CA3AF]">
-                Use the payment page to proceed with the current selection.
-              </p>
+              <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold">
+                Parking Plan
+              </label>
+              <select
+                value={selectedDurationValue}
+                onChange={(event) => setSelectedDurationValue(event.target.value)}
+                disabled={loadingPlans || durations.length === 0}
+                className="w-full bg-[#1A1A1A] border border-white/5 rounded-xl py-3.5 px-4 focus:border-[#C6F432]/40 focus:outline-none transition-all text-sm disabled:opacity-50"
+              >
+                <option value="">
+                  {loadingPlans ? "Loading plans..." : "Select a plan"}
+                </option>
+                {durations.map((duration) => (
+                  <option key={duration.value} value={duration.value}>
+                    {duration.label} - ${duration.price.toFixed(2)}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
 

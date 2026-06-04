@@ -107,9 +107,9 @@ export class CustomerPaymentController {
         durationMinutes,
         durationLabel,
         hourlyRate: 4.5,
-        basePrice: price - 2, // Remove service fee
+        basePrice: price,
         taxAmount: 0,
-        serviceFee: 2,
+        serviceFee: 0,
         totalPrice: price
       });
 
@@ -123,9 +123,9 @@ export class CustomerPaymentController {
         itemType: 'parking_booking',
         quantity: 1,
         unitPrice: price - 2,
-        subtotal: price - 2,
+        subtotal: price,
         taxAmount: 0,
-        serviceFee: 2,
+        serviceFee: 0,
         totalAmount: price,
         bookingId: booking.id,
         transactionId: transaction.id,

@@ -376,14 +376,6 @@ function CheckoutForm({
               </div>
               {!extensionDetails ? (
                 <div className="flex justify-between text-xs text-[#9CA3AF]">
-                  <span>Service Fee</span>
-                  <span className="text-white font-mono">
-                    ${(bookingSummary?.serviceFee ?? 0).toFixed(2)}
-                  </span>
-                </div>
-              ) : null}
-              {!extensionDetails ? (
-                <div className="flex justify-between text-xs text-[#9CA3AF]">
                   <span>Tax</span>
                   <span className="text-white font-mono">
                     ${(bookingSummary?.taxAmount ?? 0).toFixed(2)}

@@ -27,7 +27,6 @@ const stripe = new Stripe(env.stripe.secretKey, { apiVersion: '2022-11-15' });
 const formatDateTime = (date: Date): string =>
   date.toISOString().slice(0, 19).replace('T', ' ');
 
-const SERVICE_FEE = 2;
 const settingsService = new SettingsService();
 
 export class CustomerService {
@@ -101,8 +100,8 @@ export class CustomerService {
     };
   }
 
-  async getParkingPlansForLot(lotId: string): Promise<ParkingPlanRow[]> {
-    return parkingPlanRepo.listByLotId(lotId);
+  async getParkingPlansForLot(lotId: string, zoneId: string): Promise<ParkingPlanRow[]> {
+    return parkingPlanRepo.listByLotAndZone(lotId, zoneId);
   }
 
   async getBookingByReference(reference: string) {
@@ -270,11 +269,11 @@ export class CustomerService {
     const basePrice = Number(payload.price);
     // Fetch tax/pricing for the parking lot (may include lot-specific overrides)
     const taxPricing = await settingsService.getTaxPricing(payload.lotId);
-    const settingsServiceFee = Number(taxPricing?.service_fee ?? SERVICE_FEE);
+    const settingsServiceFee = 0;
 
     const matchingPlan = payload.planId
       ? await parkingPlanRepo.findById(payload.planId)
-      : (await parkingPlanRepo.findForBooking(payload.durationMinutes, payload.price)) ??
+      : (await parkingPlanRepo.findForBooking(payload.durationMinutes, payload.price, payload.lotId, payload.zoneId)) ??
       (await parkingPlanRepo.findByPriceAndDuration(payload.price, payload.durationMinutes));
 
     // Determine applicable tax rate: plan override wins, else lot/global setting

@@ -11,6 +11,7 @@ interface PlanFormData {
   tax: string;
   status: string;
   parkingLotId?: string;
+  parkingZoneId?: string;
 }
 
 interface RuleFormData {
@@ -31,6 +32,7 @@ interface ParkingPlanAndRulesFormDrawerProps {
   planForm: PlanFormData;
   ruleForm: RuleFormData;
   parkingLots?: Array<{ id: string; lot_name: string }>;
+  parkingZones?: Array<{ id: string; parking_lot_id?: string | null; parking_name: string }>;
   onPlanChange: (data: PlanFormData) => void;
   onRuleChange: (data: RuleFormData) => void;
 }
@@ -39,6 +41,7 @@ export const ParkingPlanAndRulesFormDrawer = ({
   isOpen,
   onClose,
   parkingLots,
+  parkingZones,
   onSubmit,
   activeTab,
   editingItem,
@@ -114,15 +117,36 @@ export const ParkingPlanAndRulesFormDrawer = ({
                       className="input"
                       value={planForm.parkingLotId ?? ""}
                       onChange={(e) =>
-                        onPlanChange({ ...planForm, parkingLotId: e.target.value || undefined })
+                        onPlanChange({
+                          ...planForm,
+                          parkingLotId: e.target.value || undefined,
+                          parkingZoneId: undefined,
+                        })
                       }
                     >
-                      <option value="">All lots</option>
+                      <option value="">Select parking lot</option>
                       {parkingLots?.map((lot) => (
                         <option key={lot.id} value={lot.id}>
                           {lot.lot_name}
                         </option>
                       ))}
+                    </select>
+                    <select
+                      className="input"
+                      value={planForm.parkingZoneId ?? ""}
+                      onChange={(e) =>
+                        onPlanChange({ ...planForm, parkingZoneId: e.target.value || undefined })
+                      }
+                      disabled={!planForm.parkingLotId}
+                    >
+                      <option value="">Select zone</option>
+                      {parkingZones
+                        ?.filter((zone) => zone.parking_lot_id === planForm.parkingLotId)
+                        .map((zone) => (
+                          <option key={zone.id} value={zone.id}>
+                            {zone.parking_name}
+                          </option>
+                        ))}
                     </select>
                     <input
                       type="number"
