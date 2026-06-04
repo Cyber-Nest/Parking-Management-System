@@ -1,4 +1,5 @@
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import { OfficerRepository, UiOfficerStatus } from '../repositories/officer.repository';
 import { AdminRepository } from '../repositories/admin.repository';
 import { OfficerRole } from '../types';
@@ -8,6 +9,33 @@ import { sendEmail, officerWelcomeTemplate } from '../utils/email';
 
 const officerRepo = new OfficerRepository();
 const adminRepo = new AdminRepository();
+
+const generateRandomPassword = (): string => {
+  const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  const lower = 'abcdefghijklmnopqrstuvwxyz';
+  const digits = '0123456789';
+  const symbols = '!@#$%^&*()-_=+';
+  const allChars = upper + lower + digits + symbols;
+  const requiredChars = [
+    upper[Math.floor(crypto.randomInt(0, upper.length))],
+    lower[Math.floor(crypto.randomInt(0, lower.length))],
+    digits[Math.floor(crypto.randomInt(0, digits.length))],
+    symbols[Math.floor(crypto.randomInt(0, symbols.length))],
+  ];
+
+  const remainingLength = 12 - requiredChars.length;
+  for (let i = 0; i < remainingLength; i += 1) {
+    requiredChars.push(allChars[crypto.randomInt(0, allChars.length)]);
+  }
+
+  // shuffle the generated password characters
+  for (let i = requiredChars.length - 1; i > 0; i -= 1) {
+    const j = crypto.randomInt(0, i + 1);
+    [requiredChars[i], requiredChars[j]] = [requiredChars[j], requiredChars[i]];
+  }
+
+  return requiredChars.join('');
+};
 
 export class OfficerService {
   async getById(id: string) {
@@ -93,7 +121,7 @@ export class OfficerService {
     }
     const role = roleNorm as OfficerRole;
 
-    const rawPassword = body.password?.trim() || 'Officer@123';
+    const rawPassword = body.password?.trim() || generateRandomPassword();
     if (rawPassword.length < 8) throw new ValidationError('password must be at least 8 characters');
 
     const passwordHash = await bcrypt.hash(rawPassword, env.bcryptSaltRounds);
@@ -115,7 +143,7 @@ export class OfficerService {
         await sendEmail({
           to: body.email,
           subject: 'ParkSmart — Officer Account Created',
-          html: officerWelcomeTemplate(body.full_name, body.email, rawPassword, env.frontendUrl),
+          html: officerWelcomeTemplate(body.full_name, body.email, rawPassword, env.officerLoginUrl),
           emailType: 'officer_created',
           relatedId: id,
         });
