@@ -56,7 +56,11 @@ export class ParkingPlanRepository {
        FROM parking_plans p
        LEFT JOIN parking_lots l ON p.parking_lot_id = l.id
        LEFT JOIN parking_zones z ON p.parking_zone_id = z.id
-       WHERE p.status = 'Active' AND p.parking_lot_id = ? AND p.parking_zone_id = ?
+       WHERE p.status = 'Active' 
+       AND (
+         (p.parking_lot_id = ? AND p.parking_zone_id = ?)
+         OR (p.parking_lot_id IS NULL AND p.parking_zone_id IS NULL)
+       )
        ORDER BY p.duration ASC, p.price ASC`,
       [lotId, zoneId]
     );
