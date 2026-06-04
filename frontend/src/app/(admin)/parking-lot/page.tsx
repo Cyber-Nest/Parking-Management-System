@@ -462,6 +462,7 @@ export default function MyParkingLotPage() {
   const [editingZone, setEditingZone] = useState<ParkingZone | null>(null);
   const [isLotDrawerOpen, setIsLotDrawerOpen] = useState(false);
   const [editingLot, setEditingLot] = useState<ParkingLot | null>(null);
+  const [isDownloadingQR, setIsDownloadingQR] = useState(false);
 
   useEffect(() => {
     fetchParkingOwner();
@@ -703,11 +704,32 @@ export default function MyParkingLotPage() {
     const qrUrl = selectedLot
       ? selectedLot.qr_code_url
       : parkingOwner?.qrCodeUrl;
-    if (qrUrl) {
-      window.open(qrUrl, "_blank");
-      toast.success("QR code downloaded");
-    } else if (selectedLot) {
-      toast.error("Selected lot has no QR code to download");
+
+    if (!qrUrl) {
+      toast.error("No QR code available");
+      return;
+    }
+
+    try {
+      setIsDownloadingQR(true);
+
+      const response = await fetch(qrUrl);
+      const blob = await response.blob();
+
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "parking-lot-qr.png";
+      link.click();
+
+      window.URL.revokeObjectURL(url);
+
+      toast.success("QR code downloaded successfully");
+    } catch (error) {
+      toast.error("Failed to download QR code");
+    } finally {
+      setIsDownloadingQR(false);
     }
   };
 
@@ -916,9 +938,20 @@ export default function MyParkingLotPage() {
               </div>
               <button
                 onClick={handleDownloadQR}
-                className="w-full sm:w-auto self-start flex items-center justify-center gap-2 px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover,var(--color-primary))] text-white text-xs font-semibold rounded-xl shadow-md shadow-[var(--color-primary)]/10 transition-all active:scale-[0.97]"
+                disabled={isDownloadingQR}
+                className="w-full sm:w-auto self-start flex items-center justify-center gap-2 px-4 py-2 bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover,var(--color-primary))] text-white text-xs font-semibold rounded-xl shadow-md shadow-[var(--color-primary)]/10 transition-all active:scale-[0.97] disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                <Download size={13} strokeWidth={2.5} /> Download Ticket QR
+                {isDownloadingQR ? (
+                  <>
+                    <div className="h-3.5 w-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Downloading...
+                  </>
+                ) : (
+                  <>
+                    <Download size={13} strokeWidth={2.5} />
+                    Download Ticket QR
+                  </>
+                )}
               </button>
             </div>
           </div>

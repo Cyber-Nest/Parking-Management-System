@@ -18,7 +18,10 @@ import { Officer } from "@/services/officer.service";
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { uploadFileToCloudinary } from "@/lib/upload-media";
-import { listParkingLots, ParkingLotRecord } from "@/services/parking-lots.service";
+import {
+  listParkingLots,
+  ParkingLotRecord,
+} from "@/services/parking-lots.service";
 
 export interface OfficerFormData {
   countryCode: string;
@@ -115,7 +118,7 @@ export const OfficerFormDrawer = ({
   );
   const [parkingLots, setParkingLots] = useState<ParkingLotRecord[]>([]);
   const [loadingLots, setLoadingLots] = useState(false);
-
+  const [isSubmitting, setIsSubmitting] = useState(false);
   useEffect(() => {
     const loadParkingLots = async () => {
       try {
@@ -142,12 +145,25 @@ export const OfficerFormDrawer = ({
       return;
     }
     try {
-      const url = await uploadFileToCloudinary(file, "parksmart/officers", "Officer profile");
+      const url = await uploadFileToCloudinary(
+        file,
+        "parksmart/officers",
+        "Officer profile",
+      );
       setPhotoPreview(url);
       onFormChange("profilePhoto", url);
       toast.success("Profile photo uploaded");
     } catch {
       toast.error("Failed to upload profile photo");
+    }
+  };
+
+  const handleSubmit = async () => {
+    try {
+      setIsSubmitting(true);
+      await onSubmit(formData);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -350,12 +366,16 @@ export const OfficerFormDrawer = ({
                   <select
                     className="input appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%2371717a%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3e%3cpolyline points=%276 9 12 15 18 9%27%3e%3c/polyline%3e%3c/svg%3e')] bg-no-repeat bg-[length:16px] bg-[right_14px_center]"
                     value={formData.parkingLotId || ""}
-                    onChange={(e) => onFormChange("parkingLotId" as any, e.target.value)}
+                    onChange={(e) =>
+                      onFormChange("parkingLotId" as any, e.target.value)
+                    }
                     required
                     disabled={loadingLots}
                   >
                     <option value="" disabled>
-                      {loadingLots ? "Loading parking lots..." : "Select a parking lot"}
+                      {loadingLots
+                        ? "Loading parking lots..."
+                        : "Select a parking lot"}
                     </option>
                     {parkingLots.map((lot) => (
                       <option key={lot.id} value={lot.id}>
@@ -607,18 +627,29 @@ export const OfficerFormDrawer = ({
             <div className="p-6 border-t border-[var(--color-border)] flex gap-4 bg-[var(--color-surface)] sticky bottom-0 z-10 shadow-[0_-10px_20px_rgba(0,0,0,0.03)]">
               <button
                 onClick={onClose}
-                className="flex-1 px-6 py-3 font-bold text-sm text-[var(--color-text-secondary)] border border-[var(--color-border)] rounded-xl hover:bg-[var(--color-surface-soft)] transition-colors shadow-sm active:scale-[0.98]"
+                disabled={isSubmitting}
+                className="flex-1 px-6 py-3 font-bold text-sm text-[var(--color-text-secondary)] border border-[var(--color-border)] rounded-xl hover:bg-[var(--color-surface-soft)] transition-colors shadow-sm active:scale-[0.98] disabled:opacity-50"
               >
                 Discard Changes
               </button>
               <button
-                onClick={() => onSubmit(formData)}
-                className="flex-[1.5] btn-primary flex items-center justify-center gap-2.5 px-8 py-3 shadow-lg shadow-[var(--color-primary)]/20 active:scale-[0.98]"
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="flex-[1.5] btn-primary flex items-center justify-center gap-2.5 px-8 py-3 shadow-lg shadow-[var(--color-primary)]/20 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                <UserPlus size={18} strokeWidth={3} />
-                {editingOfficer
-                  ? "Save Profile Changes"
-                  : "Register & Send Invite"}
+                {isSubmitting ? (
+                  <>
+                    <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    {editingOfficer ? "Saving..." : "Registering..."}
+                  </>
+                ) : (
+                  <>
+                    <UserPlus size={18} strokeWidth={3} />
+                    {editingOfficer
+                      ? "Save Profile Changes"
+                      : "Register & Send Invite"}
+                  </>
+                )}
               </button>
             </div>
           </motion.div>
