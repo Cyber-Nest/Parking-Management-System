@@ -17,6 +17,7 @@ export const AddNoteDrawer = ({
   onSave,
 }: AddNoteDrawerProps) => {
   const [note, setNote] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const characterLimit = 500;
 
   // Reset note when drawer closes
@@ -27,8 +28,13 @@ export const AddNoteDrawer = ({
   const handleSave = async () => {
     const trimmed = note.trim();
     if (!trimmed) return;
-    await onSave(trimmed);
-    onClose();
+    try {
+      setIsSubmitting(true);
+      await onSave(trimmed);
+      onClose();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -135,16 +141,25 @@ export const AddNoteDrawer = ({
 
               <button
                 onClick={handleSave}
-                disabled={!note.trim() || note.length > characterLimit}
-                className={`flex-[1.5] py-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-[var(--color-primary)]/20 transition-all active:scale-[0.98]
+                disabled={!note.trim() || note.length > characterLimit || isSubmitting}
+                className={`flex-[1.5] py-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-[var(--color-primary)]/20 transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70
                   ${
-                    !note.trim() || note.length > characterLimit
-                      ? "bg-gray-200 text-gray-400 cursor-not-allowed shadow-none"
+                    !note.trim() || note.length > characterLimit || isSubmitting
+                      ? "bg-gray-200 text-gray-400 shadow-none"
                       : "bg-[var(--color-primary)] text-[var(--color-surface)] hover:opacity-90"
                   }`}
               >
-                <Plus size={18} />
-                Save Note
+                {isSubmitting ? (
+                  <>
+                    <div className="h-4 w-4 border-2 border-[var(--color-surface)]/30 border-t-[var(--color-surface)] rounded-full animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Plus size={18} />
+                    Save Note
+                  </>
+                )}
               </button>
             </div>
           </motion.div>

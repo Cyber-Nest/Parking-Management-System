@@ -116,9 +116,16 @@ export const EditTicketDrawer = ({ isOpen, onClose, ticket, onSaved }: EditTicke
                 type="button"
                 disabled={saving}
                 onClick={() => void handleSave()}
-                className="btn-primary flex-1 disabled:opacity-50"
+                className="btn-primary flex-1 flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                {saving ? "Saving…" : "Save"}
+                {saving ? (
+                  <>
+                    <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Saving…
+                  </>
+                ) : (
+                  "Save"
+                )}
               </button>
             </div>
           </motion.div>
