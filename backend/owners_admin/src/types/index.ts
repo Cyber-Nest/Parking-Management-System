@@ -151,13 +151,45 @@ export interface ParkingZonePublic {
   available_spots: number;
   total_spots: number;
   spot_id: string;
+  parking_lot_id?: string | null;
   sub_zones?: ParkingZoneSubZone[];
 }
 
-export interface ParkingZoneRow extends ParkingZonePublic {}
+export interface ParkingLotCustomerResponse {
+  lot_id: string;
+  lot_name: string;
+  address: string;
+  image_url: string;
+  zones: {
+    id: string;
+    parking_name: string;
+    address: string;
+    image_url: string;
+    hourly_rate: number;
+    available_spots: number;
+    total_spots: number;
+    spot_id: string;
+    parking_lot_id?: string | null;
+  }[];
+}
+
+export interface ParkingZoneRow extends ParkingZonePublic { }
+
+export interface ParkingLotPublic {
+  id: string;
+  owner_id?: string | null;
+  lot_name: string;
+  address?: string | null;
+  image_url?: string | null;
+  qr_code_url?: string | null;
+}
+
+export interface ParkingLotRow extends ParkingLotPublic { }
 
 export interface CustomerBookingPayload {
   zoneId: string;
+  lotId?: string;
+  planId?: string;
   email: string;
   vehicleModel: string;
   plateNumber: string;

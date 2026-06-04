@@ -53,7 +53,7 @@ const NotificationToggle = ({
   </div>
 );
 
-export const NotificationSettings = () => {
+export const NotificationSettings = ({ parkingLotId }: { parkingLotId?: string }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<NotificationSettingsType>({
@@ -70,7 +70,7 @@ export const NotificationSettings = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const data = await settingsService.getNotificationSettings();
+        const data = await settingsService.getNotificationSettings(parkingLotId || undefined);
         setSettings(data);
       } catch (error) {
         toast.error("Failed to load settings");
@@ -79,7 +79,7 @@ export const NotificationSettings = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [parkingLotId]);
 
   const handleToggleChange = (
     field: keyof NotificationSettingsType,
@@ -92,7 +92,7 @@ export const NotificationSettings = () => {
     try {
       setSaving(true);
       const response =
-        await settingsService.updateNotificationSettings(settings);
+        await settingsService.updateNotificationSettings(settings, parkingLotId || undefined);
       toast.success(response.message);
     } catch (error) {
       toast.error("Failed to save settings");

@@ -39,6 +39,10 @@ export const API_ENDPOINTS = {
     LIST: "/admin/parking-zones",
     BY_ID: (id: string) => `/admin/parking-zones/${id}`,
   },
+  PARKING_LOTS: {
+    LIST: "/admin/parking-lots",
+    BY_ID: (id: string) => `/admin/parking-lots/${id}`,
+  },
 
   PENALTY_RULES: {
     LIST: "/admin/penalty-rules",
@@ -67,6 +71,7 @@ export const API_ENDPOINTS = {
     BOOKING_BY_ID: (id: string) => `/customer/bookings/${id}`,
     BOOKING_BY_REFERENCE: (reference: string) => `/customer/bookings/reference/${reference}`,
     BOOKING_EXTEND: (id: string) => `/customer/bookings/${id}/extend`,
+    PARKING_PLANS: '/customer/parking-plans',
     PENALTY: (id: string) => `/customer/penalties/${id}`,
     PENALTY_RECEIPT: (id: string) => `/customer/penalties/${id}/receipt`,
     PENALTY_PAY: (id: string) => `/customer/penalties/${id}/pay`,

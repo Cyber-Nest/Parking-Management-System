@@ -21,8 +21,6 @@ import {
 import { getTokenValue } from "@/lib/axios";
 
 import { StatCard } from "@/components/common/StatCard";
-import { TableSkeleton } from "@/components/common/TableSkeleton";
-import { ActionButton } from "@/components/common/ActionButton";
 import { ParkingPlanAndRulesFormDrawer } from "@/components/parking-plan/ParkingPlanAndRulesFormDrawer";
 
 import {
@@ -30,7 +28,12 @@ import {
   parkingPlanAndRulesService,
   PenaltyRule,
 } from "@/services/parkingPlanAndRules.service";
+import { listParkingLots, ParkingLotRecord } from "@/services/parking-lots.service";
+import { listParkingZones, ParkingZoneRecord } from "@/services/parking-zones.service";
+import { TableSkeleton } from "@/components/common/TableSkeleton";
+import { ActionButton } from "@/components/common/ActionButton";
 import toast from "react-hot-toast";
+import { truncateId } from "@/lib/truncateId";
 
 interface PlanForm {
   name: string;
@@ -39,6 +42,8 @@ interface PlanForm {
   price: string;
   tax: string;
   status: string;
+  parkingLotId?: string;
+  parkingZoneId?: string;
 }
 
 interface RuleForm {
@@ -60,6 +65,8 @@ export default function ParkingPlanAndRulesPage() {
   const [editingItem, setEditingItem] = useState<any>(null);
   const [plans, setPlans] = useState<ParkingPlan[]>([]);
   const [rules, setRules] = useState<PenaltyRule[]>([]);
+  const [parkingLots, setParkingLots] = useState<ParkingLotRecord[]>([]);
+  const [parkingZones, setParkingZones] = useState<ParkingZoneRecord[]>([]);
 
   const [planForm, setPlanForm] = useState<PlanForm>({
     name: "",
@@ -68,6 +75,8 @@ export default function ParkingPlanAndRulesPage() {
     price: "",
     tax: "",
     status: "Active",
+    parkingLotId: undefined,
+    parkingZoneId: undefined,
   });
 
   const [ruleForm, setRuleForm] = useState<RuleForm>({
@@ -93,12 +102,16 @@ export default function ParkingPlanAndRulesPage() {
 
     try {
       setLoading(true);
-      const [plansRes, rulesRes] = await Promise.all([
+      const [plansRes, rulesRes, lotsRes, zonesRes] = await Promise.all([
         parkingPlanAndRulesService.getPlans(),
         parkingPlanAndRulesService.getRules(),
+        listParkingLots(),
+        listParkingZones(),
       ]);
       setPlans(plansRes);
       setRules(rulesRes);
+      setParkingLots(lotsRes);
+      setParkingZones(zonesRes);
     } catch (error) {
       console.error(error);
       toast.error("Failed to fetch data");
@@ -159,6 +172,8 @@ export default function ParkingPlanAndRulesPage() {
       price: "",
       tax: "",
       status: "Active",
+      parkingLotId: undefined,
+      parkingZoneId: undefined,
     });
     setRuleForm({
       violation: "",
@@ -174,8 +189,8 @@ export default function ParkingPlanAndRulesPage() {
   // Submit Handler
   const handleSubmit = async () => {
     if (activeTab === "plans") {
-      if (!planForm.name || !planForm.price || !planForm.duration) {
-        toast.error("Please fill name, price, and duration");
+      if (!planForm.name || !planForm.price || !planForm.duration || !planForm.parkingLotId || !planForm.parkingZoneId) {
+        toast.error("Please fill name, lot, zone, price, and duration");
         return;
       }
       try {
@@ -186,6 +201,8 @@ export default function ParkingPlanAndRulesPage() {
           plan_type: planForm.type,
           tax_percent: Number(planForm.tax) || 0,
           status: planForm.status,
+          parking_lot_id: planForm.parkingLotId || null,
+          parking_zone_id: planForm.parkingZoneId || null,
         };
         if (editingItem) {
           await parkingPlanAndRulesService.updatePlan(editingItem.id, payload);
@@ -245,6 +262,8 @@ export default function ParkingPlanAndRulesPage() {
         price: String(item.price ?? ""),
         tax: String(item.tax_percent ?? item.tax ?? "0"),
         status: item.status ?? "Active",
+        parkingLotId: item.parking_lot_id ?? undefined,
+        parkingZoneId: item.parking_zone_id ?? undefined,
       });
     } else {
       setRuleForm({
@@ -447,20 +466,22 @@ export default function ParkingPlanAndRulesPage() {
               <tr className="text-[11px] uppercase text-[var(--color-text-secondary)] font-bold tracking-wider">
                 <th className="px-6 py-5">ID</th>
                 <th className="px-6 py-5">Details</th>
+                <th className="px-6 py-5">Lot</th>
+                <th className="px-6 py-5">Zone</th>
                 <th className="px-6 py-5">Duration / Fine</th>
                 <th className="px-6 py-5">Price / Grace</th>
                 <th className="px-6 py-5">Status</th>
-                <th className="px-6 py-5">Updated</th>
+                {/* <th className="px-6 py-5">Updated</th> */}
                 <th className="px-6 py-5 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-border)] text-[13px]">
               {loading ? (
-                <TableSkeleton rows={5} cols={7} />
+                <TableSkeleton rows={5} cols={8} />
               ) : paginatedData.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={7}
+                    colSpan={8}
                     className="text-center py-16 text-sm font-semibold text-gray-400"
                   >
                     No data found.
@@ -473,8 +494,8 @@ export default function ParkingPlanAndRulesPage() {
                     key={idx}
                     className="hover:bg-[var(--color-surface-soft)]/50 transition-colors"
                   >
-                    <td className="px-6 py-4 font-bold text-[var(--color-primary)]">
-                      {item.id}
+                    <td className="px-6 py-4 font-bold text-[var(--color-primary)]" title={item.id}>
+                      {truncateId(item.id)}
                     </td>
                     <td className="px-6 py-4">
                       <div className="font-bold text-[var(--color-text-primary)]">
@@ -485,6 +506,16 @@ export default function ParkingPlanAndRulesPage() {
                           ? `Type: ${item.type}`
                           : `Code: ${item.code}`}
                       </div>
+                    </td>
+                    <td className="px-6 py-4 text-slate-700">
+                      {activeTab === "plans"
+                        ? item.parking_lot_name ?? "-"
+                        : "—"}
+                    </td>
+                    <td className="px-6 py-4 text-slate-700">
+                      {activeTab === "plans"
+                        ? item.parking_zone_name ?? "-"
+                        : "—"}
                     </td>
                     <td className="px-6 py-4 font-medium">
                       {activeTab === "plans"
@@ -509,12 +540,12 @@ export default function ParkingPlanAndRulesPage() {
                         {item.status}
                       </button>
                     </td>
-                    <td className="px-6 py-4">
+                    {/* <td className="px-6 py-4">
                       <div className="font-medium">{item.updatedDate}</div>
                       <div className="text-[11px] text-[var(--color-text-muted)] font-bold">
                         {item.updatedTime}
                       </div>
-                    </td>
+                    </td> */}
                     <td className="px-6 py-4">
                       <div className="flex justify-center gap-2">
                         <ActionButton
@@ -589,6 +620,8 @@ export default function ParkingPlanAndRulesPage() {
         editingItem={editingItem}
         planForm={planForm}
         ruleForm={ruleForm}
+        parkingLots={parkingLots}
+        parkingZones={parkingZones}
         onPlanChange={setPlanForm}
         onRuleChange={setRuleForm}
       />

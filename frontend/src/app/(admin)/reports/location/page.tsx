@@ -22,8 +22,10 @@ import toast from "react-hot-toast";
 
 import { StatCard } from "@/components/common/StatCard";
 import { TableSkeleton } from "@/components/common/TableSkeleton";
+import { ParkingLotFilter } from "@/components/common/ParkingLotFilter";
 import { LocationPerformanceCharts } from "@/components/reports/charts/LocationPerformanceCharts";
 import { LocationDetailsDrawer } from "@/components/reports/drawers/LocationDetailsDrawer";
+import { listParkingLots, ParkingLotRecord } from "@/services/parking-lots.service";
 
 import {
   locationPerformanceService,
@@ -48,6 +50,7 @@ export default function LocationPerformanceReport() {
   >(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
+  const [parkingLots, setParkingLots] = useState<ParkingLotRecord[]>([]);
   const exportDropdownRef = useRef<HTMLDivElement>(null);
   const itemsPerPage = 10;
 
@@ -69,7 +72,14 @@ export default function LocationPerformanceReport() {
     status: "All Status",
     startDate: "",
     endDate: "",
+    parkingLotId: "",
   });
+
+  useEffect(() => {
+    listParkingLots()
+      .then(setParkingLots)
+      .catch((error) => console.error("Failed to load parking lots", error));
+  }, []);
 
   // Close export dropdown on click outside
   useEffect(() => {
@@ -188,6 +198,7 @@ export default function LocationPerformanceReport() {
       status: "All Status",
       startDate: "",
       endDate: "",
+      parkingLotId: "",
     });
     setSearchQuery("");
     setCurrentPage(1);
@@ -361,7 +372,7 @@ export default function LocationPerformanceReport() {
             className="overflow-hidden"
           >
             <div className="bg-[var(--color-surface)] p-5 rounded-2xl border border-[var(--color-border)] shadow-sm">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
                     Date Range
@@ -377,6 +388,21 @@ export default function LocationPerformanceReport() {
                       <option key={opt}>{opt}</option>
                     ))}
                   </select>
+                </div>
+                {/* Parking Lot Filter */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
+                    Parking Lot
+                  </label>
+                  <ParkingLotFilter
+                    lots={parkingLots}
+                    value={filters.parkingLotId}
+                    onChange={(value) => {
+                      setFilters({ ...filters, parkingLotId: value });
+                      setCurrentPage(1);
+                    }}
+                    className="[&>select]:w-full [&>select]:min-w-0"
+                  />
                 </div>
 
                 {/* Custom Date Range Inputs */}
@@ -411,7 +437,7 @@ export default function LocationPerformanceReport() {
                   </div>
                 )}
 
-                <div className="space-y-1.5">
+                {/* <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
                     Location
                   </label>
@@ -426,7 +452,7 @@ export default function LocationPerformanceReport() {
                       <option key={opt}>{opt}</option>
                     ))}
                   </select>
-                </div>
+                </div> */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
                     Payment Method

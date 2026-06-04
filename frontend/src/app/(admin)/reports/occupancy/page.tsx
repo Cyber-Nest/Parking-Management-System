@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import {
   Download,
   Clock,
@@ -21,6 +27,7 @@ import toast from "react-hot-toast";
 
 import { StatCard } from "@/components/common/StatCard";
 import { TableSkeleton } from "@/components/common/TableSkeleton";
+import { ReportParkingLotFilter } from "@/components/reports/ReportParkingLotFilter";
 import { PeakHoursCharts } from "@/components/reports/charts/PeakHoursCharts";
 
 // Services
@@ -59,12 +66,16 @@ export default function PeakHoursOccupancyReport() {
     groupBy: "Hourly",
     startDate: "",
     endDate: "",
+    parkingLotId: "",
   });
 
   // Close export dropdown on click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target as Node)) {
+      if (
+        exportDropdownRef.current &&
+        !exportDropdownRef.current.contains(event.target as Node)
+      ) {
         setShowExportDropdown(false);
       }
     };
@@ -75,14 +86,19 @@ export default function PeakHoursOccupancyReport() {
   // Auto-set dates based on dateRange selection
   useEffect(() => {
     const today = new Date();
-    const formatDate = (date: Date) => date.toISOString().split('T')[0];
-    
+    const formatDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
     if (filters.dateRange === "Custom Range") return;
-    
+
     let start = "";
     let end = "";
-    
-    switch(filters.dateRange) {
+
+    switch (filters.dateRange) {
       case "Today":
         start = formatDate(today);
         end = formatDate(today);
@@ -112,7 +128,11 @@ export default function PeakHoursOccupancyReport() {
         end = formatDate(lastDay);
         break;
       case "Last Month":
-        const firstDayLast = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const firstDayLast = new Date(
+          today.getFullYear(),
+          today.getMonth() - 1,
+          1,
+        );
         const lastDayLast = new Date(today.getFullYear(), today.getMonth(), 0);
         start = formatDate(firstDayLast);
         end = formatDate(lastDayLast);
@@ -120,8 +140,8 @@ export default function PeakHoursOccupancyReport() {
       default:
         return;
     }
-    
-    setFilters(prev => ({ ...prev, startDate: start, endDate: end }));
+
+    setFilters((prev) => ({ ...prev, startDate: start, endDate: end }));
   }, [filters.dateRange]);
 
   // Filtered data based on search
@@ -176,6 +196,7 @@ export default function PeakHoursOccupancyReport() {
       groupBy: "Hourly",
       startDate: "",
       endDate: "",
+      parkingLotId: "",
     });
     setSearchQuery("");
     setCurrentPage(1);
@@ -192,20 +213,25 @@ export default function PeakHoursOccupancyReport() {
         ...filters,
         format: format,
       });
-      
+
       // Handle blob download
       if (response.blob) {
         const url = window.URL.createObjectURL(response.blob);
         const link = document.createElement("a");
         link.href = url;
-        link.setAttribute("download", `peak_hours_${new Date().toISOString().split('T')[0]}.${format === "pdf" ? "pdf" : "xlsx"}`);
+        link.setAttribute(
+          "download",
+          `peak_hours_${new Date().toISOString().split("T")[0]}.${format === "pdf" ? "pdf" : "xlsx"}`,
+        );
         document.body.appendChild(link);
         link.click();
         link.remove();
         window.URL.revokeObjectURL(url);
         toast.success(`Report exported as ${format.toUpperCase()}`);
       } else {
-        toast.success(response.message || `Report exported as ${format.toUpperCase()}`);
+        toast.success(
+          response.message || `Report exported as ${format.toUpperCase()}`,
+        );
       }
     } catch (error) {
       console.error("Export error:", error);
@@ -262,7 +288,7 @@ export default function PeakHoursOccupancyReport() {
             <Filter size={16} />
             Filters
           </button>
-          
+
           {/* Export Dropdown */}
           <div className="relative" ref={exportDropdownRef}>
             <button
@@ -277,7 +303,7 @@ export default function PeakHoursOccupancyReport() {
               )}
               Export
             </button>
-            
+
             {showExportDropdown && (
               <div className="absolute right-0 mt-2 w-36 bg-[var(--color-surface)] rounded-xl shadow-lg border border-[var(--color-border)] overflow-hidden z-10">
                 <button
@@ -302,7 +328,13 @@ export default function PeakHoursOccupancyReport() {
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <StatCard key={i} loading={true} icon={undefined} title={""} value={""} />
+            <StatCard
+              key={i}
+              loading={true}
+              icon={undefined}
+              title={""}
+              value={""}
+            />
           ))}
         </div>
       ) : (
@@ -359,8 +391,21 @@ export default function PeakHoursOccupancyReport() {
                     ))}
                   </select>
                 </div>
-                
-                {/* Custom Date Range Inputs */}
+
+                {/* Parking Lot Filter */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
+                    Parking Lot
+                  </label>
+                  <ReportParkingLotFilter
+                    value={filters.parkingLotId ?? ""}
+                    onChange={(value) => {
+                      setFilters({ ...filters, parkingLotId: value });
+                      setCurrentPage(1);
+                    }}
+                  />
+                </div>
+
                 {filters.dateRange === "Custom Range" && (
                   <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
@@ -391,8 +436,8 @@ export default function PeakHoursOccupancyReport() {
                     </div>
                   </div>
                 )}
-                
-                <div className="space-y-1.5">
+
+                {/* <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
                     Location
                   </label>
@@ -407,7 +452,7 @@ export default function PeakHoursOccupancyReport() {
                       <option key={opt}>{opt}</option>
                     ))}
                   </select>
-                </div>
+                </div> */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
                     Plan Type

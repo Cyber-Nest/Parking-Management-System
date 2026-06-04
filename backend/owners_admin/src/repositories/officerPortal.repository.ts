@@ -14,6 +14,8 @@ export interface OfficerProfileRow {
   status: string;
   assigned_zone: string | null;
   last_login_at: Date | null;
+  parking_lot_id: string | null;
+  lot_name: string | null;
 }
 
 export interface OfficerShiftRow {
@@ -118,8 +120,10 @@ export class OfficerPortalRepository {
 
   async findOfficerById(id: string): Promise<OfficerProfileRow | null> {
     const rows = await queryRows<OfficerProfileRow>(
-      `SELECT id, full_name, email, phone, badge_number, role, status, assigned_zone, last_login_at
-       FROM officers WHERE id = ? LIMIT 1`,
+      `SELECT o.id, o.full_name, o.email, o.phone, o.badge_number, o.role, o.status, o.assigned_zone, o.last_login_at, o.parking_lot_id, pl.lot_name
+       FROM officers o
+       LEFT JOIN parking_lots pl ON o.parking_lot_id = pl.id
+       WHERE o.id = ? LIMIT 1`,
       [id],
     );
     return rows[0] ?? null;

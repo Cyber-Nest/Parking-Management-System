@@ -16,6 +16,8 @@ export interface Payment {
   status: "Paid" | "Pending" | "Failed" | "Refunded" | string;
   method: string;
   amount: string;
+  parkingLotId?: string | null;
+  parkingLotName?: string | null;
   date: string;
   time: string;
   receiptStatus?: "Sent" | "Not Sent" | string;
@@ -84,6 +86,8 @@ export const paymentService = {
         status,
         method,
         amount: usd(p.amount ?? 0),
+        parkingLotId: p.parking_lot_id ?? p.parkingLotId ?? null,
+        parkingLotName: p.parking_lot_name ?? p.parkingLotName ?? null,
         date: dt.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
         time: dt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" }),
         receiptStatus: p.receipt_email_sent ? "Sent" : "Not Sent",
@@ -93,8 +97,8 @@ export const paymentService = {
     });
   },
 
-  async getPaymentStats(): Promise<PaymentStats> {
-    const summary = await getPaymentSummary();
+  async getPaymentStats(params: Pick<PaymentListParams, "parking_lot_id"> = {}): Promise<PaymentStats> {
+    const summary = await getPaymentSummary(params);
     return {
       todayPayments: usd(summary?.todayRevenue ?? summary?.todayAmount ?? 0),
       parkingRevenue: usd(summary?.parkingRevenue ?? summary?.parkingAmount ?? 0),

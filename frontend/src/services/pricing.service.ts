@@ -10,13 +10,16 @@ export interface Pricing {
   tax_id?: string | null;
   is_active?: boolean;
   isActive?: boolean;
+  parking_lot_id?: string | null;
   created_at?: string;
   updated_at?: string;
 }
 
 export const pricingService = {
-  async list() {
-    const response = await axiosInstance.get(API_ENDPOINTS.PRICINGS.LIST, { params: { limit: 100 } });
+  async list(parkingLotId?: string) {
+    const params: Record<string, any> = { limit: 100 };
+    if (parkingLotId) params.parking_lot_id = parkingLotId;
+    const response = await axiosInstance.get(API_ENDPOINTS.PRICINGS.LIST, { params });
     return getResponseData(response) as { items: Pricing[]; total: number };
   },
 
@@ -26,8 +29,9 @@ export const pricingService = {
     additional_fees?: number;
     tax_id?: string | null;
     is_active?: boolean;
-  }) {
-    const response = await axiosInstance.post(API_ENDPOINTS.PRICINGS.LIST, data);
+  }, parkingLotId?: string) {
+    const payload = { ...data, ...(parkingLotId && { parking_lot_id: parkingLotId }) };
+    const response = await axiosInstance.post(API_ENDPOINTS.PRICINGS.LIST, payload);
     return getResponseData(response);
   },
 
@@ -40,8 +44,10 @@ export const pricingService = {
       tax_id?: string | null;
       is_active?: boolean;
     }>,
+    parkingLotId?: string,
   ) {
-    const response = await axiosInstance.patch(API_ENDPOINTS.PRICINGS.BY_ID(id), data);
+    const payload = { ...data, ...(parkingLotId && { parking_lot_id: parkingLotId }) };
+    const response = await axiosInstance.patch(API_ENDPOINTS.PRICINGS.BY_ID(id), payload);
     return getResponseData(response);
   },
 

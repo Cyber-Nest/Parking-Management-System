@@ -5,7 +5,7 @@ import { customerService } from '../services/customer.service';
 import { invoiceService } from '../services/invoice.service';
 import { TicketService } from '../services/ticket.service';
 import { ensureCloudinaryUrl } from '../services/cloudinary.service';
-import { ApiResponse, CustomerBookingResponse, ParkingZonePublic } from '../types';
+import { ApiResponse, CustomerBookingResponse, ParkingLotCustomerResponse } from '../types';
 import { NotFoundError, ValidationError } from '../services/commonErrors';
 import { enforcementRepository } from '../repositories/enforcement.repository';
 
@@ -22,7 +22,7 @@ const handleError = (err: unknown, res: Response, fallbackMessage: string) => {
 
 export const getParkingZoneById = async (
   req: Request,
-  res: Response<ApiResponse<ParkingZonePublic>>
+  res: Response<ApiResponse<ParkingLotCustomerResponse>>
 ): Promise<void> => {
   try {
     const { id } = req.params;
@@ -44,6 +44,25 @@ export const getStripeConfig = async (
   } catch (err) {
     console.error('[CustomerController] getStripeConfig error:', err instanceof Error ? err.stack : err);
     res.status(500).json({ success: false, message: String(err instanceof Error ? err.message : 'Failed to fetch Stripe config') });
+  }
+};
+
+export const getParkingPlansForLot = async (
+  req: Request,
+  res: Response<ApiResponse<any>>
+): Promise<void> => {
+  try {
+    const lotId = String(req.query.lotId ?? '');
+    const zoneId = String(req.query.zoneId ?? '');
+    if (!lotId || !zoneId) {
+      res.status(400).json({ success: false, message: 'lotId and zoneId query parameters are required' });
+      return;
+    }
+    const data = await customerService.getParkingPlansForLot(lotId, zoneId);
+    res.status(200).json({ success: true, message: 'Parking plans fetched', data });
+  } catch (err) {
+    console.error('[CustomerController] getParkingPlansForLot error:', err);
+    res.status(500).json({ success: false, message: String(err instanceof Error ? err.message : 'Failed to fetch parking plans') });
   }
 };
 
@@ -73,6 +92,7 @@ export const createBooking = async (
   try {
     const {
       zoneId,
+      lotId,
       email,
       vehicleModel,
       plateNumber,
@@ -80,12 +100,14 @@ export const createBooking = async (
       durationLabel,
       durationMinutes,
       price,
+      planId,
       stripePaymentIntentId,
     } = req.body;
 
     const missingFields: string[] = [];
 
     if (!zoneId) missingFields.push('zoneId');
+    if (!lotId) missingFields.push('lotId');
     if (!email) missingFields.push('email');
     if (!vehicleModel) missingFields.push('vehicleModel');
     if (!plateNumber) missingFields.push('plateNumber');
@@ -104,6 +126,7 @@ export const createBooking = async (
 
     const data = await customerService.createBooking({
       zoneId,
+      lotId,
       email,
       vehicleModel,
       plateNumber,
@@ -111,6 +134,7 @@ export const createBooking = async (
       durationLabel,
       durationMinutes: Number(durationMinutes),
       price: Number(price),
+      planId,
       stripePaymentIntentId,
     });
 

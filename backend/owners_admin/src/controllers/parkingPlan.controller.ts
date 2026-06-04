@@ -31,13 +31,15 @@ export const createParkingPlan = async (
   res: Response<ApiResponse<any>>
 ): Promise<void> => {
   try {
-    const { name, price, duration, plan_type, tax_percent, status } = req.body as {
+    const { name, price, duration, plan_type, tax_percent, status, parking_lot_id, parking_zone_id } = req.body as {
       name?: string;
       price?: number;
       duration?: number;
       plan_type?: string;
       tax_percent?: number;
       status?: string;
+      parking_lot_id?: string | null;
+      parking_zone_id?: string | null;
     };
     const data = await parkingPlanService.create({
       name: name ?? '',
@@ -46,6 +48,8 @@ export const createParkingPlan = async (
       plan_type: plan_type,
       tax_percent: tax_percent !== undefined ? Number(tax_percent) : undefined,
       status: status,
+      parking_lot_id: parking_lot_id ?? null,
+      parking_zone_id: parking_zone_id ?? null,
     });
     res.status(201).json({ success: true, message: 'Parking plan created', data });
   } catch (err) {
@@ -59,13 +63,15 @@ export const updateParkingPlan = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
-    const { name, price, duration, plan_type, tax_percent, status } = req.body as {
+    const { name, price, duration, plan_type, tax_percent, status, parking_lot_id, parking_zone_id } = req.body as {
       name?: string;
       price?: number;
       duration?: number;
       plan_type?: string;
       tax_percent?: number;
       status?: string;
+      parking_lot_id?: string | null;
+      parking_zone_id?: string | null;
     };
     const data = await parkingPlanService.update(id, {
       name,
@@ -74,6 +80,8 @@ export const updateParkingPlan = async (
       plan_type,
       tax_percent: tax_percent !== undefined ? Number(tax_percent) : undefined,
       status,
+      parking_lot_id: parking_lot_id ?? undefined,
+      parking_zone_id: parking_zone_id ?? undefined,
     });
     res.status(200).json({ success: true, message: 'Parking plan updated', data });
   } catch (err) {

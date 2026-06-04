@@ -24,8 +24,8 @@ export class SettingsService {
         return repository.updateBrandingSettings(settings);
     }
 
-    async getTaxPricing() {
-        return repository.getTaxPricing();
+    async getTaxPricing(parkingLotId?: string) {
+        return repository.getTaxPricing(parkingLotId);
     }
 
     async updateTaxPricing(
@@ -36,10 +36,11 @@ export class SettingsService {
             prices_include_tax?: number;
             refund_allowed?: number;
             refund_approval_required?: number;
-        }
+        },
+        parkingLotId?: string
     ) {
-        await repository.updateTaxPricing(patch);
-        return repository.getTaxPricing();
+        await repository.updateTaxPricing(patch, parkingLotId);
+        return repository.getTaxPricing(parkingLotId);
     }
 
     async listAdmins() {

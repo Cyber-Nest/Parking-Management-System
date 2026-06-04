@@ -14,6 +14,8 @@ export interface ParkingSession {
   status: string;
   paymentStatus: "Paid" | "Unpaid" | "Pending";
   amount: string;
+  parkingLotId?: string | null;
+  parkingLotName?: string | null;
   remaining: string;
   extensions: Array<{
     id?: string;
@@ -82,6 +84,8 @@ export const parkingService = {
         status,
         paymentStatus: "Paid",
         amount,
+        parkingLotId: s.parking_lot_id ?? s.parkingLotId ?? null,
+        parkingLotName: s.parking_lot_name ?? s.parkingLotName ?? null,
         remaining,
         extensions: [],
         sessionStatus: "active",
@@ -92,8 +96,8 @@ export const parkingService = {
     });
   },
 
-  async getStats(): Promise<DashboardStats> {
-    const summary = await getSessionSummary();
+  async getStats(params: Pick<SessionListParams, "parking_lot_id"> = {}): Promise<DashboardStats> {
+    const summary = await getSessionSummary(params);
     const active = safeNum(summary?.activeCount ?? 0);
     const today = safeNum(summary?.totalToday ?? 0);
 

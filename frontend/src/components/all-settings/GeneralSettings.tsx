@@ -14,6 +14,12 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useSystem } from "@/contexts/SystemContext";
+import {
+  listParkingLots,
+  updateParkingLot,
+  ParkingLotRecord,
+} from "@/services/parking-lots.service";
+import { settingsService } from "@/services/settings.service";
 
 const FormInput = ({
   label,
@@ -23,9 +29,12 @@ const FormInput = ({
   onChange,
   textarea = false,
   rows = 3,
+  disabled = false,
+  tooltip = "",
+  className = "",
 }: any) => {
   return (
-    <div className="space-y-2 group">
+    <div className="space-y-2 group" title={tooltip}>
       <label className="text-[10px] font-bold text-[var(--color-text-muted)] uppercase tracking-[0.15em] ml-1 transition-colors group-focus-within:text-[var(--color-primary)]">
         {label}
       </label>
@@ -38,6 +47,7 @@ const FormInput = ({
         {textarea ? (
           <textarea
             value={value}
+            disabled={disabled}
             onChange={onChange}
             placeholder={placeholder}
             rows={rows}
@@ -46,10 +56,20 @@ const FormInput = ({
         ) : (
           <input
             type="text"
+            disabled={disabled}
             value={value}
             onChange={onChange}
             placeholder={placeholder}
-            className="w-full pl-12 pr-4 py-3.5 text-sm bg-[var(--color-surface-soft)] border border-[var(--color-border)] focus:border-[var(--color-primary)] focus:bg-white focus:ring-[6px] focus:ring-[var(--color-primary)]/5 rounded-2xl transition-all duration-300 outline-none placeholder:text-gray-400 font-medium dark:focus:bg-[var(--color-surface)]"
+            className={`w-full pl-12 pr-4 py-3.5 text-sm
+    bg-[var(--color-surface-soft)]
+    border border-[var(--color-border)]
+    rounded-2xl transition-all duration-300 outline-none
+    placeholder:text-gray-400 font-medium
+    disabled:opacity-70
+    disabled:cursor-not-allowed
+    disabled:bg-[var(--color-surface)]
+    disabled:text-[var(--color-text-secondary)]
+    ${className}`}
           />
         )}
       </div>
@@ -69,15 +89,22 @@ const LoadingSkeleton = () => (
   </div>
 );
 
-export const GeneralSettings = () => {
+export const GeneralSettings = ({
+  parkingLotId,
+}: {
+  parkingLotId?: string;
+}) => {
   const { branding, updateBrandingSettings, refreshSettings } = useSystem();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [parkingLots, setParkingLots] = useState<ParkingLotRecord[]>([]);
+  const [selectedParkingLotId, setSelectedParkingLotId] = useState<string>("");
 
   // Form state
   const [formData, setFormData] = useState({
     companyName: "",
+    parkingLotName: "",
     phone: "",
     address: "",
     email: "",
@@ -90,11 +117,12 @@ export const GeneralSettings = () => {
     if (branding) {
       setFormData({
         companyName: branding.systemName || "",
+        parkingLotName: branding.parkingLotName || "",
         phone: "+1 (647) 123-4567",
         address: "123 Park Street, Suite 100, Toronto, Ontario, Canada",
-        email: "admin@parksmart.com",
-        supportEmail: "support@parksmart.com",
-        website: "www.parksmart.com",
+        email: "admin@parkssmart.com",
+        supportEmail: "support@parkssmart.com",
+        website: "www.parkssmart.com",
       });
       if (branding.logoUrl) {
         setLogoPreview(branding.logoUrl);
@@ -102,6 +130,70 @@ export const GeneralSettings = () => {
       setLoading(false);
     }
   }, [branding]);
+
+  // Load parking lots
+  useEffect(() => {
+    const loadLots = async () => {
+      try {
+        const lots = await listParkingLots();
+        setParkingLots(lots);
+      } catch (err) {
+        console.error("Failed to load parking lots", err);
+      }
+    };
+    loadLots();
+  }, []);
+
+  // Sync prop with state
+  useEffect(() => {
+    setSelectedParkingLotId(parkingLotId || "");
+  }, [parkingLotId]);
+
+  // Load branding for selected parking lot
+  useEffect(() => {
+    const loadBrandingForLot = async () => {
+      try {
+        setLoading(true);
+
+        if (!selectedParkingLotId) {
+          // Global / All lots
+          const brandingRes = await settingsService.getBrandingSettings();
+
+          setFormData({
+            companyName: brandingRes.systemName || "ParkSmart",
+            parkingLotName: brandingRes.parkingLotName || "Global Setup",
+            phone: "+1 (647) 123-4567",
+            address: "123 Park Street, Suite 100, Toronto, Ontario, Canada",
+            email: "admin@parkssmart.com",
+            supportEmail: "support@parkssmart.com",
+            website: "www.parkssmart.com",
+          });
+
+          setLogoPreview(brandingRes.logoUrl ?? null);
+        } else {
+          const lot = parkingLots.find((l) => l.id === selectedParkingLotId);
+
+          setFormData({
+            companyName: branding?.systemName || "ParkSmart",
+            parkingLotName: lot?.lot_name || "",
+            phone: "",
+            address: lot?.address || "",
+            email: "",
+            supportEmail: "",
+            website: "",
+          });
+
+          setLogoPreview(lot?.image_url || null);
+        }
+      } catch (err) {
+        toast.error("Failed to load branding for selected parking lot");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadBrandingForLot();
+  }, [selectedParkingLotId, parkingLots, branding]);
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -111,11 +203,42 @@ export const GeneralSettings = () => {
     try {
       setSaving(true);
 
-      // Update system name in branding
-      await updateBrandingSettings({
-        systemName: formData.companyName,
-        logoUrl: logoPreview,
-      });
+      if (!selectedParkingLotId) {
+        // Global / All lots
+        await settingsService.updateBrandingSettings({
+          systemName: formData.companyName,
+          parkingLotName: formData.parkingLotName,
+          logoUrl: logoPreview,
+          themeColor: "",
+          darkMode: "light",
+          faviconUrl: null,
+        });
+      } else {
+        try {
+          await updateParkingLot(selectedParkingLotId, {
+            lot_name: formData.parkingLotName,
+            address: formData.address,
+            image_url: logoPreview || null,
+          });
+
+          setParkingLots((prev) =>
+            prev.map((lot) =>
+              lot.id === selectedParkingLotId
+                ? {
+                    ...lot,
+                    lot_name: formData.parkingLotName,
+                    address: formData.address,
+                    image_url: logoPreview,
+                  }
+                : lot,
+            ),
+          );
+        } catch (apiErr) {
+          console.error("Failed to sync general settings to database", apiErr);
+        }
+      }
+
+      await refreshSettings();
 
       toast.success("General settings updated successfully!");
     } catch (error) {
@@ -159,7 +282,7 @@ export const GeneralSettings = () => {
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left: Logo Card */}
         <div className="lg:col-span-4 flex flex-col gap-6">
           <div className="bg-[var(--color-surface)] p-8 rounded-[32px] border border-[var(--color-border)] shadow-[var(--shadow-card)] relative overflow-hidden group">
@@ -171,12 +294,12 @@ export const GeneralSettings = () => {
                   Company Brand
                 </h3>
               </div>
-              <button
+              {/* <button
                 onClick={handleReset}
                 className="p-2 hover:rotate-180 transition-all duration-500 text-[var(--color-text-muted)] hover:text-[var(--color-primary)]"
               >
                 <RotateCcw size={16} />
-              </button>
+              </button> */}
             </div>
 
             <div className="relative aspect-square w-full max-w-[240px] mx-auto bg-[var(--color-bg)] rounded-[2.5rem] border-2 border-dashed border-[var(--color-border)] group-hover:border-[var(--color-primary)]/30 flex flex-col items-center justify-center transition-all duration-300 overflow-hidden shadow-inner">
@@ -224,8 +347,19 @@ export const GeneralSettings = () => {
                 placeholder="ParkSmart Solutions"
                 icon={<Building2 />}
                 value={formData.companyName}
+                disabled={true}
+                tooltip="Company name cannot be edited"
                 onChange={(e: any) =>
                   handleChange("companyName", e.target.value)
+                }
+              />
+              <FormInput
+                label="Parking Lot Name"
+                placeholder="Downtown Parking Lot"
+                icon={<MapPin />}
+                value={formData.parkingLotName}
+                onChange={(e: any) =>
+                  handleChange("parkingLotName", e.target.value)
                 }
               />
               <FormInput

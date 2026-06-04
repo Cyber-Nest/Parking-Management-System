@@ -17,6 +17,7 @@ import {
   TicketPrintPayload,
   officerEnforcementService,
 } from "@/services/officer-enforcement.service";
+import { listParkingLots, ParkingLotRecord } from "@/services/parking-lots.service";
 
 const MIN_PHOTOS = 3;
 
@@ -65,6 +66,8 @@ export default function OfficerIssueTicketPage() {
   const [violationType, setViolationType] = useState(initialForm.violationType);
   const [violationSubType, setViolationSubType] = useState(initialForm.violationSubType);
   const [fineAmount, setFineAmount] = useState(initialForm.fineAmount);
+  const [parkingLots, setParkingLots] = useState<ParkingLotRecord[]>([]);
+  const [parkingLotId, setParkingLotId] = useState<string>("");
   const [locationName, setLocationName] = useState(initialForm.locationName);
   const [officerNotes, setOfficerNotes] = useState(initialForm.officerNotes);
   const [photos, setPhotos] = useState<string[]>([]);
@@ -82,6 +85,9 @@ export default function OfficerIssueTicketPage() {
     const params = new URLSearchParams(window.location.search);
     const plate = params.get("plate");
     if (plate) setLicensePlate(plate);
+    void listParkingLots().then(setParkingLots).catch((err) => {
+      console.error("Failed to load parking lots", err);
+    });
     const evidencePhotos = window.localStorage.getItem("officerEvidencePhotos");
     if (evidencePhotos) {
       try {
@@ -188,6 +194,7 @@ export default function OfficerIssueTicketPage() {
     setViolationType(initialForm.violationType);
     setViolationSubType(initialForm.violationSubType);
     setFineAmount(initialForm.fineAmount);
+    setParkingLotId("");
     setLocationName(initialForm.locationName);
     setOfficerNotes(initialForm.officerNotes);
     setPhotos([]);
@@ -315,6 +322,32 @@ export default function OfficerIssueTicketPage() {
                   options={[...OFFICER_VIOLATION_SUB_TYPES]}
                 />
                 <Field label="Fine Amount" type="number" value={String(fineAmount)} onChange={(v) => setFineAmount(Number(v))} />
+                <label className="block">
+                  <span className="text-xs font-bold text-slate-500">Parking Lot</span>
+                  <select
+                    value={parkingLotId}
+                    onChange={(event) => {
+                      const selectedLotId = event.target.value;
+                      setParkingLotId(selectedLotId);
+                      if (!selectedLotId) {
+                        setLocationName("");
+                        return;
+                      }
+                      const lot = parkingLots.find((lotItem) => lotItem.id === selectedLotId);
+                      if (lot) {
+                        setLocationName(lot.lot_name);
+                      }
+                    }}
+                    className="mt-1 w-full rounded-md border border-slate-200 px-3 py-2.5 text-sm outline-none focus:border-[#1062ff]"
+                  >
+                    <option value="">All lots</option>
+                    {parkingLots.map((lot) => (
+                      <option key={lot.id} value={lot.id}>
+                        {lot.lot_name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 <Field label="Location" value={locationName} onChange={setLocationName} />
                 <div className="rounded-lg border border-rose-100 bg-rose-50 p-4">
                   <p className="text-xs font-bold uppercase tracking-wide text-rose-500">Total Amount</p>
@@ -639,7 +672,7 @@ function ThermalTicket({
 
         <div className="relative my-6">
           <div className="absolute inset-x-8 top-1/2 -translate-y-1/2 text-center text-[22px] font-bold text-[#0478c8]/20">
-            Parksmart
+            Parks-Smart
             <br />
             Services
           </div>
@@ -732,7 +765,7 @@ function PrintLine({ label, value }: { label: string; value: string }) {
 function AddressBlock({ compact = false }: { compact?: boolean }) {
   return (
     <div className={`${compact ? "" : "mt-2"} text-center`}>
-      <div>Parksmart Services</div>
+      <div>Parks-Smart Services</div>
       <div>Parking Services</div>
       <div>Alberta Hospital Edmonton</div>
       <div>PO Box 307</div>
@@ -781,7 +814,7 @@ function ThermalTicketLegacy({
     <>
       <div className="thermal-page text-center font-mono text-[12px] leading-tight">
         <div className="text-[20px] font-bold tracking-widest">PAYMENT RECEIPT</div>
-        <div className="mt-3 text-[12px] font-bold">PARKSMART</div>
+        <div className="mt-3 text-[12px] font-bold">PARKs-SMART</div>
         <div className="text-[12px] font-bold">ENFORCEMENT PARKING</div>
         <div className="my-4 border-t border-dashed border-black" />
         <div>License Plate Number</div>

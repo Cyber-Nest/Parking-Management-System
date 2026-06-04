@@ -4,6 +4,7 @@ import { AdminRepository } from '../repositories/admin.repository';
 import { OfficerRole } from '../types';
 import { NotFoundError, ValidationError } from './commonErrors';
 import { env } from '../config/env';
+import { sendEmail, officerWelcomeTemplate } from '../utils/email';
 
 const officerRepo = new OfficerRepository();
 const adminRepo = new AdminRepository();
@@ -20,14 +21,17 @@ export class OfficerService {
       phone: o.phone,
       role: o.role,
       status: o.status === 'active' ? 'ACTIVE' : 'DISABLED',
+      parking_lot_id: o.parking_lot_id,
       tickets_issued: o.tickets_issued ?? 0,
       last_login_at: o.last_login_at,
       created_at: o.created_at,
     };
   }
 
-  async summary() {
-    return officerRepo.summary();
+  async summary(query: Record<string, string | undefined> = {}) {
+    return officerRepo.summary({
+      parkingLotId: query.parking_lot_id ?? query.parkingLotId ?? query.lotId,
+    });
   }
 
   async list(query: Record<string, string | undefined>) {
@@ -40,6 +44,7 @@ export class OfficerService {
       q: query.q?.trim() || undefined,
       status: (query.status as UiOfficerStatus) || undefined,
       role: (query.role as OfficerRole) || undefined,
+      parkingLotId: query.parking_lot_id ?? query.parkingLotId ?? query.lotId,
     });
 
     const mapped = items.map((o) => ({
@@ -50,6 +55,7 @@ export class OfficerService {
       phone: o.phone,
       role: o.role,
       status: o.status === 'active' ? 'ACTIVE' : 'DISABLED',
+      parking_lot_id: o.parking_lot_id,
       tickets_issued: o.tickets_issued ?? 0,
       last_login_at: o.last_login_at,
       created_at: o.created_at,
@@ -64,7 +70,7 @@ export class OfficerService {
     };
   }
 
-  async create(adminId: string, body: { full_name: string; email: string; phone?: string; role: OfficerRole; badge_number?: string; password?: string }) {
+  async create(adminId: string, body: { full_name: string; email: string; phone?: string; role: OfficerRole; badge_number?: string; password?: string; parking_lot_id?: string }) {
     if (!body || typeof body !== 'object') {
       throw new ValidationError('Request body is required');
     }
@@ -101,7 +107,21 @@ export class OfficerService {
         badgeNumber: body.badge_number,
         role,
         passwordHash,
+        parkingLotId: body.parking_lot_id,
       });
+
+      // Send welcome email with credentials (best-effort)
+      try {
+        await sendEmail({
+          to: body.email,
+          subject: 'ParkSmart — Officer Account Created',
+          html: officerWelcomeTemplate(body.full_name, body.email, rawPassword, env.frontendUrl),
+          emailType: 'officer_created',
+          relatedId: id,
+        });
+      } catch (mailErr) {
+        console.error('[OfficerService] Failed to send welcome email:', mailErr);
+      }
 
       return { id, password: rawPassword };
     } catch (e: unknown) {
@@ -109,7 +129,7 @@ export class OfficerService {
       if (err.code === 'ER_DUP_ENTRY' || err.errno === 1062) {
         const msg = String(err.sqlMessage ?? err.message ?? '').toLowerCase();
         if (msg.includes('email')) {
-          throw new ValidationError('An officer with this email already exists');
+          throw new ValidationError('Email already exists');
         }
         throw new ValidationError('This officer conflicts with existing data (duplicate unique field)');
       }
@@ -122,12 +142,13 @@ export class OfficerService {
     }
   }
 
-  async update(id: string, body: { full_name?: string; phone?: string; role?: OfficerRole; badge_number?: string }) {
+  async update(id: string, body: { full_name?: string; phone?: string; role?: OfficerRole; badge_number?: string; parking_lot_id?: string }) {
     const affected = await officerRepo.update(id, {
       fullName: body.full_name,
       phone: body.phone,
       role: body.role,
       badgeNumber: body.badge_number,
+      parkingLotId: body.parking_lot_id,
     });
     if (affected === 0) {
       // if nothing updated, still allow idempotent calls, but validate officer exists

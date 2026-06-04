@@ -109,6 +109,7 @@ export class TicketService {
       officerId: query.officer_id,
       from: query.from,
       to: query.to,
+      parkingLotId: query.parking_lot_id ?? query.parkingLotId ?? query.lotId,
     });
 
     const mapped: TicketPublic[] = items.map((t) => ({
@@ -139,8 +140,10 @@ export class TicketService {
     };
   }
 
-  async summary() {
-    return ticketRepo.summary();
+  async summary(query: Record<string, string | undefined> = {}) {
+    return ticketRepo.summary({
+      parkingLotId: query.parking_lot_id ?? query.parkingLotId ?? query.lotId,
+    });
   }
 
   async create(body: CreateTicketBody & { officer_id: string; officer_name: string; status?: TicketStatus; remarks?: string }) {

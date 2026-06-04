@@ -8,12 +8,14 @@ import {
   ChevronDown,
   Wallet2,
   Calculator,
+  Building2,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
   settingsService,
   TaxSettings as TaxSettingsType,
 } from "@/services/settings.service";
+import { listParkingLots, ParkingLotRecord } from "@/services/parking-lots.service";
 
 //Toggle Component
 const CustomToggle = ({
@@ -57,9 +59,11 @@ const CustomToggle = ({
   );
 };
 
-export const TaxSettings = () => {
+export const TaxSettings = ({ parkingLotId }: { parkingLotId?: string }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [parkingLots, setParkingLots] = useState<ParkingLotRecord[]>([]);
+  const [selectedParkingLotId, setSelectedParkingLotId] = useState<string>(parkingLotId ?? "");
   const [settings, setSettings] = useState<TaxSettingsType>({
     taxRate: "",
     currency: "CAD",
@@ -69,12 +73,30 @@ export const TaxSettings = () => {
     refundApprovalRequired: "yes",
   });
 
-  // Fetch data
+  // Fetch parking lots
+  useEffect(() => {
+    const loadParkingLots = async () => {
+      try {
+        const lots = await listParkingLots();
+        setParkingLots(lots);
+      } catch (error) {
+        console.error("Failed to load parking lots:", error);
+      }
+    };
+    loadParkingLots();
+  }, []);
+
+  // Sync prop with state
+  useEffect(() => {
+    setSelectedParkingLotId(parkingLotId ?? "");
+  }, [parkingLotId]);
+
+  // Fetch data when parking lot changes
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const data = await settingsService.getTaxSettings();
+        const data = await settingsService.getTaxSettings(selectedParkingLotId || undefined);
         setSettings(data);
       } catch (error) {
         toast.error("Failed to load tax settings");
@@ -83,7 +105,7 @@ export const TaxSettings = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [selectedParkingLotId]);
 
   const handleChange = (field: keyof TaxSettingsType, value: string) => {
     setSettings((prev) => ({ ...prev, [field]: value }));
@@ -92,7 +114,7 @@ export const TaxSettings = () => {
   const handleSave = async () => {
     try {
       setSaving(true);
-      const response = await settingsService.updateTaxSettings(settings);
+      const response = await settingsService.updateTaxSettings(settings, selectedParkingLotId || undefined);
       toast.success(response.message);
     } catch (error) {
       toast.error("Failed to save tax settings");
@@ -112,6 +134,27 @@ export const TaxSettings = () => {
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {/* Parking Lot Selector */}
+     {/*  <div className="mb-8 bg-[var(--color-surface)] p-6 rounded-[32px] border border-[var(--color-border)] shadow-[var(--shadow-card)]">
+        <div className="relative">
+          <select
+            value={selectedParkingLotId}
+            onChange={(e) => setSelectedParkingLotId(e.target.value)}
+            className="w-full px-5 py-3.5 bg-[var(--color-surface-soft)] border border-[var(--color-border)] rounded-2xl focus:border-[var(--color-primary)] transition-all outline-none text-sm font-bold appearance-none cursor-pointer"
+          >
+            {parkingLots.map((lot) => (
+              <option key={lot.id} value={lot.id}>
+                {lot.lot_name} {lot.address ? `(${lot.address})` : ""}
+              </option>
+            ))}
+          </select>
+          <ChevronDown
+            size={18}
+            className="absolute right-5 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] pointer-events-none"
+          />
+        </div>
+      </div> */}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Left Card: Base Financials */}
         <div className="bg-[var(--color-surface)] p-8 rounded-[32px] border border-[var(--color-border)] shadow-[var(--shadow-card)]">

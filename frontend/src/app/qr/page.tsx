@@ -9,13 +9,13 @@ export default function QrLandingPage() {
             <span className="text-3xl font-extrabold">P</span>
           </div>
           <div>
-            <p className="text-sm uppercase tracking-[0.35em] text-slate-400">ParkSmart</p>
+            <p className="text-sm uppercase tracking-[0.35em] text-slate-400">Parks-Smart</p>
             <h1 className="mt-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">
               Penalty Payment & Appeal
             </h1>
           </div>
           <p className="max-w-2xl text-sm leading-7 text-slate-300">
-            Scan the ParkSmart QR code to quickly pay a penalty or file an appeal. Use the search form to look up your ticket and continue with the official ParkSmart experience.
+            Scan the Parks-Smart QR code to quickly pay a penalty or file an appeal. Use the search form to look up your ticket and continue with the official Parks-Smart experience.
           </p>
         </div>
 

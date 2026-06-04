@@ -47,6 +47,7 @@ export interface PaymentMethodDatum {
 const range = (f: PaymentReconciliationFilters) => ({
     from: f.startDate?.trim() || undefined,
     to: f.endDate?.trim() || undefined,
+    parking_lot_id: f.parkingLotId?.trim() || undefined,
 });
 
 type RecRow = { payment_type: string; status: string; count: number; total_amount: number };
@@ -121,8 +122,8 @@ export const paymentReconciliationService = {
 
     async exportReport(payload: PaymentReconciliationFilters & { format: ReportExportFormat }) {
         const { format, ...filters } = payload;
-        const { from, to } = range(filters as PaymentReconciliationFilters);
-        return downloadReportExport("payment-reconciliation", format, { from, to });
+        const { from, to, parking_lot_id } = range(filters as PaymentReconciliationFilters);
+        return downloadReportExport("payment-reconciliation", format, { from, to, parking_lot_id });
     },
 
     async getDetailsById(itemId: string): Promise<ReconciliationData> {

@@ -1,16 +1,20 @@
-﻿import axiosInstance from "@/lib/axios";
+import axiosInstance from "@/lib/axios";
 import { API_ENDPOINTS } from "./api";
 
 export interface ParkingZone {
   zoneId: string;
   zoneName: string;
+  address: string;
+  image: string;
   hourlyRate: number;
   availableSpots: number;
   totalSpots: number;
   spotId: string;
+  lotId?: string;
 }
 
 export interface ParkingDetails {
+  lotId: any;
   zoneId: string;
   parkingName: string;
   address: string;
@@ -36,6 +40,7 @@ export interface DurationOption {
   value: string;
   price: number;
   minutes: number;
+  planId?: string;
 }
 
 export interface PaymentIntentResponse {
@@ -75,6 +80,7 @@ export interface CustomerBookingDetails {
 export interface BookingSummary {
   subtotal: number;
   serviceFee: number;
+  taxAmount?: number;
   total: number;
   startTime: string;
   endTime: string;
@@ -86,6 +92,7 @@ export interface CompleteBookingPayload {
   parkingDetails: ParkingDetails;
   vehicleDetails: VehicleDetails;
   selectedDuration: DurationOption;
+  planId?: string;
 }
 
 export interface PenaltyVehicleDetails {
@@ -176,46 +183,41 @@ function sanitizeParkingImageUrl(url: string | undefined | null): string {
 }
 
 class CustomerService {
-  async getParkingZoneById(zoneId: string): Promise<ParkingDetails> {
-    const response = await axiosInstance.get(API_ENDPOINTS.CUSTOMER.PARKING_ZONE(zoneId));
+  async getParkingZoneById(lotId: string): Promise<ParkingDetails> {
+    const response = await axiosInstance.get(API_ENDPOINTS.CUSTOMER.PARKING_ZONE(lotId));
     const data = response.data?.data;
 
     if (!data) {
-      throw new Error("Parking zone not found");
+      throw new Error("Parking lot not found");
     }
 
-    const subZones = Array.isArray(data.sub_zones) ? data.sub_zones : [];
+    const zonesArray = Array.isArray(data.zones) ? data.zones : [];
     const zones: ParkingZone[] | undefined =
-      subZones.length > 0
-        ? [
-            {
-              zoneId: data.id ?? zoneId,
-              zoneName: data.parking_name ?? "Main",
-              hourlyRate: Number(data.hourly_rate ?? 0),
-              availableSpots: Number(data.available_spots ?? 0),
-              totalSpots: Number(data.total_spots ?? 0),
-              spotId: data.spot_id ?? "",
-            },
-            ...subZones.map((z: Record<string, unknown>) => ({
-              zoneId: String(z.id),
-              zoneName: String(z.parking_name ?? "Zone"),
-              hourlyRate: Number(z.hourly_rate ?? 0),
-              availableSpots: Number(z.available_spots ?? 0),
-              totalSpots: Number(z.total_spots ?? 0),
-              spotId: String(z.spot_id ?? ""),
-            })),
-          ]
+      zonesArray.length > 0
+        ? zonesArray.map((z: Record<string, unknown>) => ({
+          zoneId: String(z.id),
+          zoneName: String(z.parking_name ?? "Zone"),
+          address: String(z.address ?? ""),
+          image: sanitizeParkingImageUrl(String(z.image_url ?? "")),
+          hourlyRate: Number(z.hourly_rate ?? 0),
+          availableSpots: Number(z.available_spots ?? 0),
+          totalSpots: Number(z.total_spots ?? 0),
+          spotId: String(z.spot_id ?? ""),
+          lotId: String(z.parking_lot_id ?? data.lot_id ?? lotId),
+        }))
         : undefined;
 
     return {
-      zoneId: data.id ?? zoneId,
-      parkingName: data.parking_name ?? "Parking Zone",
+      lotId: data.lot_id ?? lotId,
+      zoneId: data.lot_id ?? lotId,
+
+      parkingName: data.lot_name ?? "Parking Lot",
       address: data.address ?? "",
       image: sanitizeParkingImageUrl(data.image_url),
-      hourlyRate: Number(data.hourly_rate ?? 0),
-      availableSpots: Number(data.available_spots ?? 0),
-      totalSpots: Number(data.total_spots ?? 0),
-      spotId: data.spot_id ?? "",
+      hourlyRate: zones?.[0]?.hourlyRate ?? 0,
+      availableSpots: zones?.reduce((acc: number, z: ParkingZone) => acc + z.availableSpots, 0) ?? 0,
+      totalSpots: zones?.reduce((acc: number, z: ParkingZone) => acc + z.totalSpots, 0) ?? 0,
+      spotId: data.lot_id ?? "",
       zones,
     };
   }
@@ -306,10 +308,11 @@ class CustomerService {
     const endDate = new Date(
       now.getTime() + payload.selectedDuration.minutes * 60 * 1000,
     );
-
-    const subtotal = payload.selectedDuration.price;
-    const serviceFee = 2;
-    const total = subtotal + serviceFee;
+    // Calculate subtotal from parking plan / zone hourly rate when available
+    const hourlyRate = payload.parkingDetails?.hourlyRate ?? payload.selectedDuration.price;
+    const subtotal = (payload.selectedDuration.minutes / 60) * hourlyRate;
+    const serviceFee = 0;
+    const total = subtotal;
 
     return {
       subtotal,
@@ -326,6 +329,53 @@ class CustomerService {
       duration: payload.selectedDuration.label,
       transactionId: `PS-${Math.floor(100000 + Math.random() * 900000)}`,
     };
+  }
+
+  async getTaxPricing(parkingLotId?: string): Promise<{ taxRate: number; pricesIncludeTax: boolean; currency?: string }> {
+    try {
+      const response = await axiosInstance.get(API_ENDPOINTS.SETTINGS.TAX_PRICING, {
+        params: parkingLotId ? { parking_lot_id: parkingLotId } : undefined,
+      });
+      const data = response.data?.data ?? {};
+      return {
+        taxRate: Number(data.taxRate ?? 0),
+        pricesIncludeTax: (data.pricesIncludeTax ?? 'no') === 'yes',
+        currency: data.currency ?? 'CAD',
+      };
+    } catch (err) {
+      return { taxRate: 0, pricesIncludeTax: true, currency: 'CAD' };
+    }
+  }
+
+  async generateBookingSummaryWithTax(payload: CompleteBookingPayload): Promise<BookingSummary> {
+    const now = new Date();
+    const endDate = new Date(now.getTime() + payload.selectedDuration.minutes * 60 * 1000);
+    const hourlyRate = payload.parkingDetails?.hourlyRate ?? payload.selectedDuration.price;
+    const subtotal = (payload.selectedDuration.minutes / 60) * hourlyRate;
+    const taxInfo = await this.getTaxPricing(payload.parkingDetails?.lotId);
+    const serviceFee = 0;
+
+    let taxAmount = 0;
+    let total = 0;
+
+    if (taxInfo.pricesIncludeTax) {
+      taxAmount = subtotal - subtotal / (1 + taxInfo.taxRate / 100);
+      total = subtotal;
+    } else {
+      taxAmount = (subtotal * taxInfo.taxRate) / 100;
+      total = subtotal + taxAmount;
+    }
+
+    return {
+      subtotal,
+      serviceFee,
+      taxAmount,
+      total,
+      startTime: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      endTime: endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      duration: payload.selectedDuration.label,
+      transactionId: `PS-${Math.floor(100000 + Math.random() * 900000)}`,
+    } as BookingSummary;
   }
 
   /** Amount in CAD dollars (e.g. 6.50). Backend converts to cents for Stripe. */
@@ -348,19 +398,40 @@ class CustomerService {
     return response.data?.data as { stripePublishableKey: string };
   }
 
+  async getParkingPlansByLot(lotId: string, zoneId: string): Promise<DurationOption[]> {
+    const response = await axiosInstance.get(API_ENDPOINTS.CUSTOMER.PARKING_PLANS, {
+      params: { lotId, zoneId },
+    });
+    const plans = Array.isArray(response.data?.data) ? response.data.data : [];
+    return plans.map((plan: any) => ({
+      type: plan.plan_type ?? 'lot',
+      label: plan.name ?? `${plan.duration}m`,
+      value: String(plan.id ?? `${plan.duration}m-${plan.price}`),
+      price: Number(plan.price ?? 0),
+      minutes: Number(plan.duration ?? 0),
+      planId: String(plan.id ?? ""),
+    }));
+  }
+
   async submitBooking(
     payload: CompleteBookingPayload,
     stripePaymentIntentId: string,
   ): Promise<BookingResponse> {
+    const price = payload.parkingDetails.hourlyRate
+      ? (payload.selectedDuration.minutes / 60) * payload.parkingDetails.hourlyRate
+      : payload.selectedDuration.price;
+
     const response = await axiosInstance.post(API_ENDPOINTS.CUSTOMER.BOOKINGS, {
       zoneId: payload.parkingDetails.zoneId,
+      lotId: payload.parkingDetails.lotId,
       email: payload.vehicleDetails.email,
       vehicleModel: payload.vehicleDetails.vehicleModel,
       plateNumber: payload.vehicleDetails.plateNumber,
       carColor: payload.vehicleDetails.carColor,
       durationLabel: payload.selectedDuration.label,
       durationMinutes: payload.selectedDuration.minutes,
-      price: payload.selectedDuration.price,
+      price,
+      planId: payload.planId ?? payload.selectedDuration.planId,
       stripePaymentIntentId,
     });
 
@@ -477,19 +548,19 @@ class CustomerService {
     const startTime = data.start_time
       ? new Date(data.start_time)
       : data.date_issued
-      ? new Date(data.date_issued)
-      : null;
+        ? new Date(data.date_issued)
+        : null;
     const endTime = data.end_time
       ? new Date(data.end_time)
       : data.due_date
-      ? new Date(data.due_date)
-      : null;
+        ? new Date(data.due_date)
+        : null;
 
     const overtimeMinutes = endTime
       ? Math.max(
-          0,
-          Math.round((Date.now() - endTime.getTime()) / 60000),
-        )
+        0,
+        Math.round((Date.now() - endTime.getTime()) / 60000),
+      )
       : 0;
 
     const rawProofImages = Array.isArray(data.photos)
@@ -498,8 +569,8 @@ class CustomerService {
     const proofImages = rawProofImages.length
       ? rawProofImages
       : data.evidence_image
-      ? [String(data.evidence_image)]
-      : [];
+        ? [String(data.evidence_image)]
+        : [];
 
     return {
       penaltyId: data.ticket_number,
@@ -513,15 +584,15 @@ class CustomerService {
       },
       bookingStartTime: startTime
         ? startTime.toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-          })
+          hour: '2-digit',
+          minute: '2-digit',
+        })
         : 'Unknown',
       allowedEndTime: endTime
         ? endTime.toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-          })
+          hour: '2-digit',
+          minute: '2-digit',
+        })
         : 'Unknown',
       overtimeDuration: `${overtimeMinutes} Minutes`,
       generatedPenalty: Number(data.amount ?? 0),
@@ -530,8 +601,8 @@ class CustomerService {
         data.status === 'paid'
           ? 'paid'
           : data.status === 'disputed'
-          ? 'disputed'
-          : 'pending',
+            ? 'disputed'
+            : 'pending',
       issuedAt: data.date_issued ?? new Date().toISOString(),
       evidenceImage: proofImages[0] ?? '',
       proofImages,

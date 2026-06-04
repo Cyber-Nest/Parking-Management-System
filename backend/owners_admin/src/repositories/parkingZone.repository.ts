@@ -5,6 +5,7 @@ export interface ParkingZoneListFilters {
   page?: number;
   limit?: number;
   q?: string;
+  lotId?: string;
 }
 
 export class ParkingZoneRepository {
@@ -21,8 +22,18 @@ export class ParkingZoneRepository {
       values.push(term, term, term);
     }
 
+    if (filters.lotId?.trim()) {
+      const condition = `parking_lot_id = ?`;
+      if (where) {
+        where += ` AND ${condition}`;
+      } else {
+        where = `WHERE ${condition}`;
+      }
+      values.push(filters.lotId.trim());
+    }
+
     const items = await queryRows<ParkingZoneRow & { status?: string }>(
-      `SELECT id, parking_name, address, image_url, hourly_rate, available_spots, total_spots, spot_id, status
+      `SELECT id, parking_name, address, image_url, hourly_rate, available_spots, total_spots, spot_id, parking_lot_id, status
        FROM parking_zones
        ${where}
        ORDER BY parking_name ASC
@@ -40,7 +51,7 @@ export class ParkingZoneRepository {
 
   async findById(id: string): Promise<(ParkingZoneRow & { status?: string }) | null> {
     const rows = await queryRows<ParkingZoneRow & { status?: string }>(
-      `SELECT id, parking_name, address, image_url, hourly_rate, available_spots, total_spots, spot_id, status
+      `SELECT id, parking_name, address, image_url, hourly_rate, available_spots, total_spots, spot_id, parking_lot_id, status
        FROM parking_zones WHERE id = ? LIMIT 1`,
       [id],
     );
@@ -58,13 +69,14 @@ export class ParkingZoneRepository {
     total_spots: number;
     spot_id: string;
     status?: 'active' | 'inactive';
+    parking_lot_id?: string | null;
   }): Promise<string> {
     const id = params.id ?? `ZONE-${Date.now()}`;
     await execute(
       `INSERT INTO parking_zones (
         id, parking_name, address, image_url, hourly_rate,
-        available_spots, total_spots, spot_id, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        available_spots, total_spots, spot_id, parking_lot_id, status
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         params.parking_name.trim(),
@@ -74,6 +86,7 @@ export class ParkingZoneRepository {
         params.available_spots,
         params.total_spots,
         params.spot_id,
+        params.parking_lot_id ?? null,
         params.status ?? 'active',
       ],
     );
@@ -91,6 +104,7 @@ export class ParkingZoneRepository {
       total_spots: number;
       spot_id: string;
       status: 'active' | 'inactive';
+      parking_lot_id: string | null;
     }>,
   ): Promise<number> {
     const updates: string[] = [];
@@ -123,6 +137,10 @@ export class ParkingZoneRepository {
     if (params.spot_id !== undefined) {
       updates.push('spot_id = ?');
       values.push(params.spot_id);
+    }
+    if (params.parking_lot_id !== undefined) {
+      updates.push('parking_lot_id = ?');
+      values.push(params.parking_lot_id);
     }
     if (params.status !== undefined) {
       updates.push('status = ?');
@@ -162,6 +180,25 @@ export class ParkingZoneRepository {
        LIMIT ?`,
       [excludeId, limit],
     );
+  }
+
+  async listByLot(lotId: string, page = 1, limit = 100): Promise<{ items: ParkingZoneRow[]; total: number }> {
+    const offset = (page - 1) * limit;
+    const items = await queryRows<ParkingZoneRow & { status?: string }>(
+      `SELECT id, parking_name, address, image_url, hourly_rate, available_spots, total_spots, spot_id, parking_lot_id, status
+       FROM parking_zones
+       WHERE parking_lot_id = ?
+       ORDER BY parking_name ASC
+       LIMIT ? OFFSET ?`,
+      [lotId, limit, offset],
+    );
+
+    const countRows = await queryRows<{ total: number }>(
+      `SELECT COUNT(*) AS total FROM parking_zones WHERE parking_lot_id = ?`,
+      [lotId],
+    );
+
+    return { items, total: Number(countRows[0]?.total ?? 0) };
   }
 }
 

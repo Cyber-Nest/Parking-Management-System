@@ -14,6 +14,7 @@ export interface BookingFilters {
 export interface BookingRow {
   id: string;
   booking_reference: string;
+  parking_lot_id?: string | null;
   customer_email: string;
   vehicle_plate_number: string;
   vehicle_model: string;
@@ -36,6 +37,7 @@ export class BookingRepository {
     const id = crypto.randomUUID();
     const {
       booking_reference,
+      parking_lot_id,
       parking_zone_id,
       parking_name,
       parking_location,
@@ -63,7 +65,7 @@ export class BookingRepository {
 
     await execute(
       `INSERT INTO bookings (
-        id, booking_reference, parking_zone_id, parking_name, parking_location,
+        id, booking_reference, parking_lot_id, parking_zone_id, parking_name, parking_location,
         customer_email, vehicle_model, vehicle_plate_number, vehicle_color,
         start_time, end_time, duration_minutes, duration_label, parking_plan_id, hourly_rate,
         base_price, tax_amount, service_fee, total_price, currency, spot_id,
@@ -73,6 +75,7 @@ export class BookingRepository {
       [
         id,
         booking_reference,
+        parking_lot_id ?? null,
         parking_zone_id,
         parking_name,
         parking_location ?? null,

@@ -92,6 +92,7 @@ export const ParkingOwnerFormDrawer = ({
   const [imagePreview, setImagePreview] = useState<string | null>(
     formData.parkingImage || null,
   );
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -130,6 +131,15 @@ export const ParkingOwnerFormDrawer = ({
   const removeZone = (index: number) => {
     const updatedZones = formData.zones.filter((_, i) => i !== index);
     onFormChange("zones", updatedZones);
+  };
+
+  const handleSubmit = async () => {
+    try {
+      setIsSubmitting(true);
+      await onSubmit(formData);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -278,7 +288,7 @@ export const ParkingOwnerFormDrawer = ({
                       />
                       <input
                         type="email"
-                        placeholder="owner@parksmart.com"
+                        placeholder="owner@parkssmart.com"
                         className="w-full bg-[var(--color-surface-soft)]/50 border border-[var(--color-border)]/70 rounded-xl pl-10 pr-4 py-2.5 text-sm font-medium text-[var(--color-text)] placeholder:text-[var(--color-text-muted)] outline-none focus:border-[var(--color-primary)] focus:bg-[var(--color-surface)] focus:ring-4 focus:ring-[var(--color-primary)]/5 transition-all duration-200"
                         value={formData.ownerEmail}
                         onChange={(e) =>
@@ -514,17 +524,28 @@ export const ParkingOwnerFormDrawer = ({
             <div className="sticky bottom-0 bg-[var(--color-bg)] border-t border-[var(--color-border)]/50 p-5 flex gap-3">
               <button
                 onClick={onClose}
-                className="flex-1 px-5 py-3 rounded-xl border border-[var(--color-border)]/80 text-[var(--color-text-secondary)] font-semibold text-sm hover:bg-[var(--color-surface-soft)] transition-colors active:scale-95 duration-200"
+                disabled={isSubmitting}
+                className="flex-1 px-5 py-3 rounded-xl border border-[var(--color-border)]/80 text-[var(--color-text-secondary)] font-semibold text-sm hover:bg-[var(--color-surface-soft)] transition-colors active:scale-95 duration-200 disabled:opacity-50"
               >
                 Discard
               </button>
 
               <button
-                onClick={() => onSubmit(formData)}
-                className="flex-[1.4] bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover,var(--color-primary))] text-white font-semibold text-sm px-6 py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-[var(--color-primary)]/15 active:scale-[0.98] transition-all duration-200 border border-white/5"
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="flex-[1.4] bg-[var(--color-primary)] hover:bg-[var(--color-primary-hover,var(--color-primary))] text-white font-semibold text-sm px-6 py-3 rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-[var(--color-primary)]/15 active:scale-[0.98] transition-all duration-200 border border-white/5 disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                <Building2 size={16} strokeWidth={2.5} />
-                {editingParkingOwner ? "Save Changes" : "Create Owner Account"}
+                {isSubmitting ? (
+                  <>
+                    <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    {editingParkingOwner ? "Saving..." : "Creating..."}
+                  </>
+                ) : (
+                  <>
+                    <Building2 size={16} strokeWidth={2.5} />
+                    {editingParkingOwner ? "Save Changes" : "Create Owner Account"}
+                  </>
+                )}
               </button>
             </div>
           </motion.div>

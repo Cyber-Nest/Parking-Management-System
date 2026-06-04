@@ -37,6 +37,7 @@ export interface Officer {
   addressProvince?: string;
   addressPostalCode?: string;
   profilePhoto?: string | null;
+  parkingLotId?: string | null;
 
   // Raw backend fields (optional passthrough)
   full_name?: string;
@@ -76,12 +77,13 @@ export const officerService = {
         full_name: o.full_name,
         status: o.status,
         created_at: o.created_at,
+        parkingLotId: o.parking_lot_id,
       } as Officer;
     });
   },
 
-  async getSummary() {
-    return await getOfficerSummary();
+  async getSummary(params: Pick<OfficerListParams, "parking_lot_id"> = {}) {
+    return await getOfficerSummary(params);
   },
 
   async setOfficerStatus(id: string, status: "ACTIVE" | "DISABLED") {

@@ -32,10 +32,11 @@ export interface PaymentListParams {
   payment_type?: PaymentType;
   from?: string;
   to?: string;
+  parking_lot_id?: string;
 }
 
-export const getPaymentSummary = async () => {
-  const response = await axiosInstance.get(API_ENDPOINTS.PAYMENTS.SUMMARY);
+export const getPaymentSummary = async (params: Pick<PaymentListParams, "parking_lot_id"> = {}) => {
+  const response = await axiosInstance.get(API_ENDPOINTS.PAYMENTS.SUMMARY, { params });
   return getResponseData(response);
 };
 

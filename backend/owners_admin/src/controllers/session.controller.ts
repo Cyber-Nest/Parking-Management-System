@@ -27,11 +27,11 @@ export const listSessions = async (
 };
 
 export const getSessionSummary = async (
-  _req: Request,
+  req: Request,
   res: Response<ApiResponse<any>>
 ): Promise<void> => {
   try {
-    const data = await sessionService.summary();
+    const data = await sessionService.summary(req.query as Record<string, string | undefined>);
     res.status(200).json({ success: true, message: 'Session summary fetched', data });
   } catch (err) {
     handleError(err, res);

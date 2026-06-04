@@ -153,7 +153,7 @@ const IntegrationWrapper = ({
 );
 
 
-export const IntegrationsSettings = () => {
+export const IntegrationsSettings = ({ parkingLotId }: { parkingLotId?: string }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState<string | null>(null);
@@ -161,12 +161,12 @@ export const IntegrationsSettings = () => {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [parkingLotId]);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const data = await settingsService.getIntegrationSettings();
+      const data = await settingsService.getIntegrationSettings(parkingLotId || undefined);
       setSettings(data);
     } catch (error) {
       toast.error("Failed to load integrations");
@@ -215,7 +215,7 @@ export const IntegrationsSettings = () => {
   const handleSave = async () => {
     try {
       setSaving(true);
-      await settingsService.updateIntegrationSettings(settings);
+      await settingsService.updateIntegrationSettings(settings, parkingLotId || undefined);
       toast.success("All integrations saved successfully");
     } catch (error) {
       toast.error("Save failed");

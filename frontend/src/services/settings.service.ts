@@ -62,6 +62,7 @@ export interface SystemSettings {
 }
 
 export interface BrandingSettings {
+  parkingLotName: string;
   systemName: string;
   themeColor: string;
   darkMode: DarkModePreference;
@@ -89,6 +90,8 @@ export interface AuditLog {
   timestamp: string;
   dateTime?: string;
   status: "success" | "failure";
+  parkingLotId?: string | null;
+  parking_lot_id?: string | null;
 }
 
 export interface AuditLogFilters {
@@ -101,6 +104,7 @@ export interface AuditLogFilters {
   to?: string;
   startDate?: string;
   endDate?: string;
+  parkingLotId?: string;
   page?: number;
   limit?: number;
 }
@@ -324,26 +328,31 @@ export const settingsService = {
     return getResponseData<SystemSettings>(res);
   },
 
-  async getBrandingSettings(): Promise<BrandingSettings> {
-    const res = await axiosInstance.get(BRANDING_BASE);
+  async getBrandingSettings(parkingLotId?: string): Promise<BrandingSettings> {
+    const res = await axiosInstance.get(BRANDING_BASE, {
+      params: parkingLotId ? { parking_lot_id: parkingLotId } : {},
+    });
     return getResponseData<BrandingSettings>(res);
   },
 
-  async updateBrandingSettings(settings: BrandingSettings): Promise<BrandingSettings> {
-    const res = await axiosInstance.put(BRANDING_BASE, settings);
+  async updateBrandingSettings(settings: BrandingSettings, parkingLotId?: string): Promise<BrandingSettings> {
+    const payload = { ...settings, ...(parkingLotId && { parking_lot_id: parkingLotId }) };
+    const res = await axiosInstance.put(BRANDING_BASE, payload);
     return getResponseData<BrandingSettings>(res);
   },
 
-  async getIntegrationSettings(): Promise<IntegrationSettings> {
-    const settings = readLS<IntegrationSettings | null>(LS_INTEGRATIONS_KEY, null);
+  async getIntegrationSettings(parkingLotId?: string): Promise<IntegrationSettings> {
+    const key = parkingLotId ? `${LS_INTEGRATIONS_KEY}_${parkingLotId}` : LS_INTEGRATIONS_KEY;
+    const settings = readLS<IntegrationSettings | null>(key, null);
     if (settings) return settings;
     const defaultSettings = getDefaultIntegrationSettings();
-    writeLS(LS_INTEGRATIONS_KEY, defaultSettings);
+    writeLS(key, defaultSettings);
     return defaultSettings;
   },
 
-  async updateIntegrationSettings(settings: IntegrationSettings): Promise<IntegrationSettings> {
-    writeLS(LS_INTEGRATIONS_KEY, settings);
+  async updateIntegrationSettings(settings: IntegrationSettings, parkingLotId?: string): Promise<IntegrationSettings> {
+    const key = parkingLotId ? `${LS_INTEGRATIONS_KEY}_${parkingLotId}` : LS_INTEGRATIONS_KEY;
+    writeLS(key, settings);
     return settings;
   },
 
@@ -360,22 +369,26 @@ export const settingsService = {
     };
   },
 
-  async getNotificationSettings(): Promise<NotificationSettings> {
-    const settings = readLS<NotificationSettings | null>(LS_NOTIFICATION_SETTINGS_KEY, null);
+  async getNotificationSettings(parkingLotId?: string): Promise<NotificationSettings> {
+    const key = parkingLotId ? `${LS_NOTIFICATION_SETTINGS_KEY}_${parkingLotId}` : LS_NOTIFICATION_SETTINGS_KEY;
+    const settings = readLS<NotificationSettings | null>(key, null);
     if (settings) return settings;
     const defaultSettings = getDefaultNotificationSettings();
-    writeLS(LS_NOTIFICATION_SETTINGS_KEY, defaultSettings);
+    writeLS(key, defaultSettings);
     return defaultSettings;
   },
 
-  async updateNotificationSettings(settings: NotificationSettings) {
-    writeLS(LS_NOTIFICATION_SETTINGS_KEY, settings);
+  async updateNotificationSettings(settings: NotificationSettings, parkingLotId?: string) {
+    const key = parkingLotId ? `${LS_NOTIFICATION_SETTINGS_KEY}_${parkingLotId}` : LS_NOTIFICATION_SETTINGS_KEY;
+    writeLS(key, settings);
     return { message: "Notification settings updated", settings };
   },
 
-  async getTaxSettings(): Promise<TaxSettings> {
+  async getTaxSettings(parkingLotId?: string): Promise<TaxSettings> {
     try {
-      const res = await axiosInstance.get(API_ENDPOINTS.SETTINGS.TAX_PRICING);
+      const res = await axiosInstance.get(API_ENDPOINTS.SETTINGS.TAX_PRICING, {
+        params: parkingLotId ? { parking_lot_id: parkingLotId } : {},
+      });
       return getResponseData<TaxSettings>(res);
     } catch {
       const settings = readLS<TaxSettings | null>(LS_TAX_SETTINGS_KEY, null);
@@ -386,21 +399,26 @@ export const settingsService = {
     }
   },
 
-  async updateTaxSettings(settings: TaxSettings) {
-    const res = await axiosInstance.put(API_ENDPOINTS.SETTINGS.TAX_PRICING, settings);
+  async updateTaxSettings(settings: TaxSettings, parkingLotId?: string) {
+    const res = await axiosInstance.put(API_ENDPOINTS.SETTINGS.TAX_PRICING, {
+      ...settings,
+      ...(parkingLotId && { parking_lot_id: parkingLotId }),
+    });
     return { message: (res.data as any)?.message ?? "Tax settings updated", settings: getResponseData<TaxSettings>(res) };
   },
 
-  async getSecuritySettings(): Promise<SecuritySettings> {
-    const settings = readLS<SecuritySettings | null>(LS_SECURITY_SETTINGS_KEY, null);
+  async getSecuritySettings(parkingLotId?: string): Promise<SecuritySettings> {
+    const key = parkingLotId ? `${LS_SECURITY_SETTINGS_KEY}_${parkingLotId}` : LS_SECURITY_SETTINGS_KEY;
+    const settings = readLS<SecuritySettings | null>(key, null);
     if (settings) return settings;
     const defaultSettings = getDefaultSecuritySettings();
-    writeLS(LS_SECURITY_SETTINGS_KEY, defaultSettings);
+    writeLS(key, defaultSettings);
     return defaultSettings;
   },
 
-  async updateSecuritySettings(settings: SecuritySettings) {
-    writeLS(LS_SECURITY_SETTINGS_KEY, settings);
+  async updateSecuritySettings(settings: SecuritySettings, parkingLotId?: string) {
+    const key = parkingLotId ? `${LS_SECURITY_SETTINGS_KEY}_${parkingLotId}` : LS_SECURITY_SETTINGS_KEY;
+    writeLS(key, settings);
     return { message: "Security settings updated", settings };
   },
 
@@ -433,6 +451,10 @@ export const settingsService = {
         const end = new Date(filters.endDate).setHours(23, 59, 59, 999);
         const timestamp = new Date(log.timestamp).getTime();
         if (timestamp > end) return false;
+      }
+      if (filters.parkingLotId) {
+        const logLotId = log.parkingLotId ?? log.parking_lot_id;
+        if (logLotId !== filters.parkingLotId) return false;
       }
       return true;
     });

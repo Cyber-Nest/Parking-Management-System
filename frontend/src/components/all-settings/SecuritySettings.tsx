@@ -71,7 +71,7 @@ const SecuritySwitch = ({ label, icon, active, onToggle }: any) => (
   </div>
 );
 
-export const SecuritySettings = () => {
+export const SecuritySettings = ({ parkingLotId }: { parkingLotId?: string }) => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<SecuritySettingsType>({
@@ -88,7 +88,7 @@ export const SecuritySettings = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const data = await settingsService.getSecuritySettings();
+        const data = await settingsService.getSecuritySettings(parkingLotId || undefined);
         setSettings(data);
       } catch (error) {
         toast.error("Failed to load security settings");
@@ -97,7 +97,7 @@ export const SecuritySettings = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [parkingLotId]);
 
   const handleChange = (field: keyof SecuritySettingsType, value: any) => {
     setSettings((prev) => ({ ...prev, [field]: value }));
@@ -106,7 +106,7 @@ export const SecuritySettings = () => {
   const handleSave = async () => {
     try {
       setSaving(true);
-      const response = await settingsService.updateSecuritySettings(settings);
+      const response = await settingsService.updateSecuritySettings(settings, parkingLotId || undefined);
       toast.success(response.message);
     } catch (error) {
       toast.error("Failed to save security settings");

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Plus } from "lucide-react";
 
@@ -10,6 +11,8 @@ interface PlanFormData {
   price: string;
   tax: string;
   status: string;
+  parkingLotId?: string;
+  parkingZoneId?: string;
 }
 
 interface RuleFormData {
@@ -24,11 +27,13 @@ interface RuleFormData {
 interface ParkingPlanAndRulesFormDrawerProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: () => void;
+  onSubmit: () => void | Promise<void>;
   activeTab: string;
   editingItem: any;
   planForm: PlanFormData;
   ruleForm: RuleFormData;
+  parkingLots?: Array<{ id: string; lot_name: string }>;
+  parkingZones?: Array<{ id: string; parking_lot_id?: string | null; parking_name: string }>;
   onPlanChange: (data: PlanFormData) => void;
   onRuleChange: (data: RuleFormData) => void;
 }
@@ -36,6 +41,8 @@ interface ParkingPlanAndRulesFormDrawerProps {
 export const ParkingPlanAndRulesFormDrawer = ({
   isOpen,
   onClose,
+  parkingLots,
+  parkingZones,
   onSubmit,
   activeTab,
   editingItem,
@@ -44,7 +51,17 @@ export const ParkingPlanAndRulesFormDrawer = ({
   onPlanChange,
   onRuleChange,
 }: ParkingPlanAndRulesFormDrawerProps) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const isPlan = activeTab === "plans";
+
+  const handleSubmit = async () => {
+    try {
+      setIsSubmitting(true);
+      await onSubmit();
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -106,6 +123,41 @@ export const ParkingPlanAndRulesFormDrawer = ({
                       <option>Hourly</option>
                       <option>Daily</option>
                       <option>Monthly</option>
+                    </select>
+                    <select
+                      className="input"
+                      value={planForm.parkingLotId ?? ""}
+                      onChange={(e) =>
+                        onPlanChange({
+                          ...planForm,
+                          parkingLotId: e.target.value || undefined,
+                          parkingZoneId: undefined,
+                        })
+                      }
+                    >
+                      <option value="">Select parking lot</option>
+                      {parkingLots?.map((lot) => (
+                        <option key={lot.id} value={lot.id}>
+                          {lot.lot_name}
+                        </option>
+                      ))}
+                    </select>
+                    <select
+                      className="input"
+                      value={planForm.parkingZoneId ?? ""}
+                      onChange={(e) =>
+                        onPlanChange({ ...planForm, parkingZoneId: e.target.value || undefined })
+                      }
+                      disabled={!planForm.parkingLotId}
+                    >
+                      <option value="">Select zone</option>
+                      {parkingZones
+                        ?.filter((zone) => zone.parking_lot_id === planForm.parkingLotId)
+                        .map((zone) => (
+                          <option key={zone.id} value={zone.id}>
+                            {zone.parking_name}
+                          </option>
+                        ))}
                     </select>
                     <input
                       type="number"
@@ -210,16 +262,27 @@ export const ParkingPlanAndRulesFormDrawer = ({
               <div className="p-6 border-t border-[var(--color-border)] flex gap-3 bg-[var(--color-surface-soft)]">
                 <button
                   onClick={onClose}
-                  className="flex-1 px-4 py-2.5 font-bold text-sm border border-[var(--color-border)] rounded-[var(--radius-md)] hover:bg-white transition-all"
+                  disabled={isSubmitting}
+                  className="flex-1 px-4 py-2.5 font-bold text-sm border border-[var(--color-border)] rounded-[var(--radius-md)] hover:bg-white transition-all disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={onSubmit}
-                  className="flex-1 btn-primary flex items-center justify-center gap-2 px-6"
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                  className="flex-1 btn-primary flex items-center justify-center gap-2 px-6 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
-                  <Plus size={18} />
-                  {editingItem ? "Update" : "Create"}
+                  {isSubmitting ? (
+                    <>
+                      <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      {editingItem ? "Updating..." : "Creating..."}
+                    </>
+                  ) : (
+                    <>
+                      <Plus size={18} />
+                      {editingItem ? "Update" : "Create"}
+                    </>
+                  )}
                 </button>
               </div>
             </div>

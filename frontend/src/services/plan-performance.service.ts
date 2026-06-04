@@ -65,6 +65,7 @@ export interface PlanDetails {
 const range = (f: PlanPerformanceFilters) => ({
     from: f.startDate?.trim() || undefined,
     to: f.endDate?.trim() || undefined,
+    parking_lot_id: f.parkingLotId?.trim() || undefined,
 });
 
 export const planPerformanceService = {
@@ -136,8 +137,8 @@ export const planPerformanceService = {
 
     async exportReport(payload: PlanPerformanceFilters & { format: ReportExportFormat }) {
         const { format, ...filters } = payload;
-        const { from, to } = range(filters as PlanPerformanceFilters);
-        return downloadReportExport("plan", format, { from, to });
+        const { from, to, parking_lot_id } = range(filters as PlanPerformanceFilters);
+        return downloadReportExport("plan", format, { from, to, parking_lot_id });
     },
 
     async getPlanDetails(planId: string): Promise<PlanDetails> {

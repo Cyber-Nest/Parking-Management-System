@@ -22,6 +22,7 @@ import toast from "react-hot-toast";
 
 import { StatCard } from "@/components/common/StatCard";
 import { TableSkeleton } from "@/components/common/TableSkeleton";
+import { ReportParkingLotFilter } from "@/components/reports/ReportParkingLotFilter";
 import { ParkingUsageCharts } from "@/components/reports/charts/ParkingUsageCharts";
 import { ParkingUsageDrawer } from "@/components/reports/drawers/ParkingUsageDrawer";
 
@@ -75,6 +76,7 @@ export default function ParkingUsageReport() {
     status: "All Status",
     startDate: initialUsageRange.startDate,
     endDate: initialUsageRange.endDate,
+    parkingLotId: "",
   });
 
   // Chart days filter
@@ -94,7 +96,12 @@ export default function ParkingUsageReport() {
   // Auto-set dates based on selected date option
   useEffect(() => {
     const today = new Date();
-    const formatDate = (date: Date) => date.toISOString().split('T')[0];
+    const formatDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
 
     let start = "";
     let end = "";
@@ -200,6 +207,7 @@ export default function ParkingUsageReport() {
       status: "All Status",
       startDate: r.startDate,
       endDate: r.endDate,
+      parkingLotId: "",
     });
     setSelectedDateOption("");
     setChartDays(30);
@@ -397,7 +405,20 @@ export default function ParkingUsageReport() {
                   </select>
                 </div>
 
-                {/* Custom Date Range Inputs */}
+                {/* Parking Lot Filter */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
+                    Parking Lot
+                  </label>
+                  <ReportParkingLotFilter
+                    value={filters.parkingLotId ?? ""}
+                    onChange={(value) => {
+                      setFilters({ ...filters, parkingLotId: value });
+                      setCurrentPage(1);
+                    }}
+                  />
+                </div>
+
                 {selectedDateOption === "Custom Range" && (
                   <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
@@ -431,7 +452,7 @@ export default function ParkingUsageReport() {
                   </div>
                 )}
 
-                <div className="space-y-1.5">
+                {/* <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
                     Location
                   </label>
@@ -446,7 +467,7 @@ export default function ParkingUsageReport() {
                       <option key={opt}>{opt}</option>
                     ))}
                   </select>
-                </div>
+                </div> */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
                     Plan Type

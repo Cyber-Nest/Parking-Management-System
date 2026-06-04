@@ -7,33 +7,34 @@ export class ReportsService {
     async getReport(type: string, query: Record<string, string | undefined>): Promise<any> {
         const from = query.from;
         const to = query.to;
+        const parkingLotId = query.parking_lot_id ?? query.parkingLotId ?? query.lotId;
 
         switch (type) {
             case 'revenue':
-                return reportRepo.getRevenue(from, to);
+                return reportRepo.getRevenue(from, to, parkingLotId);
             case 'usage':
-                return reportRepo.getUsage(from, to);
+                return reportRepo.getUsage(from, to, parkingLotId);
             case 'penalty':
-                return reportRepo.getPenalty(from, to);
+                return reportRepo.getPenalty(from, to, parkingLotId);
             case 'performance':
-                return reportRepo.getPerformance(from, to);
+                return reportRepo.getPerformance(from, to, parkingLotId);
             case 'payment-reconciliation':
-                return reportRepo.getPaymentReconciliation(from, to);
+                return reportRepo.getPaymentReconciliation(from, to, parkingLotId);
             case 'due':
-                return reportRepo.getDue(from, to);
+                return reportRepo.getDue(from, to, parkingLotId);
             case 'location':
-                return reportRepo.getLocationPerformance(from, to);
+                return reportRepo.getLocationPerformance(from, to, parkingLotId);
             case 'peak-hours': {
-                const usage = await reportRepo.getUsage(from, to);
+                const usage = await reportRepo.getUsage(from, to, parkingLotId);
                 return {
                     hourlyHistogram: usage.hourlyHistogram,
                     heatmapByWeekdayHour: usage.heatmapByWeekdayHour,
                 };
             }
             case 'occupancy':
-                return reportRepo.getOccupancy(from, to);
+                return reportRepo.getOccupancy(from, to, parkingLotId);
             case 'plan':
-                return reportRepo.getPlanPerformance(from, to);
+                return reportRepo.getPlanPerformance(from, to, parkingLotId);
             case 'audit':
                 return reportRepo.getAuditReport(Number(query.limit ?? '50'));
             case 'vehicle-history':
@@ -44,10 +45,11 @@ export class ReportsService {
                     query.license_plate.trim(),
                     query.from?.trim() || undefined,
                     query.to?.trim() || undefined,
-                    query.location?.trim() || undefined
+                    query.location?.trim() || undefined,
+                    parkingLotId
                 );
             case 'refunds':
-                return reportRepo.getRefunds(Number(query.limit ?? '50'));
+                return reportRepo.getRefunds(Number(query.limit ?? '50'), from, to, parkingLotId);
             default:
                 throw new ValidationError(`Unsupported report type: ${type}`);
         }

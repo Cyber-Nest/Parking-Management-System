@@ -379,7 +379,7 @@ export const TicketDetailsDrawer = ({
               )}
 
               {/* Internal Notes */}
-              <SectionTitle
+              {/* <SectionTitle
                 icon={<NotebookPen size={18} />}
                 title="Internal Team Notes"
               />
@@ -412,7 +412,7 @@ export const TicketDetailsDrawer = ({
                     </div>
                   ))
                 )}
-              </div>
+              </div> */}
 
               {/* Evidence Photos */}
               <SectionTitle

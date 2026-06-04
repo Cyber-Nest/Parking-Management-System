@@ -5,13 +5,15 @@ export class TaxService {
     async list(query: Record<string, string | undefined>) {
         const page = Math.max(1, Number(query.page ?? '1'));
         const limit = Math.min(100, Math.max(1, Number(query.limit ?? '20')));
+        const parkingLotId = query.parking_lot_id;
 
         const { rows: items, count: total } = await Tax.findAndCountAll({
             where: {
                 ...(query.q && {
                     name: { [require('sequelize').Op.like]: `%${query.q}%` }
                 }),
-                ...(query.is_active && { is_active: query.is_active === 'true' })
+                ...(query.is_active && { is_active: query.is_active === 'true' }),
+                ...(parkingLotId && { parking_lot_id: parkingLotId }),
             },
             limit,
             offset: (page - 1) * limit,
@@ -27,7 +29,7 @@ export class TaxService {
         };
     }
 
-    async create(body: { name: string; rate: number; type?: 'percentage' | 'fixed'; is_active?: boolean }) {
+    async create(body: { name: string; rate: number; type?: 'percentage' | 'fixed'; is_active?: boolean; parking_lot_id?: string }) {
         if (!body.name?.trim()) throw new ValidationError('name is required');
         if (typeof body.rate !== 'number' || body.rate < 0) throw new ValidationError('rate must be a non-negative number');
 
@@ -37,12 +39,13 @@ export class TaxService {
             rate: body.rate,
             type: body.type ?? 'percentage',
             is_active: body.is_active ?? true,
+            parking_lot_id: body.parking_lot_id || null,
         });
 
         return tax;
     }
 
-    async update(id: string, body: { name?: string; rate?: number; type?: 'percentage' | 'fixed'; is_active?: boolean }) {
+    async update(id: string, body: { name?: string; rate?: number; type?: 'percentage' | 'fixed'; is_active?: boolean; parking_lot_id?: string }) {
         const tax = await Tax.findByPk(id);
         if (!tax) throw new NotFoundError('Tax not found');
 
@@ -56,6 +59,7 @@ export class TaxService {
         }
         if (body.type !== undefined) tax.type = body.type;
         if (body.is_active !== undefined) tax.is_active = body.is_active;
+        if (body.parking_lot_id !== undefined) tax.parking_lot_id = body.parking_lot_id || null;
 
         await tax.save();
         return tax;

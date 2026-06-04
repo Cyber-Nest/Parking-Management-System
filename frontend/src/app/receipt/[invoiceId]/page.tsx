@@ -63,7 +63,7 @@ export default function ReceiptPreviewPage() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold">Receipt Preview</h1>
-                <p className="text-xs uppercase tracking-[0.2em] text-[#6B7280]">ParkSmart payment record</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-[#6B7280]">Parks-Smart payment record</p>
               </div>
             </div>
             {invoice ? (

@@ -20,6 +20,7 @@ import toast from "react-hot-toast";
 
 import { StatCard } from "@/components/common/StatCard";
 import { TableSkeleton } from "@/components/common/TableSkeleton";
+import { ReportParkingLotFilter } from "@/components/reports/ReportParkingLotFilter";
 import { RevenueCharts } from "@/components/reports/charts/RevenueCharts";
 import ViewDetailsDrawer from "@/components/reports/drawers/RevenueDrawer";
 import {
@@ -55,9 +56,72 @@ export default function RevenueReportsPage() {
     planType: "All Plans",
     startDate: "",
     endDate: "",
+    parkingLotId: "",
   });
 
   const [chartPeriod, setChartPeriod] = useState("daily");
+
+  // Auto-set dates based on selectedDateOption
+  useEffect(() => {
+    const today = new Date();
+    const formatDate = (date: Date) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    };
+
+    if (selectedDateOption === "custom" || !selectedDateOption) return;
+
+    let start = "";
+    let end = "";
+
+    switch (selectedDateOption) {
+      case "today":
+        start = formatDate(today);
+        end = formatDate(today);
+        break;
+      case "yesterday": {
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        start = formatDate(yesterday);
+        end = formatDate(yesterday);
+        break;
+      }
+      case "last7": {
+        const last7 = new Date(today);
+        last7.setDate(last7.getDate() - 7);
+        start = formatDate(last7);
+        end = formatDate(today);
+        break;
+      }
+      case "last30": {
+        const last30 = new Date(today);
+        last30.setDate(last30.getDate() - 30);
+        start = formatDate(last30);
+        end = formatDate(today);
+        break;
+      }
+      case "thisMonth": {
+        const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+        const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        start = formatDate(firstDay);
+        end = formatDate(lastDay);
+        break;
+      }
+      case "lastMonth": {
+        const firstDayLast = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const lastDayLast = new Date(today.getFullYear(), today.getMonth(), 0);
+        start = formatDate(firstDayLast);
+        end = formatDate(lastDayLast);
+        break;
+      }
+      default:
+        return;
+    }
+
+    setFilters(prev => ({ ...prev, startDate: start, endDate: end }));
+  }, [selectedDateOption]);
 
   // Fetch all data
   const fetchAllData = useCallback(async () => {
@@ -106,6 +170,7 @@ export default function RevenueReportsPage() {
       planType: "All Plans",
       startDate: "",
       endDate: "",
+      parkingLotId: "",
     });
     setSelectedDateOption("");
     setChartPeriod("daily");
@@ -404,6 +469,20 @@ export default function RevenueReportsPage() {
                     <option value="lastMonth">Last Month</option>
                     <option value="custom">📅 Custom Range</option>
                   </select>
+                </div>
+                
+                {/* Parking Lot Filter */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
+                    Parking Lot
+                  </label>
+                  <ReportParkingLotFilter
+                    value={filters.parkingLotId ?? ""}
+                    onChange={(value) => {
+                      setFilters({ ...filters, parkingLotId: value });
+                      setCurrentPage(1);
+                    }}
+                  />
                 </div>
               </div>
 

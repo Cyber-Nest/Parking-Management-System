@@ -16,8 +16,12 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 
+import { useSearchParams } from "next/navigation";
+import { useEffect } from "react";
+
 import { GeneralSettings } from "@/components/all-settings/GeneralSettings";
 import { TaxSettings } from "@/components/all-settings/TaxSettings";
+import { PricingSettings } from "@/components/all-settings/PricingSettings";
 import { SystemSettingsComponent as SystemSettings } from "@/components/all-settings/SystemSettings";
 import { UsersRolesSettings } from "@/components/all-settings/UsersRolesSettings";
 import { SecuritySettings } from "@/components/all-settings/SecuritySettings";
@@ -25,10 +29,13 @@ import { NotificationSettings } from "@/components/all-settings/NotificationSett
 import { IntegrationsSettings } from "@/components/all-settings/IntegrationsSettings";
 import { AuditLogsSettings } from "@/components/all-settings/AuditLogsSettings";
 import { BrandingSettings } from "@/components/all-settings/BrandingSettings";
-
+import { OwnerProfileSettings } from "@/components/all-settings/OwnerProfileSettings";
+import { ReportParkingLotFilter } from "@/components/reports/ReportParkingLotFilter";
 const TABS = [
   { id: "general", label: "General", icon: Settings },
-  { id: "tax", label: "Tax & Pricing", icon: Receipt },
+  { id: "tax", label: "Tax", icon: Receipt },
+  // { id: "pricing", label: "Pricing", icon: Receipt },
+  { id: "owner-profile", label: "Owner Profile", icon: Users },
   // { id: "system", label: "System", icon: Clock },
   { id: "users", label: "Users & Roles", icon: Users },
   { id: "security", label: "Security", icon: Shield },
@@ -38,8 +45,33 @@ const TABS = [
   { id: "branding", label: "Branding", icon: Palette },
 ];
 
+const PARKING_LOT_FILTER_EXCLUDED_TABS = new Set([
+  "branding",
+  "owner-profile",
+  "users",
+]);
+
 export default function SettingsPage() {
+  return (
+    <React.Suspense fallback={<div className="p-8 text-center text-[var(--color-text-secondary)]">Loading settings...</div>}>
+      <SettingsContent />
+    </React.Suspense>
+  );
+}
+
+function SettingsContent() {
   const [activeTab, setActiveTab] = useState("general");
+  const [parkingLotId, setParkingLotId] = useState("");
+
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+
+    if (tab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   const handleResetAll = () => {
     toast.success("Settings reset to default");
@@ -48,21 +80,25 @@ export default function SettingsPage() {
   const renderActiveTab = () => {
     switch (activeTab) {
       case "general":
-        return <GeneralSettings />;
+        return <GeneralSettings parkingLotId={parkingLotId} />;
+      case "owner-profile":
+        return <OwnerProfileSettings />;
       case "tax":
-        return <TaxSettings />;
+        return <TaxSettings parkingLotId={parkingLotId} />;
+      // case "pricing":
+      //   return <PricingSettings parkingLotId={parkingLotId} />;
       // case "system":
       //   return <SystemSettings />;
       case "users":
         return <UsersRolesSettings />;
       case "security":
-        return <SecuritySettings />;
+        return <SecuritySettings parkingLotId={parkingLotId} />;
       case "notifications":
-        return <NotificationSettings />;
+        return <NotificationSettings parkingLotId={parkingLotId} />;
       case "integrations":
-        return <IntegrationsSettings />;
+        return <IntegrationsSettings parkingLotId={parkingLotId} />;
       case "audit":
-        return <AuditLogsSettings />;
+        return <AuditLogsSettings parkingLotId={parkingLotId} />;
       case "branding":
         return <BrandingSettings />;
       default:
@@ -132,6 +168,19 @@ export default function SettingsPage() {
 
       {/* Animated Content Area */}
       <div className="min-h-[400px]">
+        {!PARKING_LOT_FILTER_EXCLUDED_TABS.has(activeTab) && (
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] px-4 py-3 shadow-[var(--shadow-card)]">
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-[var(--color-text-muted)]">
+                Parking Lot Scope
+              </p>
+            </div>
+            <ReportParkingLotFilter
+              value={parkingLotId}
+              onChange={setParkingLotId}
+            />
+          </div>
+        )}
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}

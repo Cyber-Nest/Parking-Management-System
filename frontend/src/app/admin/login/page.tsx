@@ -85,14 +85,14 @@ export default function LoginPage() {
         <div className="flex flex-col items-center mb-10">
           <div className="bg-[var(--color-primary)] rounded-2xl flex items-center justify-center shadow-lg shadow-teal-900/20 mb-4 rotate-[-5deg]">
             <span className="text-white text-3xl px-10 py-1 font-black italic ">
-              ParkSmart
+              Parks-Smart
             </span>
           </div>
           <h2 className="text-3xl font-black text-[var(--color-text-primary)] tracking-tight">
             Admin Portal
           </h2>
           <p className="text-[var(--color-text-secondary)] font-medium mt-1">
-            Secure access to ParkSmart panel
+            Secure access to Parks-Smart panel
           </p>
         </div>
 
@@ -171,7 +171,7 @@ export default function LoginPage() {
 
         {/* Footer Info */}
         <p className="text-center mt-8 text-xs text-[var(--color-text-muted)] font-medium">
-          &copy; 2026 ParkSmart Systems. All rights reserved.
+          &copy; 2026 Parks-Smart Systems. All rights reserved.
         </p>
       </motion.div>
     </div>

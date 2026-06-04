@@ -70,6 +70,8 @@ export class OfficerPortalService {
       status: officer.status,
       assignedZone: officer.assigned_zone ?? 'Zone A — Downtown',
       lastLoginAt: officer.last_login_at,
+      parkingLotId: officer.parking_lot_id,
+      parkingLotName: officer.lot_name,
     };
   }
 

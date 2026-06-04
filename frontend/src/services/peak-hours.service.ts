@@ -43,6 +43,7 @@ export interface HeatmapData {
 const range = (f: PeakHoursFilters) => ({
     from: f.startDate?.trim() || undefined,
     to: f.endDate?.trim() || undefined,
+    parking_lot_id: f.parkingLotId?.trim() || undefined,
 });
 
 export const peakHoursService = {
@@ -134,14 +135,15 @@ export const peakHoursService = {
             status: "All Status",
             startDate: filters.startDate,
             endDate: filters.endDate,
+            parkingLotId: filters.parkingLotId,
         };
         return parkingUsageService.getHeatmapWeek(pf);
     },
 
     async exportReport(payload: PeakHoursFilters & { format: ReportExportFormat }) {
         const { format, ...filters } = payload;
-        const { from, to } = range(filters as PeakHoursFilters);
-        return downloadReportExport("peak-hours", format, { from, to });
+        const { from, to, parking_lot_id } = range(filters as PeakHoursFilters);
+        return downloadReportExport("peak-hours", format, { from, to, parking_lot_id });
     },
 };
 

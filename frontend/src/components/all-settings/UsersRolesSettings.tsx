@@ -876,8 +876,8 @@ export const UsersRolesSettings = () => {
                     }
                     className="input w-full py-2.5"
                   >
-                    {roles.map((role) => (
-                      <option key={role.id} value={role.name}>
+                    {roles.map((role, index) => (
+                      <option key={`${role.id}-${role.name}-${index}`} value={role.name}>
                         {role.name}
                       </option>
                     ))}

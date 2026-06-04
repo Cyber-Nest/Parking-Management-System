@@ -14,7 +14,7 @@ import {
   Upload,
 } from "lucide-react";
 import { Officer } from "@/services/officer.service";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import { uploadFileToCloudinary } from "@/lib/upload-media";
 
@@ -35,6 +35,7 @@ export interface OfficerFormData {
   addressProvince: string;
   addressPostalCode: string;
   profilePhoto: string | null;
+  parkingLotId?: string | null;
 }
 
 interface OfficerFormDrawerProps {
@@ -111,6 +112,8 @@ export const OfficerFormDrawer = ({
     formData.profilePhoto || null,
   );
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -119,12 +122,25 @@ export const OfficerFormDrawer = ({
       return;
     }
     try {
-      const url = await uploadFileToCloudinary(file, "parksmart/officers", "Officer profile");
+      const url = await uploadFileToCloudinary(
+        file,
+        "parksmart/officers",
+        "Officer profile",
+      );
       setPhotoPreview(url);
       onFormChange("profilePhoto", url);
       toast.success("Profile photo uploaded");
     } catch {
       toast.error("Failed to upload profile photo");
+    }
+  };
+
+  const handleSubmit = async () => {
+    try {
+      setIsSubmitting(true);
+      await onSubmit(formData);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -564,18 +580,29 @@ export const OfficerFormDrawer = ({
             <div className="p-6 border-t border-[var(--color-border)] flex gap-4 bg-[var(--color-surface)] sticky bottom-0 z-10 shadow-[0_-10px_20px_rgba(0,0,0,0.03)]">
               <button
                 onClick={onClose}
-                className="flex-1 px-6 py-3 font-bold text-sm text-[var(--color-text-secondary)] border border-[var(--color-border)] rounded-xl hover:bg-[var(--color-surface-soft)] transition-colors shadow-sm active:scale-[0.98]"
+                disabled={isSubmitting}
+                className="flex-1 px-6 py-3 font-bold text-sm text-[var(--color-text-secondary)] border border-[var(--color-border)] rounded-xl hover:bg-[var(--color-surface-soft)] transition-colors shadow-sm active:scale-[0.98] disabled:opacity-50"
               >
                 Discard Changes
               </button>
               <button
-                onClick={() => onSubmit(formData)}
-                className="flex-[1.5] btn-primary flex items-center justify-center gap-2.5 px-8 py-3 shadow-lg shadow-[var(--color-primary)]/20 active:scale-[0.98]"
+                onClick={handleSubmit}
+                disabled={isSubmitting}
+                className="flex-[1.5] btn-primary flex items-center justify-center gap-2.5 px-8 py-3 shadow-lg shadow-[var(--color-primary)]/20 active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                <UserPlus size={18} strokeWidth={3} />
-                {editingOfficer
-                  ? "Save Profile Changes"
-                  : "Register & Send Invite"}
+                {isSubmitting ? (
+                  <>
+                    <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    {editingOfficer ? "Saving..." : "Registering..."}
+                  </>
+                ) : (
+                  <>
+                    <UserPlus size={18} strokeWidth={3} />
+                    {editingOfficer
+                      ? "Save Profile Changes"
+                      : "Register & Send Invite"}
+                  </>
+                )}
               </button>
             </div>
           </motion.div>

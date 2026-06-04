@@ -38,7 +38,8 @@ export const exportReport = async (req: Request, res: Response): Promise<void> =
         }
 
         const data = await reportsService.getReport(req.params.type, restQuery);
-        const { buffer, mime, ext } = await reportExportService.buildBuffer(req.params.type, format, data);
+        const parkingLotId = restQuery.parking_lot_id ?? restQuery.parkingLotId ?? restQuery.lotId;
+        const { buffer, mime, ext } = await reportExportService.buildBuffer(req.params.type, format, data, parkingLotId);
 
         const safeName = req.params.type.replace(/[^a-zA-Z0-9-_]/g, '_');
         const stamp = new Date().toISOString().split('T')[0];

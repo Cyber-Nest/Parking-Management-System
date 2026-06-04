@@ -27,11 +27,11 @@ export const listTickets = async (
 };
 
 export const getTicketSummary = async (
-  _req: Request,
+  req: Request,
   res: Response<ApiResponse<any>>
 ): Promise<void> => {
   try {
-    const data = await ticketService.summary();
+    const data = await ticketService.summary(req.query as Record<string, string | undefined>);
     res.status(200).json({ success: true, message: 'Ticket summary fetched', data });
   } catch (err) {
     handleError(err, res);

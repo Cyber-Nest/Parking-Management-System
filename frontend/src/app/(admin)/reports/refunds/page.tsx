@@ -25,6 +25,7 @@ import toast from "react-hot-toast";
 
 import { StatCard } from "@/components/common/StatCard";
 import { TableSkeleton } from "@/components/common/TableSkeleton";
+import { ReportParkingLotFilter } from "@/components/reports/ReportParkingLotFilter";
 import { RefundsCharts } from "@/components/reports/charts/RefundsCharts";
 import { RefundDetailsDrawer } from "@/components/reports/drawers/RefundDetailsDrawer";
 
@@ -67,6 +68,7 @@ export default function RefundsAdjustmentsReport() {
     status: "All Statuses",
     startDate: "",
     endDate: "",
+    parkingLotId: "",
   });
 
   // Close export dropdown on click outside
@@ -189,6 +191,7 @@ export default function RefundsAdjustmentsReport() {
       status: "All Statuses",
       startDate: "",
       endDate: "",
+      parkingLotId: "",
     });
     setChartDays(30);
     setSearchQuery("");
@@ -413,6 +416,19 @@ export default function RefundsAdjustmentsReport() {
                 </div>
                 
                 {/* Custom Date Range Inputs */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
+                    Parking Lot
+                  </label>
+                  <ReportParkingLotFilter
+                    value={filters.parkingLotId ?? ""}
+                    onChange={(value) => {
+                      setFilters({ ...filters, parkingLotId: value });
+                      setCurrentPage(1);
+                    }}
+                  />
+                </div>
+
                 {filters.dateRange === "Custom Range" && (
                   <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
@@ -476,7 +492,7 @@ export default function RefundsAdjustmentsReport() {
                     ))}
                   </select>
                 </div>
-                <div className="space-y-1.5">
+                {/* <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
                     Location
                   </label>
@@ -491,7 +507,7 @@ export default function RefundsAdjustmentsReport() {
                       <option key={opt}>{opt}</option>
                     ))}
                   </select>
-                </div>
+                </div> */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
                     Processed By
@@ -576,7 +592,7 @@ export default function RefundsAdjustmentsReport() {
             <thead className="bg-[var(--color-surface-soft)] border-b border-[var(--color-border)]">
               <tr className="text-[10px] uppercase text-[var(--color-text-muted)] font-black tracking-widest">
                 <th className="px-4 sm:px-6 py-4">Date & Time</th>
-                <th className="px-4 sm:px-6 py-4">Type</th>
+                {/* <th className="px-4 sm:px-6 py-4">Type</th> */}
                 <th className="px-4 sm:px-6 py-4">Reference ID</th>
                 <th className="px-4 sm:px-6 py-4">Related To</th>
                 <th className="px-4 sm:px-6 py-4">Plate / User</th>
@@ -606,13 +622,13 @@ export default function RefundsAdjustmentsReport() {
                     <td className="px-4 sm:px-6 py-4 text-[11px] whitespace-nowrap">
                       {row.dateTime}
                     </td>
-                    <td className="px-4 sm:px-6 py-4">
+                    {/* <td className="px-4 sm:px-6 py-4">
                       <span
                         className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase ${row.type === "Refund" ? "bg-rose-100 text-rose-600" : "bg-blue-100 text-blue-600"}`}
                       >
                         {row.type}
                       </span>
-                    </td>
+                    </td> */}
                     <td className="px-4 sm:px-6 py-4 font-mono text-[11px] font-bold text-[var(--color-primary)]">
                       {row.referenceId}
                     </td>

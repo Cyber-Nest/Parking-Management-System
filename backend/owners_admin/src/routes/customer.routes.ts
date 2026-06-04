@@ -9,6 +9,7 @@ import {
   getCustomerBookingByReference,
   getCustomerInvoice,
   getParkingZoneById,
+  getParkingPlansForLot,
   getPenaltyByTicketNumber,
   getStripeConfig,
   payPenaltyTicket,
@@ -18,6 +19,7 @@ import {
 const router = Router();
 
 router.get('/parking-zones/:id', getParkingZoneById);
+router.get('/parking-plans', getParkingPlansForLot);
 router.get('/config', getStripeConfig);
 router.post('/payment-intents', createPaymentIntent);
 router.post('/bookings', createBooking);

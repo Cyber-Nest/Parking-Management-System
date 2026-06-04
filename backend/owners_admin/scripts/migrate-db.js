@@ -42,9 +42,11 @@ const run = async () => {
   await addColumn('parking_plans', 'plan_type', "`plan_type` VARCHAR(50) NULL DEFAULT 'Hourly' AFTER `duration`");
   await addColumn('parking_plans', 'tax_percent', '`tax_percent` DECIMAL(5,2) NOT NULL DEFAULT 0 AFTER `plan_type`');
   await addColumn('parking_plans', 'status', "`status` ENUM('Active','Inactive') NOT NULL DEFAULT 'Active' AFTER `tax_percent`");
+  await addColumn('parking_plans', 'parking_lot_id', '`parking_lot_id` VARCHAR(60) NULL AFTER `status`');
 
   await addColumn('parking_sessions', 'location_name', '`location_name` VARCHAR(150) NULL AFTER `plan_name`');
   await addColumn('bookings', 'parking_plan_id', '`parking_plan_id` CHAR(36) NULL AFTER `duration_label`');
+  await addColumn('bookings', 'parking_lot_id', '`parking_lot_id` CHAR(36) NULL AFTER `booking_reference`');
   await addColumn(
     'parking_zones',
     'status',
@@ -186,6 +188,39 @@ const run = async () => {
       )
     `);
     console.log('[DB MIGRATE] Created officer_offline_records');
+  }
+
+  // Create parking_lots table (one per physical parking lot) and link parking_zones
+  const [parkingLotsTable] = await conn.query(
+    `SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'parking_lots'`
+  );
+  if (!parkingLotsTable.length) {
+    await conn.query(`
+      CREATE TABLE parking_lots (
+        id VARCHAR(60) PRIMARY KEY,
+        owner_id CHAR(36) NULL,
+        lot_name VARCHAR(191) NOT NULL,
+        address VARCHAR(255) NULL,
+        image_url TEXT NULL,
+        qr_code_url TEXT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        CONSTRAINT fk_parking_lots_owner FOREIGN KEY (owner_id) REFERENCES admins(id) ON DELETE SET NULL
+      )
+    `);
+    console.log('[DB MIGRATE] Created parking_lots');
+  } else {
+    console.log('[DB MIGRATE] parking_lots already exists');
+  }
+
+  await addColumn('parking_zones', 'parking_lot_id', '`parking_lot_id` VARCHAR(60) NULL AFTER `id`');
+
+  try {
+    await conn.query(`ALTER TABLE parking_zones ADD CONSTRAINT fk_parking_zones_parking_lot FOREIGN KEY (parking_lot_id) REFERENCES parking_lots(id) ON DELETE SET NULL`);
+    console.log('[DB MIGRATE] Added FK parking_zones.parking_lot_id -> parking_lots.id');
+  } catch (e) {
+    console.log('[DB MIGRATE] Could not add FK for parking_zones.parking_lot_id (may already exist):', e.message);
   }
 
   await conn.end();

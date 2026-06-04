@@ -10,6 +10,7 @@ export interface TicketListFilters {
   officerId?: string;
   from?: string;
   to?: string;
+  parkingLotId?: string;
 }
 
 export interface TicketRow {
@@ -38,6 +39,8 @@ export interface TicketRow {
   end_time?: Date | null;
   plan_name?: string | null;
   notes?: string | null;
+  parking_lot_id?: string | null;
+  parking_lot_name?: string | null;
 }
 
 interface CountRow {
@@ -59,29 +62,41 @@ export class TicketRepository {
     return `TKT-${String(next).padStart(3, '0')}`;
   }
 
-  private buildWhere(filters: TicketListFilters): { clause: string; values: any[] } {
+  private buildWhere(filters: TicketListFilters, ticketAlias = ''): { clause: string; values: any[] } {
     const conditions: string[] = [];
     const values: any[] = [];
+    const col = (name: string) => `${ticketAlias}${name}`;
 
     if (filters.q) {
-      conditions.push('(ticket_number LIKE ? OR license_plate LIKE ?)');
+      conditions.push(`(${col('ticket_number')} LIKE ? OR ${col('license_plate')} LIKE ?)`);
       values.push(`%${filters.q}%`, `%${filters.q}%`);
     }
     if (filters.status) {
-      conditions.push('status = ?');
+      conditions.push(`${col('status')} = ?`);
       values.push(filters.status);
     }
     if (filters.officerId) {
-      conditions.push('officer_id = ?');
+      conditions.push(`${col('officer_id')} = ?`);
       values.push(filters.officerId);
     }
     if (filters.from) {
-      conditions.push('date_issued >= ?');
+      conditions.push(`${col('date_issued')} >= ?`);
       values.push(filters.from);
     }
     if (filters.to) {
-      conditions.push('date_issued <= ?');
+      conditions.push(`${col('date_issued')} <= ?`);
       values.push(filters.to);
+    }
+    if (filters.parkingLotId) {
+      conditions.push(`(
+        ${col('location_name')} IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
+        OR ${col('session_id')} IN (
+          SELECT id FROM parking_sessions
+          WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
+             OR plan_id IN (SELECT id FROM parking_plans WHERE parking_lot_id = ?)
+        )
+      )`);
+      values.push(filters.parkingLotId, filters.parkingLotId, filters.parkingLotId);
     }
 
     return {
@@ -91,15 +106,22 @@ export class TicketRepository {
   }
 
   async list(filters: TicketListFilters): Promise<{ items: TicketRow[]; total: number }> {
-    const { clause, values } = this.buildWhere(filters);
+    const { clause, values } = this.buildWhere(filters, 't.');
     const offset = (filters.page - 1) * filters.limit;
 
     const items = await queryRows<TicketRow>(
-      `SELECT id, ticket_number, officer_id, officer_name, license_plate, location_name, amount, reason, status,
-              date_issued, due_date, paid_at, remarks, note, dispute_raised, created_at, session_id
-       FROM penalty_tickets
+      `SELECT t.id, t.ticket_number, t.officer_id, t.officer_name, t.license_plate, t.location_name, t.amount, t.reason, t.status,
+              t.date_issued, t.due_date, t.paid_at, t.remarks, t.note, t.dispute_raised, t.created_at, t.session_id,
+              COALESCE(tz.parking_lot_id, sz.parking_lot_id, pp.parking_lot_id) AS parking_lot_id,
+              pl.lot_name AS parking_lot_name
+       FROM penalty_tickets t
+       LEFT JOIN parking_zones tz ON tz.parking_name = t.location_name
+       LEFT JOIN parking_sessions ps ON ps.id = t.session_id
+       LEFT JOIN parking_zones sz ON sz.parking_name = ps.location_name
+       LEFT JOIN parking_plans pp ON pp.id = ps.plan_id
+       LEFT JOIN parking_lots pl ON pl.id = COALESCE(tz.parking_lot_id, sz.parking_lot_id, pp.parking_lot_id)
        ${clause}
-       ORDER BY date_issued DESC
+       ORDER BY t.date_issued DESC
        LIMIT ? OFFSET ?`,
       [...values, filters.limit, offset]
     );
@@ -114,7 +136,7 @@ export class TicketRepository {
     return { items, total: countRows[0]?.total ?? 0 };
   }
 
-  async summary(): Promise<{
+  async summary(filters: { parkingLotId?: string } = {}): Promise<{
     totalToday: number;
     totalTickets: number;
     unpaidCount: number;
@@ -122,33 +144,52 @@ export class TicketRepository {
     disputedCount: number;
     totalPenaltyAmount: number;
   }> {
+    const lotClause = filters.parkingLotId
+      ? ` AND (
+          location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
+          OR session_id IN (
+            SELECT id FROM parking_sessions
+            WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
+               OR plan_id IN (SELECT id FROM parking_plans WHERE parking_lot_id = ?)
+          )
+        )`
+      : '';
+    const lotValues = filters.parkingLotId ? [filters.parkingLotId, filters.parkingLotId, filters.parkingLotId] : [];
     const totalTodayRows = await queryRows<CountRow>(
       `SELECT COUNT(*) AS total
        FROM penalty_tickets
-       WHERE DATE(date_issued) = CURDATE()`
+       WHERE DATE(date_issued) = CURDATE()${lotClause}`,
+      lotValues
     );
     const totalTicketsRows = await queryRows<CountRow>(
       `SELECT COUNT(*) AS total
-       FROM penalty_tickets`
+       FROM penalty_tickets
+       WHERE 1=1${lotClause}`,
+      lotValues
     );
     const unpaidRows = await queryRows<CountRow>(
       `SELECT COUNT(*) AS total
        FROM penalty_tickets
-       WHERE status = 'unpaid'`
+       WHERE status = 'unpaid'${lotClause}`,
+      lotValues
     );
     const paidRows = await queryRows<CountRow>(
       `SELECT COUNT(*) AS total
        FROM penalty_tickets
-       WHERE status = 'paid'`
+       WHERE status = 'paid'${lotClause}`,
+      lotValues
     );
     const disputedRows = await queryRows<CountRow>(
       `SELECT COUNT(*) AS total
        FROM penalty_tickets
-       WHERE status = 'disputed'`
+       WHERE status = 'disputed'${lotClause}`,
+      lotValues
     );
     const amountRows = await queryRows<AmountRow>(
       `SELECT COALESCE(SUM(amount), 0) AS total_amount
-       FROM penalty_tickets`
+       FROM penalty_tickets
+       WHERE 1=1${lotClause}`,
+      lotValues
     );
 
     return {

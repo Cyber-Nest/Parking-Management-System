@@ -37,6 +37,9 @@ import {
 import { EditTicketDrawer } from "@/components/penalty/EditTicketDrawer";
 import toast from "react-hot-toast";
 import { printKeyValuePayload } from "@/lib/printPayload";
+import { ParkingLotFilter } from "@/components/common/ParkingLotFilter";
+import { listParkingLots, ParkingLotRecord } from "@/services/parking-lots.service";
+import { truncateId } from "@/lib/truncateId";
 
 const PERIOD_TABS = [
   "Today",
@@ -127,13 +130,15 @@ export default function PenaltyTicketsPage() {
 
   const [editTicket, setEditTicket] = useState<PenaltyTicket | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [parkingLots, setParkingLots] = useState<ParkingLotRecord[]>([]);
+  const [parkingLotId, setParkingLotId] = useState("");
 
   const itemsPerPage = 10;
 
   const refreshTickets = async () => {
     const [statsRes, ticketsRes] = await Promise.all([
-      penaltyService.getPenaltyStats(),
-      penaltyService.getPenaltyTickets({ limit: 200, page: 1 }),
+      penaltyService.getPenaltyStats({ parking_lot_id: parkingLotId || undefined }),
+      penaltyService.getPenaltyTickets({ limit: 200, page: 1, parking_lot_id: parkingLotId || undefined }),
     ]);
     setStats(statsRes);
     setTickets(ticketsRes);
@@ -153,6 +158,10 @@ export default function PenaltyTicketsPage() {
       }
     };
     fetchData();
+  }, [parkingLotId]);
+
+  useEffect(() => {
+    listParkingLots().then(setParkingLots).catch((error) => console.error("Failed to load parking lots", error));
   }, []);
 
   // Filter by Period (Date Range)
@@ -288,6 +297,7 @@ export default function PenaltyTicketsPage() {
     setSearch("");
     setStatusFilter("All Status");
     setOfficerFilter("All Officers");
+    setParkingLotId("");
     setCurrentPage(1);
     setActiveTab("Today");
     setShowCustomDate(false);
@@ -374,6 +384,14 @@ export default function PenaltyTicketsPage() {
 
               {/* Status & Officer Filters */}
               <div className="flex items-center gap-2 ml-auto">
+                <ParkingLotFilter
+                  lots={parkingLots}
+                  value={parkingLotId}
+                  onChange={(value) => {
+                    setParkingLotId(value);
+                    setCurrentPage(1);
+                  }}
+                />
                 <select
                   value={statusFilter}
                   onChange={(e) => {
@@ -495,7 +513,8 @@ export default function PenaltyTicketsPage() {
                   <th className="px-6 py-5">Ticket No.</th>
                   <th className="px-6 py-5">License Plate</th>
                   <th className="px-6 py-5">Violation Type</th>
-                  <th className="px-6 py-5">Location</th>
+                  <th className="px-6 py-5">Parking Lot</th>
+                  {/* <th className="px-6 py-5">Location</th> */}
                   <th className="px-6 py-5">Officer</th>
                   <th className="px-6 py-5">Amount</th>
                   <th className="px-6 py-5">Status</th>
@@ -505,11 +524,11 @@ export default function PenaltyTicketsPage() {
               </thead>
               <tbody className="divide-y divide-[var(--color-border)] text-[13px]">
                 {loading ? (
-                  <TableSkeleton rows={5} cols={9} />
+                  <TableSkeleton rows={5} cols={10} />
                 ) : paginatedTickets.length === 0 ? (
                   <tr>
                     <td
-                      colSpan={9}
+                      colSpan={10}
                       className="text-center py-16 text-sm font-semibold text-gray-400"
                     >
                       No tickets found for the selected period.
@@ -521,8 +540,8 @@ export default function PenaltyTicketsPage() {
                       key={idx}
                       className="hover:bg-[var(--color-surface-soft)]/50 transition-colors"
                     >
-                      <td className="px-6 py-4 font-bold text-[var(--color-primary)]">
-                        {ticket.ticketNo || ticket.id}
+                      <td className="px-6 py-4 font-bold text-[var(--color-primary)]" title={ticket.ticketNo || ticket.id}>
+                        {truncateId(ticket.ticketNo || ticket.id)}
                       </td>
                       <td className="px-6 py-4 font-bold text-[var(--color-text-primary)]">
                         {ticket.plate}
@@ -532,16 +551,26 @@ export default function PenaltyTicketsPage() {
                           {ticket.violationType}
                         </span>
                        </td>
-                      <td className="px-6 py-4 font-medium text-[var(--color-text-secondary)]">
-                        {ticket.location}
+                      <td className="px-6 py-4">
+                        <div className="font-bold text-[var(--color-text-primary)]">
+                          {ticket.parkingLotName || "Unassigned"}
+                        </div>
+                        {ticket.parkingLotId ? (
+                          <div className="text-[10px] text-[var(--color-text-muted)] font-mono" title={ticket.parkingLotId}>
+                            {truncateId(ticket.parkingLotId)}
+                          </div>
+                        ) : null}
                        </td>
+                      {/* <td className="px-6 py-4 font-medium text-[var(--color-text-secondary)]">
+                        {ticket.location}
+                       </td> */}
                       <td className="px-6 py-4">
                         <div>
                           <div className="font-bold text-[var(--color-text-primary)]">
                             {ticket.officer}
                           </div>
-                          <div className="text-[11px] text-[var(--color-text-muted)]">
-                            {ticket.officerId}
+                          <div className="text-[11px] text-[var(--color-text-muted)]" title={ticket.officerId}>
+                            {truncateId(ticket.officerId)}
                           </div>
                         </div>
                        </td>

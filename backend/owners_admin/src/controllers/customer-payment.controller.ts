@@ -9,7 +9,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
 });
 
 export class CustomerPaymentController {
-  
+
   /**
    * Create a payment intent for customer bookings
    */
@@ -59,7 +59,7 @@ export class CustomerPaymentController {
   async submitBooking(req: Request, res: Response) {
     try {
       const {
-        zoneId, email, vehicleModel, plateNumber, carColor,
+        zoneId, lotId, email, vehicleModel, plateNumber, carColor,
         durationLabel, durationMinutes, price, stripePaymentIntentId
       } = req.body;
 
@@ -95,6 +95,7 @@ export class CustomerPaymentController {
       const endTime = new Date(now.getTime() + durationMinutes * 60 * 1000);
 
       const booking = await bookingService.createBooking({
+        parkingLotId: lotId ?? null,
         parkingZoneId: zoneId,
         parkingName: 'Central Parking Tower',
         customerEmail: email,
@@ -106,9 +107,9 @@ export class CustomerPaymentController {
         durationMinutes,
         durationLabel,
         hourlyRate: 4.5,
-        basePrice: price - 2, // Remove service fee
+        basePrice: price,
         taxAmount: 0,
-        serviceFee: 2,
+        serviceFee: 0,
         totalPrice: price
       });
 
@@ -122,9 +123,9 @@ export class CustomerPaymentController {
         itemType: 'parking_booking',
         quantity: 1,
         unitPrice: price - 2,
-        subtotal: price - 2,
+        subtotal: price,
         taxAmount: 0,
-        serviceFee: 2,
+        serviceFee: 0,
         totalAmount: price,
         bookingId: booking.id,
         transactionId: transaction.id,

@@ -4,6 +4,7 @@ import { getResponseData } from "./response.helper";
 
 export interface ParkingZoneRecord {
   id: string;
+  parking_lot_id?: string | null;
   parking_name: string;
   address: string;
   image_url: string;
@@ -16,6 +17,7 @@ export interface ParkingZoneRecord {
 
 export interface ParkingZoneFormInput {
   name: string;
+  parkingLotId?: string | null;
   address?: string;
   imageUrl?: string;
   hourlyRate?: number;
@@ -24,15 +26,20 @@ export interface ParkingZoneFormInput {
   isActive?: boolean;
 }
 
-export const listParkingZones = async (): Promise<ParkingZoneRecord[]> => {
+export const listParkingZones = async (opts?: {
+  lotId?: string;
+  limit?: number;
+}): Promise<ParkingZoneRecord[]> => {
   const response = await axiosInstance.get(API_ENDPOINTS.PARKING_ZONES.LIST, {
-    params: { limit: 200 },
+    params: { limit: opts?.limit ?? 200, lotId: opts?.lotId },
   });
   const data = getResponseData(response);
   return (data?.items ?? data ?? []) as ParkingZoneRecord[];
 };
 
-export const createParkingZone = async (input: ParkingZoneFormInput): Promise<ParkingZoneRecord> => {
+export const createParkingZone = async (
+  input: ParkingZoneFormInput,
+): Promise<ParkingZoneRecord> => {
   const response = await axiosInstance.post(API_ENDPOINTS.PARKING_ZONES.LIST, {
     parking_name: input.name,
     address: input.address,
@@ -40,6 +47,7 @@ export const createParkingZone = async (input: ParkingZoneFormInput): Promise<Pa
     hourly_rate: input.hourlyRate,
     available_spots: input.availableSpots,
     total_spots: input.totalSpots,
+    parking_lot_id: input.parkingLotId,
     isActive: input.isActive,
   });
   return getResponseData(response) as ParkingZoneRecord;
@@ -49,15 +57,19 @@ export const updateParkingZone = async (
   id: string,
   input: Partial<ParkingZoneFormInput>,
 ): Promise<ParkingZoneRecord> => {
-  const response = await axiosInstance.patch(API_ENDPOINTS.PARKING_ZONES.BY_ID(id), {
-    parking_name: input.name,
-    address: input.address,
-    image_url: input.imageUrl,
-    hourly_rate: input.hourlyRate,
-    available_spots: input.availableSpots,
-    total_spots: input.totalSpots,
-    isActive: input.isActive,
-  });
+  const response = await axiosInstance.patch(
+    API_ENDPOINTS.PARKING_ZONES.BY_ID(id),
+    {
+      parking_name: input.name,
+      address: input.address,
+      image_url: input.imageUrl,
+      hourly_rate: input.hourlyRate,
+      available_spots: input.availableSpots,
+      total_spots: input.totalSpots,
+      parking_lot_id: input.parkingLotId,
+      isActive: input.isActive,
+    },
+  );
   return getResponseData(response) as ParkingZoneRecord;
 };
 
@@ -68,6 +80,7 @@ export const deleteParkingZone = async (id: string): Promise<void> => {
 export const mapZoneToUi = (zone: ParkingZoneRecord) => ({
   id: zone.id,
   name: zone.parking_name,
+  address: zone.address,
   isActive: (zone.status ?? "active") === "active",
   rate: Number(zone.hourly_rate),
 });

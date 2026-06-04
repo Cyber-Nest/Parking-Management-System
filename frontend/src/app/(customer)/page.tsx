@@ -84,7 +84,7 @@ const CTASkeleton = () => (
 export default function LandingPage() {
   const searchParams = useSearchParams();
 
-  const { setParkingDetails } = useParkingBooking();
+  const { setParkingDetails, setReturnUrl } = useParkingBooking();
 
   const [parkingData, setParkingData] = useState<ParkingDetails | null>(null);
   const [selectedZone, setSelectedZone] = useState<any>(null);
@@ -95,20 +95,24 @@ export default function LandingPage() {
       try {
         setLoading(true);
 
-        const zoneId =
-          searchParams.get("zone") || searchParams.get("zoneId");
+        const lotId = searchParams.get("lotId");
+        const zoneId = searchParams.get("zoneId");
 
-        //Only allow ZONE-201 to open the page)
-        if (!zoneId || zoneId.toUpperCase() !== "ZONE-201") {
+        // If no lotId or zoneId in URL, don't call any API - show "Scan QR" state
+        const lookupId = lotId || zoneId;
+        if (!lookupId) {
           setLoading(false);
           return;
         }
 
-        const response = await customerService.getParkingZoneById(zoneId);
+        const currentUrl = `${window.location.pathname}${window.location.search}`;
+        setReturnUrl(currentUrl);
+
+        const response = await customerService.getParkingZoneById(lookupId);
 
         setParkingData(response);
 
-        if ((response?.zones?.length ?? 0) > 1) {
+        if ((response?.zones?.length ?? 0) > 0) {
           const defaultZone = response?.zones?.[0];
 
           setSelectedZone(defaultZone);
@@ -140,7 +144,7 @@ export default function LandingPage() {
     };
 
     fetchParkingZone();
-  }, [searchParams, setParkingDetails]);
+  }, [searchParams, setParkingDetails, setReturnUrl]);
 
   const handleZoneSelect = (zone: any) => {
     setSelectedZone(zone);
@@ -167,7 +171,7 @@ export default function LandingPage() {
               </div>
 
               <span className="font-bold tracking-tighter text-lg uppercase">
-                ParkSmart
+                Parks-Smart
               </span>
             </div>
 
@@ -208,8 +212,11 @@ export default function LandingPage() {
               ) : (
                 <>
                   <img
-                    src={parkingData?.image}
-                    alt={parkingData?.parkingName ?? "Premium Parking"}
+                    src={selectedZone?.image || parkingData?.image}
+                    alt={
+                      (selectedZone?.zoneName || parkingData?.parkingName) ??
+                      "Premium Parking"
+                    }
                     className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110 opacity-70"
                     onError={(e) => {
                       e.currentTarget.onerror = null;
@@ -261,6 +268,7 @@ export default function LandingPage() {
                       <MapPin size={18} className="text-[#C6F432]" />
 
                       <span className="text-sm md:text-base font-light italic">
+                        {/* {selectedZone?.address || parkingData?.address} */}
                         {parkingData?.address}
                       </span>
                     </div>
@@ -306,14 +314,26 @@ export default function LandingPage() {
                               {zone.zoneName}
                             </span>
 
+                            {/* Address */}
+                            {zone.address && (
+                              <span
+                                className={`text-[10px] font-mono font-bold ${
+                                  isActive ? "text-black/60" : "text-[#4B5563]"
+                                }`}
+                                title={zone.address}
+                              >
+                                {zone.address}
+                              </span>
+                            )}
+
                             {/* Spot Code */}
-                            <span
+                            {/* <span
                               className={`text-[10px] font-mono font-bold ${
                                 isActive ? "text-black/60" : "text-[#4B5563]"
                               }`}
                             >
                               {zone.spotId}
-                            </span>
+                            </span> */}
                           </button>
                         );
                       })}

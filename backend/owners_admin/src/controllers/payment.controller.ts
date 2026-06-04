@@ -27,11 +27,11 @@ export const listPayments = async (
 };
 
 export const getPaymentSummary = async (
-  _req: Request,
+  req: Request,
   res: Response<ApiResponse<any>>
 ): Promise<void> => {
   try {
-    const data = await paymentService.summary();
+    const data = await paymentService.summary(req.query as Record<string, string | undefined>);
     res.status(200).json({ success: true, message: 'Payment summary fetched', data });
   } catch (err) {
     handleError(err, res);

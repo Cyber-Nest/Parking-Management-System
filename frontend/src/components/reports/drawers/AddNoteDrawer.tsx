@@ -55,6 +55,7 @@ export const AddNoteDrawer = ({
 }: AddNoteDrawerProps) => {
   const [note, setNote] = useState("");
   const [visibility, setVisibility] = useState("internal");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Sync state when editingNote changes or drawer opens
   useEffect(() => {
@@ -64,14 +65,19 @@ export const AddNoteDrawer = ({
     }
   }, [isOpen, editingNote]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!note.trim()) {
       toast.error("Please enter a note content");
       return;
     }
-    onSave(note, visibility);
-    setNote("");
-    onClose();
+    try {
+      setIsSubmitting(true);
+      await onSave(note, visibility);
+      setNote("");
+      onClose();
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -112,7 +118,8 @@ export const AddNoteDrawer = ({
               </div>
               <button
                 onClick={onClose}
-                className="p-2 rounded-full hover:bg-[var(--color-surface-soft)] transition-all active:scale-90"
+                disabled={isSubmitting}
+                className="p-2 rounded-full hover:bg-[var(--color-surface-soft)] transition-all active:scale-90 disabled:opacity-50"
               >
                 <X size={20} />
               </button>
@@ -136,7 +143,8 @@ export const AddNoteDrawer = ({
                     onChange={(e) => setNote(e.target.value)}
                     placeholder="Write something important about this vehicle..."
                     rows={8}
-                    className="w-full bg-[var(--color-surface-soft)] border-2 border-[var(--color-border)] rounded-2xl p-4 text-sm font-medium outline-none focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/5 transition-all resize-none placeholder:text-[var(--color-text-muted)]/50"
+                    disabled={isSubmitting}
+                    className="w-full bg-[var(--color-surface-soft)] border-2 border-[var(--color-border)] rounded-2xl p-4 text-sm font-medium outline-none focus:border-[var(--color-primary)] focus:ring-4 focus:ring-[var(--color-primary)]/5 transition-all resize-none placeholder:text-[var(--color-text-muted)]/50 disabled:opacity-50"
                   />
                   <div className="absolute bottom-3 right-3 opacity-20 pointer-events-none group-focus-within:opacity-10 transition-opacity">
                     <StickyNote size={40} />
@@ -156,7 +164,8 @@ export const AddNoteDrawer = ({
                       <button
                         key={opt.value}
                         onClick={() => setVisibility(opt.value)}
-                        className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all text-left ${
+                        disabled={isSubmitting}
+                        className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all text-left disabled:opacity-50 ${
                           isSelected
                             ? "border-[var(--color-primary)] bg-[var(--color-primary)]/5 shadow-sm"
                             : "border-[var(--color-border)] bg-transparent hover:bg-[var(--color-surface-soft)]"
@@ -205,10 +214,20 @@ export const AddNoteDrawer = ({
               </button>
               <button
                 onClick={handleSave}
-                className="flex-[1.5] bg-[var(--color-primary)] text-white flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl text-xs font-black uppercase tracking-widest hover:opacity-90 shadow-lg shadow-[var(--color-primary)]/20 transition-all active:scale-[0.98]"
+                disabled={isSubmitting}
+                className="flex-[1.5] bg-[var(--color-primary)] text-white flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl text-xs font-black uppercase tracking-widest hover:opacity-90 shadow-lg shadow-[var(--color-primary)]/20 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                {editingNote ? <Save size={16} /> : <Plus size={16} />}
-                {editingNote ? "Update Record" : "Save Note"}
+                {isSubmitting ? (
+                  <>
+                    <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    {editingNote ? "Updating..." : "Saving..."}
+                  </>
+                ) : (
+                  <>
+                    {editingNote ? <Save size={16} /> : <Plus size={16} />}
+                    {editingNote ? "Update Record" : "Save Note"}
+                  </>
+                )}
               </button>
             </div>
           </motion.div>

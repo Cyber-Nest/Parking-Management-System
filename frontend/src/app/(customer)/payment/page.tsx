@@ -40,6 +40,7 @@ interface CheckoutFormProps {
   bookingSummary: BookingSummary | null;
   extensionDetails: ExtensionDetails | null;
   clearBooking: () => void;
+  returnUrl: string | null;
   onComplete: () => void;
 }
 
@@ -50,6 +51,7 @@ function CheckoutForm({
   bookingSummary,
   extensionDetails,
   clearBooking,
+  returnUrl,
   onComplete,
 }: CheckoutFormProps) {
   const stripe = useStripe();
@@ -85,7 +87,7 @@ function CheckoutForm({
         },
       });
 
-      router.push(`/?zone=ZONE-201`);
+      router.push(returnUrl || "/");
 
       return;
     }
@@ -104,11 +106,11 @@ function CheckoutForm({
     const timer = setTimeout(() => {
       clearBooking();
 
-      router.push(`/?zone=ZONE-201`);
+      router.push(`${returnUrl}`);
     }, 6000);
 
     return () => clearTimeout(timer);
-  }, [showSuccess, clearBooking, router]);
+  }, [showSuccess, clearBooking, returnUrl, router]);
 
   const handlePayment = async () => {
     try {
@@ -227,12 +229,12 @@ function CheckoutForm({
         | Error;
       const backendMessage =
         axiosError &&
-        "response" in axiosError &&
-        axiosError.response?.data?.message
+          "response" in axiosError &&
+          axiosError.response?.data?.message
           ? axiosError.response.data.message
           : error instanceof Error
-          ? error.message
-          : "Payment processing failed. Please try again.";
+            ? error.message
+            : "Payment processing failed. Please try again.";
 
       toast.error(backendMessage);
     } finally {
@@ -242,7 +244,7 @@ function CheckoutForm({
 
   const handleReturnHome = () => {
     clearBooking();
-    router.push(`/?zone=ZONE-201`);
+    router.push(returnUrl || "/");
   };
 
   const handleDownloadInvoice = async () => {
@@ -374,9 +376,9 @@ function CheckoutForm({
               </div>
               {!extensionDetails ? (
                 <div className="flex justify-between text-xs text-[#9CA3AF]">
-                  <span>Service Fee</span>
+                  <span>Tax</span>
                   <span className="text-white font-mono">
-                    ${(bookingSummary?.serviceFee ?? 0).toFixed(2)}
+                    ${(bookingSummary?.taxAmount ?? 0).toFixed(2)}
                   </span>
                 </div>
               ) : null}
@@ -404,11 +406,10 @@ function CheckoutForm({
               <button
                 disabled={isProcessing}
                 onClick={handlePayment}
-                className={`w-full py-4 rounded-full font-black text-base transition-all flex items-center justify-center gap-3 ${
-                  isProcessing
+                className={`w-full py-4 rounded-full font-black text-base transition-all flex items-center justify-center gap-3 ${isProcessing
                     ? "bg-[#1A1A1A] text-[#4B5563]"
                     : "bg-[#C6F432] text-black shadow-[0_8px_30px_rgba(198,244,50,0.2)] hover:scale-[1.02] active:scale-[0.98]"
-                }`}
+                  }`}
               >
                 {isProcessing ? (
                   <span className="flex items-center gap-2">
@@ -533,6 +534,7 @@ export default function PaymentPageWrapper() {
     selectedDuration,
     bookingSummary,
     extensionDetails,
+    returnUrl,
     clearBooking,
   } = useParkingBooking();
 
@@ -598,8 +600,9 @@ export default function PaymentPageWrapper() {
         selectedDuration={selectedDuration}
         bookingSummary={bookingSummary}
         extensionDetails={extensionDetails}
+        returnUrl={returnUrl}
         clearBooking={clearBooking}
-        onComplete={() => {}}
+        onComplete={() => { }}
       />
     </Elements>
   );

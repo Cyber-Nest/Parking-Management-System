@@ -77,6 +77,8 @@ const run = async () => {
       plan_type VARCHAR(50) NULL DEFAULT 'Hourly',
       tax_percent DECIMAL(5,2) NOT NULL DEFAULT 0,
       status ENUM('Active', 'Inactive') NOT NULL DEFAULT 'Active',
+      parking_lot_id VARCHAR(60) NULL,
+      parking_zone_id VARCHAR(60) NULL,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     );
@@ -93,6 +95,18 @@ const run = async () => {
       status ENUM('active', 'inactive') NOT NULL DEFAULT 'active',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS parking_lots (
+      id VARCHAR(60) PRIMARY KEY,
+      owner_id CHAR(36) NULL,
+      lot_name VARCHAR(191) NOT NULL,
+      address VARCHAR(255) NULL,
+      image_url TEXT NULL,
+      qr_code_url TEXT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      CONSTRAINT fk_parking_lots_owner FOREIGN KEY (owner_id) REFERENCES admins(id) ON DELETE SET NULL
     );
 
     CREATE TABLE IF NOT EXISTS parking_sessions (
@@ -312,6 +326,7 @@ const run = async () => {
     CREATE TABLE IF NOT EXISTS bookings (
       id CHAR(36) PRIMARY KEY,
       booking_reference VARCHAR(100) NOT NULL UNIQUE,
+      parking_lot_id CHAR(36) NULL,
       parking_zone_id CHAR(36) NOT NULL,
       parking_name VARCHAR(191) NOT NULL,
       parking_location VARCHAR(255) NULL,
