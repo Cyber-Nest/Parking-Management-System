@@ -29,6 +29,8 @@ export class SessionService {
       notes: s.notes,
       amount: s.amount,
       created_at: s.created_at,
+      parking_lot_id: s.parking_lot_id,
+      parking_lot_name: s.parking_lot_name,
     }));
 
     return {

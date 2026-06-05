@@ -583,7 +583,7 @@ export default function VehicleHistoryReport() {
             </div>
 
                 {/* Parking Lot Filter */}
-                <div className="space-y-1.5">
+                {/* <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
                     Parking Lot
                   </label>
@@ -594,7 +594,7 @@ export default function VehicleHistoryReport() {
                       setCurrentPage(1);
                     }}
                   />
-                </div>
+                </div> */}
 
             {filters.dateRange === "Custom Range" && (
               <>

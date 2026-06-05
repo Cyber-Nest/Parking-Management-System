@@ -106,7 +106,7 @@ export const TicketActionDropdown = ({
                 setOpen(false);
               }}
             />
-            <DropdownItem
+            {/* <DropdownItem
               icon={<Printer size={14} className="sm:w-[15px] sm:h-[15px]" />}
               label="Reprint Ticket"
               onClick={() => {
@@ -154,7 +154,7 @@ export const TicketActionDropdown = ({
                 onAddNote(ticket);
                 setOpen(false);
               }}
-            />
+            /> */}
           </motion.div>
         )}
       </AnimatePresence>

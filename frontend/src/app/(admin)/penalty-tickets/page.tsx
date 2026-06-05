@@ -557,7 +557,7 @@ export default function PenaltyTicketsPage() {
                         </div>
                         {ticket.parkingLotId ? (
                           <div className="text-[10px] text-[var(--color-text-muted)] font-mono" title={ticket.parkingLotId}>
-                            {truncateId(ticket.parkingLotId)}
+                            {ticket.parkingLotId}
                           </div>
                         ) : null}
                        </td>

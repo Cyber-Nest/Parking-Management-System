@@ -129,6 +129,8 @@ export class TicketService {
       dispute_raised: t.dispute_raised === 1,
       photos: [],
       location_name: t.location_name ?? null,
+      parking_lot_id: t.parking_lot_id,
+      parking_lot_name: t.parking_lot_name,
     }));
 
     return {
@@ -209,6 +211,8 @@ export class TicketService {
       dispute_raised: t.dispute_raised === 1,
       photos: [],
       location_name: t.location_name ?? null,
+      parking_lot_id: t.parking_lot_id,
+      parking_lot_name: t.parking_lot_name,
     };
   }
 
@@ -232,6 +236,8 @@ export class TicketService {
       dispute_raised: t.dispute_raised === 1,
       photos: [],
       location_name: t.location_name ?? null,
+      parking_lot_id: t.parking_lot_id,
+      parking_lot_name: t.parking_lot_name,
     };
   }
 

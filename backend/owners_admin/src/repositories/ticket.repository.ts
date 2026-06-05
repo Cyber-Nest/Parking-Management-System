@@ -112,14 +112,19 @@ export class TicketRepository {
     const items = await queryRows<TicketRow>(
       `SELECT t.id, t.ticket_number, t.officer_id, t.officer_name, t.license_plate, t.location_name, t.amount, t.reason, t.status,
               t.date_issued, t.due_date, t.paid_at, t.remarks, t.note, t.dispute_raised, t.created_at, t.session_id,
-              COALESCE(tz.parking_lot_id, sz.parking_lot_id, pp.parking_lot_id) AS parking_lot_id,
-              pl.lot_name AS parking_lot_name
+              COALESCE(tz.parking_lot_id, tz_id.parking_lot_id, sz.parking_lot_id, sz_id.parking_lot_id, pp.parking_lot_id, o.parking_lot_id, pl_direct.id, (SELECT id FROM parking_lots ORDER BY created_at ASC LIMIT 1)) AS parking_lot_id,
+              COALESCE(pl.lot_name, pl_by_officer.lot_name, pl_direct.lot_name, (SELECT lot_name FROM parking_lots ORDER BY created_at ASC LIMIT 1)) AS parking_lot_name
        FROM penalty_tickets t
        LEFT JOIN parking_zones tz ON tz.parking_name = t.location_name
+       LEFT JOIN parking_zones tz_id ON tz_id.id = t.location_name
        LEFT JOIN parking_sessions ps ON ps.id = t.session_id
        LEFT JOIN parking_zones sz ON sz.parking_name = ps.location_name
+       LEFT JOIN parking_zones sz_id ON sz_id.id = ps.location_name
        LEFT JOIN parking_plans pp ON pp.id = ps.plan_id
-       LEFT JOIN parking_lots pl ON pl.id = COALESCE(tz.parking_lot_id, sz.parking_lot_id, pp.parking_lot_id)
+       LEFT JOIN officers o ON o.id = t.officer_id
+       LEFT JOIN parking_lots pl_by_officer ON pl_by_officer.id = o.parking_lot_id
+       LEFT JOIN parking_lots pl_direct ON (pl_direct.lot_name = t.location_name OR pl_direct.id = t.location_name)
+       LEFT JOIN parking_lots pl ON pl.id = COALESCE(tz.parking_lot_id, tz_id.parking_lot_id, sz.parking_lot_id, sz_id.parking_lot_id, pp.parking_lot_id)
        ${clause}
        ORDER BY t.date_issued DESC
        LIMIT ? OFFSET ?`,

@@ -94,20 +94,29 @@ export class PaymentRepository {
 
   async list(filters: PaymentListFilters): Promise<{ items: PaymentRow[]; total: number }> {
     const { clause, values } = this.buildWhere(filters, 'p.');
+    const { clause: countClause, values: countValues } = this.buildWhere(filters, '');
     const offset = (filters.page - 1) * filters.limit;
 
     const items = await queryRows<PaymentRow>(
       `SELECT p.id, p.session_id, p.ticket_id, p.user_id, p.license_plate, p.amount, p.payment_method, p.payment_type,
               p.status, p.transaction_ref, p.paid_at, p.receipt_number, p.receipt_date, p.created_at,
-              COALESCE(sz.parking_lot_id, pp.parking_lot_id, tz.parking_lot_id) AS parking_lot_id,
-              pl.lot_name AS parking_lot_name
+              COALESCE(sz.parking_lot_id, sz_id.parking_lot_id, pp.parking_lot_id, tz.parking_lot_id, tz_id.parking_lot_id, o_s.parking_lot_id, o_t.parking_lot_id, pl_direct_s.id, pl_direct_t.id, (SELECT id FROM parking_lots ORDER BY created_at ASC LIMIT 1)) AS parking_lot_id,
+              COALESCE(pl.lot_name, pl_by_officer_s.lot_name, pl_by_officer_t.lot_name, pl_direct_s.lot_name, pl_direct_t.lot_name, (SELECT lot_name FROM parking_lots ORDER BY created_at ASC LIMIT 1)) AS parking_lot_name
        FROM payments p
        LEFT JOIN parking_sessions ps ON ps.id = p.session_id
        LEFT JOIN parking_zones sz ON sz.parking_name = ps.location_name
+       LEFT JOIN parking_zones sz_id ON sz_id.id = ps.location_name
        LEFT JOIN parking_plans pp ON pp.id = ps.plan_id
        LEFT JOIN penalty_tickets pt ON pt.id = p.ticket_id
        LEFT JOIN parking_zones tz ON tz.parking_name = pt.location_name
-       LEFT JOIN parking_lots pl ON pl.id = COALESCE(sz.parking_lot_id, pp.parking_lot_id, tz.parking_lot_id)
+       LEFT JOIN parking_zones tz_id ON tz_id.id = pt.location_name
+       LEFT JOIN officers o_s ON o_s.id = ps.created_by_officer
+       LEFT JOIN officers o_t ON o_t.id = pt.officer_id
+       LEFT JOIN parking_lots pl_by_officer_s ON pl_by_officer_s.id = o_s.parking_lot_id
+       LEFT JOIN parking_lots pl_by_officer_t ON pl_by_officer_t.id = o_t.parking_lot_id
+       LEFT JOIN parking_lots pl_direct_s ON (pl_direct_s.lot_name = ps.location_name OR pl_direct_s.id = ps.location_name)
+       LEFT JOIN parking_lots pl_direct_t ON (pl_direct_t.lot_name = pt.location_name OR pl_direct_t.id = pt.location_name)
+       LEFT JOIN parking_lots pl ON pl.id = COALESCE(sz.parking_lot_id, sz_id.parking_lot_id, pp.parking_lot_id, tz.parking_lot_id, tz_id.parking_lot_id)
        ${clause}
        ORDER BY p.created_at DESC
        LIMIT ? OFFSET ?`,
@@ -117,8 +126,8 @@ export class PaymentRepository {
     const countRows = await queryRows<CountRow>(
       `SELECT COUNT(*) AS total
        FROM payments
-       ${clause}`,
-      values
+       ${countClause}`,
+      countValues
     );
 
     return { items, total: countRows[0]?.total ?? 0 };

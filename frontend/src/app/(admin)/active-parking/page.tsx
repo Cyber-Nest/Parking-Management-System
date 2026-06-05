@@ -403,7 +403,7 @@ export default function ActiveParkingSessionsPage() {
                         </div>
                         {row.parkingLotId ? (
                           <div className="text-[10px] text-[var(--color-text-muted)] font-mono" title={row.parkingLotId}>
-                            {truncateId(row.parkingLotId)}
+                            {row.parkingLotId}
                           </div>
                         ) : null}
                       </td>
