@@ -176,7 +176,10 @@ const DEFAULT_PARKING_IMAGE =
 function sanitizeParkingImageUrl(url: string | undefined | null): string {
   if (!url?.trim()) return DEFAULT_PARKING_IMAGE;
   const trimmed = url.trim();
-  if (/photo-15\d{10,}000000000/i.test(trimmed) || trimmed.includes("1510000000000")) {
+  if (
+    /photo-15\d{10,}000000000/i.test(trimmed) ||
+    trimmed.includes("1510000000000")
+  ) {
     return DEFAULT_PARKING_IMAGE;
   }
   return trimmed;
@@ -184,7 +187,9 @@ function sanitizeParkingImageUrl(url: string | undefined | null): string {
 
 class CustomerService {
   async getParkingZoneById(lotId: string): Promise<ParkingDetails> {
-    const response = await axiosInstance.get(API_ENDPOINTS.CUSTOMER.PARKING_ZONE(lotId));
+    const response = await axiosInstance.get(
+      API_ENDPOINTS.CUSTOMER.PARKING_ZONE(lotId),
+    );
     const data = response.data?.data;
 
     if (!data) {
@@ -195,16 +200,16 @@ class CustomerService {
     const zones: ParkingZone[] | undefined =
       zonesArray.length > 0
         ? zonesArray.map((z: Record<string, unknown>) => ({
-          zoneId: String(z.id),
-          zoneName: String(z.parking_name ?? "Zone"),
-          address: String(z.address ?? ""),
-          image: sanitizeParkingImageUrl(String(z.image_url ?? "")),
-          hourlyRate: Number(z.hourly_rate ?? 0),
-          availableSpots: Number(z.available_spots ?? 0),
-          totalSpots: Number(z.total_spots ?? 0),
-          spotId: String(z.spot_id ?? ""),
-          lotId: String(z.parking_lot_id ?? data.lot_id ?? lotId),
-        }))
+            zoneId: String(z.id),
+            zoneName: String(z.parking_name ?? "Zone"),
+            address: String(z.address ?? ""),
+            image: sanitizeParkingImageUrl(String(z.image_url ?? "")),
+            hourlyRate: Number(z.hourly_rate ?? 0),
+            availableSpots: Number(z.available_spots ?? 0),
+            totalSpots: Number(z.total_spots ?? 0),
+            spotId: String(z.spot_id ?? ""),
+            lotId: String(z.parking_lot_id ?? data.lot_id ?? lotId),
+          }))
         : undefined;
 
     return {
@@ -215,8 +220,14 @@ class CustomerService {
       address: data.address ?? "",
       image: sanitizeParkingImageUrl(data.image_url),
       hourlyRate: zones?.[0]?.hourlyRate ?? 0,
-      availableSpots: zones?.reduce((acc: number, z: ParkingZone) => acc + z.availableSpots, 0) ?? 0,
-      totalSpots: zones?.reduce((acc: number, z: ParkingZone) => acc + z.totalSpots, 0) ?? 0,
+      availableSpots:
+        zones?.reduce(
+          (acc: number, z: ParkingZone) => acc + z.availableSpots,
+          0,
+        ) ?? 0,
+      totalSpots:
+        zones?.reduce((acc: number, z: ParkingZone) => acc + z.totalSpots, 0) ??
+        0,
       spotId: data.lot_id ?? "",
       zones,
     };
@@ -225,8 +236,8 @@ class CustomerService {
   getDurationOptions(): DurationOption[] {
     return [
       {
-        label: '1H',
-        value: '1h',
+        label: "1H",
+        value: "1h",
         price: 4.5,
         minutes: 60,
         type: "short",
@@ -309,7 +320,8 @@ class CustomerService {
       now.getTime() + payload.selectedDuration.minutes * 60 * 1000,
     );
     // Calculate subtotal from parking plan / zone hourly rate when available
-    const hourlyRate = payload.parkingDetails?.hourlyRate ?? payload.selectedDuration.price;
+    const hourlyRate =
+      payload.parkingDetails?.hourlyRate ?? payload.selectedDuration.price;
     const subtotal = (payload.selectedDuration.minutes / 60) * hourlyRate;
     const serviceFee = 0;
     const total = subtotal;
@@ -319,39 +331,84 @@ class CustomerService {
       serviceFee,
       total,
       startTime: now.toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
+        hour: "2-digit",
+        minute: "2-digit",
       }),
       endTime: endDate.toLocaleTimeString([], {
-        hour: '2-digit',
-        minute: '2-digit',
+        hour: "2-digit",
+        minute: "2-digit",
       }),
       duration: payload.selectedDuration.label,
       transactionId: `PS-${Math.floor(100000 + Math.random() * 900000)}`,
     };
   }
 
-  async getTaxPricing(parkingLotId?: string): Promise<{ taxRate: number; pricesIncludeTax: boolean; currency?: string }> {
+  async getTaxPricing(
+    parkingLotId?: string,
+  ): Promise<{
+    taxRate: number;
+    pricesIncludeTax: boolean;
+    currency?: string;
+  }> {
     try {
-      const response = await axiosInstance.get(API_ENDPOINTS.SETTINGS.TAX_PRICING, {
-        params: parkingLotId ? { parking_lot_id: parkingLotId } : undefined,
-      });
+      const response = await axiosInstance.get(
+        API_ENDPOINTS.SETTINGS.TAX_PRICING,
+        {
+          params: parkingLotId ? { parking_lot_id: parkingLotId } : undefined,
+        },
+      );
       const data = response.data?.data ?? {};
       return {
         taxRate: Number(data.taxRate ?? 0),
-        pricesIncludeTax: (data.pricesIncludeTax ?? 'no') === 'yes',
-        currency: data.currency ?? 'CAD',
+        pricesIncludeTax: (data.pricesIncludeTax ?? "no") === "yes",
+        currency: data.currency ?? "CAD",
       };
     } catch (err) {
-      return { taxRate: 0, pricesIncludeTax: true, currency: 'CAD' };
+      return { taxRate: 0, pricesIncludeTax: true, currency: "CAD" };
     }
   }
 
-  async generateBookingSummaryWithTax(payload: CompleteBookingPayload): Promise<BookingSummary> {
+  // async generateBookingSummaryWithTax(payload: CompleteBookingPayload): Promise<BookingSummary> {
+  //   const now = new Date();
+  //   const endDate = new Date(now.getTime() + payload.selectedDuration.minutes * 60 * 1000);
+  //   const hourlyRate = payload.parkingDetails?.hourlyRate ?? payload.selectedDuration.price;
+  //   const subtotal = (payload.selectedDuration.minutes / 60) * hourlyRate;
+  //   const taxInfo = await this.getTaxPricing(payload.parkingDetails?.lotId);
+  //   const serviceFee = 0;
+
+  //   let taxAmount = 0;
+  //   let total = 0;
+
+  //   if (taxInfo.pricesIncludeTax) {
+  //     taxAmount = subtotal - subtotal / (1 + taxInfo.taxRate / 100);
+  //     total = subtotal;
+  //   } else {
+  //     taxAmount = (subtotal * taxInfo.taxRate) / 100;
+  //     total = subtotal + taxAmount;
+  //   }
+
+  //   return {
+  //     subtotal,
+  //     serviceFee,
+  //     taxAmount,
+  //     total,
+  //     startTime: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  //     endTime: endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+  //     duration: payload.selectedDuration.label,
+  //     transactionId: `PS-${Math.floor(100000 + Math.random() * 900000)}`,
+  //   } as BookingSummary;
+  // }
+  
+  //hourly rate issue fix
+  async generateBookingSummaryWithTax(
+    payload: CompleteBookingPayload,
+  ): Promise<BookingSummary> {
     const now = new Date();
-    const endDate = new Date(now.getTime() + payload.selectedDuration.minutes * 60 * 1000);
-    const hourlyRate = payload.parkingDetails?.hourlyRate ?? payload.selectedDuration.price;
-    const subtotal = (payload.selectedDuration.minutes / 60) * hourlyRate;
+
+    const endDate = new Date(
+      now.getTime() + payload.selectedDuration.minutes * 60 * 1000,
+    );
+    const subtotal = payload.selectedDuration.price;
     const taxInfo = await this.getTaxPricing(payload.parkingDetails?.lotId);
     const serviceFee = 0;
 
@@ -371,18 +428,29 @@ class CustomerService {
       serviceFee,
       taxAmount,
       total,
-      startTime: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      endTime: endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      startTime: now.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+      endTime: endDate.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
       duration: payload.selectedDuration.label,
       transactionId: `PS-${Math.floor(100000 + Math.random() * 900000)}`,
     } as BookingSummary;
   }
 
   /** Amount in CAD dollars (e.g. 6.50). Backend converts to cents for Stripe. */
-  async createPaymentIntent(amountInDollars: number): Promise<PaymentIntentResponse> {
-    const response = await axiosInstance.post(API_ENDPOINTS.CUSTOMER.PAYMENT_INTENT, {
-      amount: amountInDollars,
-    });
+  async createPaymentIntent(
+    amountInDollars: number,
+  ): Promise<PaymentIntentResponse> {
+    const response = await axiosInstance.post(
+      API_ENDPOINTS.CUSTOMER.PAYMENT_INTENT,
+      {
+        amount: amountInDollars,
+      },
+    );
 
     const data = response.data?.data;
     return {
@@ -398,13 +466,19 @@ class CustomerService {
     return response.data?.data as { stripePublishableKey: string };
   }
 
-  async getParkingPlansByLot(lotId: string, zoneId: string): Promise<DurationOption[]> {
-    const response = await axiosInstance.get(API_ENDPOINTS.CUSTOMER.PARKING_PLANS, {
-      params: { lotId, zoneId },
-    });
+  async getParkingPlansByLot(
+    lotId: string,
+    zoneId: string,
+  ): Promise<DurationOption[]> {
+    const response = await axiosInstance.get(
+      API_ENDPOINTS.CUSTOMER.PARKING_PLANS,
+      {
+        params: { lotId, zoneId },
+      },
+    );
     const plans = Array.isArray(response.data?.data) ? response.data.data : [];
     return plans.map((plan: any) => ({
-      type: plan.plan_type ?? 'lot',
+      type: plan.plan_type ?? "lot",
       label: plan.name ?? `${plan.duration}m`,
       value: String(plan.id ?? `${plan.duration}m-${plan.price}`),
       price: Number(plan.price ?? 0),
@@ -418,7 +492,8 @@ class CustomerService {
     stripePaymentIntentId: string,
   ): Promise<BookingResponse> {
     const price = payload.parkingDetails.hourlyRate
-      ? (payload.selectedDuration.minutes / 60) * payload.parkingDetails.hourlyRate
+      ? (payload.selectedDuration.minutes / 60) *
+        payload.parkingDetails.hourlyRate
       : payload.selectedDuration.price;
 
     const response = await axiosInstance.post(API_ENDPOINTS.CUSTOMER.BOOKINGS, {
@@ -456,14 +531,18 @@ class CustomerService {
     };
   }
 
-  async getBookingById(bookingId: string): Promise<CustomerBookingDetails | null> {
+  async getBookingById(
+    bookingId: string,
+  ): Promise<CustomerBookingDetails | null> {
     const response = await axiosInstance.get(
       API_ENDPOINTS.CUSTOMER.BOOKING_BY_ID(bookingId),
     );
     return response.data?.data?.booking ?? null;
   }
 
-  async getBookingByReference(reference: string): Promise<CustomerBookingDetails | null> {
+  async getBookingByReference(
+    reference: string,
+  ): Promise<CustomerBookingDetails | null> {
     const response = await axiosInstance.get(
       API_ENDPOINTS.CUSTOMER.BOOKING_BY_REFERENCE(reference),
     );
@@ -508,7 +587,10 @@ class CustomerService {
     window.URL.revokeObjectURL(url);
   }
 
-  async downloadPenaltyReceipt(ticketNumber: string, email?: string): Promise<void> {
+  async downloadPenaltyReceipt(
+    ticketNumber: string,
+    email?: string,
+  ): Promise<void> {
     const response = await axiosInstance.get(
       API_ENDPOINTS.CUSTOMER.PENALTY_RECEIPT(ticketNumber),
       {
@@ -529,7 +611,9 @@ class CustomerService {
   }
 
   async getInvoice(invoiceId: string): Promise<CustomerInvoice | null> {
-    const response = await axiosInstance.get(API_ENDPOINTS.CUSTOMER.INVOICE(invoiceId));
+    const response = await axiosInstance.get(
+      API_ENDPOINTS.CUSTOMER.INVOICE(invoiceId),
+    );
     return response.data?.data ?? null;
   }
 
@@ -538,10 +622,16 @@ class CustomerService {
     return true;
   }
 
-  async getPenaltyById(penaltyId: string, email?: string): Promise<PenaltyDetails | null> {
-    const response = await axiosInstance.get(API_ENDPOINTS.CUSTOMER.PENALTY(penaltyId), {
-      params: email ? { email } : undefined,
-    });
+  async getPenaltyById(
+    penaltyId: string,
+    email?: string,
+  ): Promise<PenaltyDetails | null> {
+    const response = await axiosInstance.get(
+      API_ENDPOINTS.CUSTOMER.PENALTY(penaltyId),
+      {
+        params: email ? { email } : undefined,
+      },
+    );
     const data = response.data?.data;
     if (!data) return null;
 
@@ -557,10 +647,7 @@ class CustomerService {
         : null;
 
     const overtimeMinutes = endTime
-      ? Math.max(
-        0,
-        Math.round((Date.now() - endTime.getTime()) / 60000),
-      )
+      ? Math.max(0, Math.round((Date.now() - endTime.getTime()) / 60000))
       : 0;
 
     const rawProofImages = Array.isArray(data.photos)
@@ -574,43 +661,48 @@ class CustomerService {
 
     return {
       penaltyId: data.ticket_number,
-      parkingName: data.parking_name || data.location_name || 'Parking Location',
+      parkingName:
+        data.parking_name || data.location_name || "Parking Location",
       zoneName: data.zone_name || data.location_name || undefined,
       hasMultipleZones: Boolean(data.zone_name),
       vehicleDetails: {
-        vehicleModel: data.vehicle_model || data.plan_name || 'Unknown',
-        plateNumber: data.license_plate || 'N/A',
-        carColor: data.vehicle_color || 'Unknown',
+        vehicleModel: data.vehicle_model || data.plan_name || "Unknown",
+        plateNumber: data.license_plate || "N/A",
+        carColor: data.vehicle_color || "Unknown",
       },
       bookingStartTime: startTime
         ? startTime.toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit',
-        })
-        : 'Unknown',
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "Unknown",
       allowedEndTime: endTime
         ? endTime.toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit',
-        })
-        : 'Unknown',
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+        : "Unknown",
       overtimeDuration: `${overtimeMinutes} Minutes`,
       generatedPenalty: Number(data.amount ?? 0),
-      violationReason: data.reason || 'Violation details unavailable',
+      violationReason: data.reason || "Violation details unavailable",
       status:
-        data.status === 'paid'
-          ? 'paid'
-          : data.status === 'disputed'
-            ? 'disputed'
-            : 'pending',
+        data.status === "paid"
+          ? "paid"
+          : data.status === "disputed"
+            ? "disputed"
+            : "pending",
       issuedAt: data.date_issued ?? new Date().toISOString(),
-      evidenceImage: proofImages[0] ?? '',
+      evidenceImage: proofImages[0] ?? "",
       proofImages,
       receiptInvoiceId: data.receiptInvoiceId ?? null,
     };
   }
 
-  async payPenalty(penaltyId: string, email?: string, transactionRef?: string): Promise<PenaltyPaymentResponse> {
+  async payPenalty(
+    penaltyId: string,
+    email?: string,
+    transactionRef?: string,
+  ): Promise<PenaltyPaymentResponse> {
     const response = await axiosInstance.patch(
       API_ENDPOINTS.CUSTOMER.PENALTY_PAY(penaltyId),
       {
@@ -619,7 +711,7 @@ class CustomerService {
       },
     );
     if (response.data?.success !== true) {
-      const message = response.data?.message || 'Penalty payment failed';
+      const message = response.data?.message || "Penalty payment failed";
       throw new Error(message);
     }
     return response.data?.data as PenaltyPaymentResponse;

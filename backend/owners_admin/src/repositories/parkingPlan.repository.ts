@@ -1,5 +1,5 @@
-import crypto from 'crypto';
-import { execute, queryRows } from '../config/database';
+import crypto from "crypto";
+import { execute, queryRows } from "../config/database";
 
 export interface ParkingPlanRow {
   id: string;
@@ -27,7 +27,7 @@ export class ParkingPlanRepository {
        FROM parking_plans p
        LEFT JOIN parking_lots l ON p.parking_lot_id = l.id
        LEFT JOIN parking_zones z ON p.parking_zone_id = z.id
-       ORDER BY p.created_at DESC`
+       ORDER BY p.created_at DESC`,
     );
   }
 
@@ -42,31 +42,55 @@ export class ParkingPlanRepository {
        LEFT JOIN parking_zones z ON p.parking_zone_id = z.id
        WHERE p.id = ?
        LIMIT 1`,
-      [id]
+      [id],
     );
     return rows[0] ?? null;
   }
 
-  async listByLotAndZone(lotId: string, zoneId: string): Promise<ParkingPlanRow[]> {
+  // async listByLotAndZone(lotId: string, zoneId: string): Promise<ParkingPlanRow[]> {
+  //   return queryRows<ParkingPlanRow>(
+  //     `SELECT p.id, p.name, p.price, p.duration, p.plan_type, p.tax_percent, p.status,
+  //             p.parking_lot_id, l.lot_name AS parking_lot_name,
+  //             p.parking_zone_id, z.parking_name AS parking_zone_name,
+  //             p.created_at, p.updated_at
+  //      FROM parking_plans p
+  //      LEFT JOIN parking_lots l ON p.parking_lot_id = l.id
+  //      LEFT JOIN parking_zones z ON p.parking_zone_id = z.id
+  //      WHERE p.status = 'Active'
+  //      AND (
+  //        (p.parking_lot_id = ? AND p.parking_zone_id = ?)
+  //        OR (p.parking_lot_id IS NULL AND p.parking_zone_id IS NULL)
+  //      )
+  //      ORDER BY p.duration ASC, p.price ASC`,
+  //     [lotId, zoneId]
+  //   );
+  // }
+
+  //response only zone id or lot id related data
+  async listByLotAndZone(
+    lotId: string,
+    zoneId: string,
+  ): Promise<ParkingPlanRow[]> {
     return queryRows<ParkingPlanRow>(
       `SELECT p.id, p.name, p.price, p.duration, p.plan_type, p.tax_percent, p.status,
-              p.parking_lot_id, l.lot_name AS parking_lot_name,
-              p.parking_zone_id, z.parking_name AS parking_zone_name,
-              p.created_at, p.updated_at
-       FROM parking_plans p
-       LEFT JOIN parking_lots l ON p.parking_lot_id = l.id
-       LEFT JOIN parking_zones z ON p.parking_zone_id = z.id
-       WHERE p.status = 'Active' 
-       AND (
-         (p.parking_lot_id = ? AND p.parking_zone_id = ?)
-         OR (p.parking_lot_id IS NULL AND p.parking_zone_id IS NULL)
-       )
-       ORDER BY p.duration ASC, p.price ASC`,
-      [lotId, zoneId]
+            p.parking_lot_id, l.lot_name AS parking_lot_name,
+            p.parking_zone_id, z.parking_name AS parking_zone_name,
+            p.created_at, p.updated_at
+     FROM parking_plans p
+     LEFT JOIN parking_lots l ON p.parking_lot_id = l.id
+     LEFT JOIN parking_zones z ON p.parking_zone_id = z.id
+     WHERE p.status = 'Active'
+       AND p.parking_lot_id = ?
+       AND p.parking_zone_id = ?
+     ORDER BY p.duration ASC, p.price ASC`,
+      [lotId, zoneId],
     );
   }
 
-  async findByPriceAndDuration(price: number, duration: number): Promise<ParkingPlanRow | null> {
+  async findByPriceAndDuration(
+    price: number,
+    duration: number,
+  ): Promise<ParkingPlanRow | null> {
     const rows = await queryRows<ParkingPlanRow>(
       `SELECT p.id, p.name, p.price, p.duration, p.plan_type, p.tax_percent, p.status,
               p.parking_lot_id, l.lot_name AS parking_lot_name, p.created_at, p.updated_at
@@ -74,14 +98,22 @@ export class ParkingPlanRepository {
        LEFT JOIN parking_lots l ON p.parking_lot_id = l.id
        WHERE p.price = ? AND p.duration = ?
        LIMIT 1`,
-      [price, duration]
+      [price, duration],
     );
     return rows[0] ?? null;
   }
 
   /** Match customer booking duration to an active plan (exact duration, then closest price). */
-  async findForBooking(durationMinutes: number, price?: number, lotId?: string, zoneId?: string): Promise<ParkingPlanRow | null> {
-    const scopeSql = lotId && zoneId ? ' AND p.parking_lot_id = ? AND p.parking_zone_id = ?' : '';
+  async findForBooking(
+    durationMinutes: number,
+    price?: number,
+    lotId?: string,
+    zoneId?: string,
+  ): Promise<ParkingPlanRow | null> {
+    const scopeSql =
+      lotId && zoneId
+        ? " AND p.parking_lot_id = ? AND p.parking_zone_id = ?"
+        : "";
     const scopeValues = lotId && zoneId ? [lotId, zoneId] : [];
     const exactDuration = await queryRows<ParkingPlanRow>(
       `SELECT p.id, p.name, p.price, p.duration, p.plan_type, p.tax_percent, p.status,
@@ -133,12 +165,12 @@ export class ParkingPlanRepository {
         params.name.trim(),
         params.price,
         params.duration,
-        params.plan_type ?? 'Hourly',
+        params.plan_type ?? "Hourly",
         params.tax_percent ?? 0,
-        params.status ?? 'Active',
+        params.status ?? "Active",
         params.parking_lot_id ?? null,
         params.parking_zone_id ?? null,
-      ]
+      ],
     );
     return id;
   }
@@ -154,41 +186,41 @@ export class ParkingPlanRepository {
       status?: string;
       parking_lot_id?: string | null;
       parking_zone_id?: string | null;
-    }
+    },
   ): Promise<number> {
     const updates: string[] = [];
     const values: any[] = [];
 
-    if (typeof params.name === 'string') {
-      updates.push('name = ?');
+    if (typeof params.name === "string") {
+      updates.push("name = ?");
       values.push(params.name.trim());
     }
-    if (typeof params.price === 'number') {
-      updates.push('price = ?');
+    if (typeof params.price === "number") {
+      updates.push("price = ?");
       values.push(params.price);
     }
-    if (typeof params.duration === 'number') {
-      updates.push('duration = ?');
+    if (typeof params.duration === "number") {
+      updates.push("duration = ?");
       values.push(params.duration);
     }
-    if (typeof params.plan_type === 'string') {
-      updates.push('plan_type = ?');
+    if (typeof params.plan_type === "string") {
+      updates.push("plan_type = ?");
       values.push(params.plan_type.trim());
     }
-    if (typeof params.tax_percent === 'number') {
-      updates.push('tax_percent = ?');
+    if (typeof params.tax_percent === "number") {
+      updates.push("tax_percent = ?");
       values.push(params.tax_percent);
     }
-    if (typeof params.status === 'string') {
-      updates.push('status = ?');
+    if (typeof params.status === "string") {
+      updates.push("status = ?");
       values.push(params.status);
     }
     if (params.parking_lot_id !== undefined) {
-      updates.push('parking_lot_id = ?');
+      updates.push("parking_lot_id = ?");
       values.push(params.parking_lot_id);
     }
     if (params.parking_zone_id !== undefined) {
-      updates.push('parking_zone_id = ?');
+      updates.push("parking_zone_id = ?");
       values.push(params.parking_zone_id);
     }
 
@@ -197,15 +229,17 @@ export class ParkingPlanRepository {
     values.push(id);
     const result = await execute(
       `UPDATE parking_plans
-       SET ${updates.join(', ')}, updated_at = NOW()
+       SET ${updates.join(", ")}, updated_at = NOW()
        WHERE id = ?`,
-      values
+      values,
     );
     return result.affectedRows;
   }
 
   async remove(id: string): Promise<number> {
-    const result = await execute(`DELETE FROM parking_plans WHERE id = ?`, [id]);
+    const result = await execute(`DELETE FROM parking_plans WHERE id = ?`, [
+      id,
+    ]);
     return result.affectedRows;
   }
 }
