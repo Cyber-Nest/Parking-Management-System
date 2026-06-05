@@ -72,6 +72,8 @@ export interface SessionPublic {
   notes: string | null;
   amount: number;
   created_at: Date;
+  parking_lot_id?: string | null;
+  parking_lot_name?: string | null;
 }
 
 export interface CreateSessionBody {
@@ -101,6 +103,8 @@ export interface TicketPublic {
   photos: string[];
   location_name?: string | null;
   payment_id?: string | null;
+  parking_lot_id?: string | null;
+  parking_lot_name?: string | null;
 }
 
 export interface CreateTicketBody {
@@ -131,6 +135,8 @@ export interface PaymentPublic {
   transaction_ref: string | null;
   paid_at: Date | null;
   created_at: Date;
+  parking_lot_id?: string | null;
+  parking_lot_name?: string | null;
 }
 
 export interface ParkingZoneSubZone {

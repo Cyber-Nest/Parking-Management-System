@@ -26,6 +26,7 @@ export class ReportsRepository {
                 WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
                    OR plan_id IN (SELECT id FROM parking_plans WHERE parking_lot_id = ?)
             )
+            OR ${p}officer_id IN (SELECT id FROM officers WHERE parking_lot_id = ?)
         )`;
     }
 
@@ -254,7 +255,7 @@ export class ReportsRepository {
         }
         if (parkingLotId?.trim()) {
             conditions.push(this.ticketLotCondition());
-            values.push(...this.lotValues(parkingLotId, 3));
+            values.push(...this.lotValues(parkingLotId, 4));
         }
 
         const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -292,7 +293,11 @@ export class ReportsRepository {
     }
 
     async getPerformance(from?: string, to?: string, parkingLotId?: string) {
-        const joinConditions: string[] = ['t.officer_id = o.id'];
+        const joinConditions: string[] = [
+            `(t.officer_id = o.id
+              OR LOWER(TRIM(t.officer_name)) = LOWER(TRIM(o.full_name))
+              OR LOWER(TRIM(t.officer_name)) = LOWER(TRIM(o.email)))`,
+        ];
         const joinValues: any[] = [];
 
         if (from) {
@@ -305,23 +310,35 @@ export class ReportsRepository {
         }
         if (parkingLotId?.trim()) {
             joinConditions.push(this.ticketLotCondition('t'));
-            joinValues.push(...this.lotValues(parkingLotId, 3));
+            joinValues.push(...this.lotValues(parkingLotId, 4));
         }
 
         const officerPerformance = await queryRows<{
             officer_id: string;
             officer_name: string;
+            officer_email: string;
+            officer_phone: string | null;
+            officer_role: string;
             tickets_issued: number;
+            paid_tickets: number;
+            pending_tickets: number;
+            cancelled_tickets: number;
             total_penalty_amount: number;
         }>(
-            `SELECT o.id AS officer_id, o.full_name AS officer_name,
+            `SELECT o.id AS officer_id,
+         o.full_name AS officer_name,
+         o.email AS officer_email,
+         o.phone AS officer_phone,
+         o.role AS officer_role,
          COUNT(t.id) AS tickets_issued,
+         SUM(t.status = 'paid') AS paid_tickets,
+         SUM(t.status IN ('unpaid', 'disputed')) AS pending_tickets,
+         SUM(t.status = 'cancelled') AS cancelled_tickets,
          COALESCE(SUM(t.amount), 0) AS total_penalty_amount
        FROM officers o
        LEFT JOIN penalty_tickets t ON ${joinConditions.join(' AND ')}
-       GROUP BY o.id, o.full_name
-       ORDER BY tickets_issued DESC
-       LIMIT 12`,
+       GROUP BY o.id, o.full_name, o.email, o.phone, o.role
+       ORDER BY tickets_issued DESC, o.full_name ASC`,
             joinValues
         );
 
@@ -378,7 +395,7 @@ export class ReportsRepository {
         }
         if (parkingLotId?.trim()) {
             conditions.push(this.ticketLotCondition());
-            values.push(...this.lotValues(parkingLotId, 3));
+            values.push(...this.lotValues(parkingLotId, 4));
         }
 
         const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -600,7 +617,7 @@ export class ReportsRepository {
         };
 
         const lotTicketSql = parkingLotId?.trim()
-            ? { sql: ` AND ${this.ticketLotCondition('t')}`, vals: this.lotValues(parkingLotId, 3) }
+            ? { sql: ` AND ${this.ticketLotCondition('t')}`, vals: this.lotValues(parkingLotId, 4) }
             : { sql: '', vals: [] };
         const lotSessionSql = parkingLotId?.trim()
             ? { sql: ` AND ${this.sessionLotCondition('ps')}`, vals: this.lotValues(parkingLotId, 2) }

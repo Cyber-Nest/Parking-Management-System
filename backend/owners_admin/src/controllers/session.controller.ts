@@ -1,12 +1,12 @@
 import { Request, Response } from 'express';
 import { ApiResponse } from '../types';
 import { SessionService } from '../services/session.service';
-import { ValidationError } from '../services/commonErrors';
+import { NotFoundError, ValidationError } from '../services/commonErrors';
 
 const sessionService = new SessionService();
 
 const handleError = (err: unknown, res: Response): void => {
-  if (err instanceof ValidationError) {
+  if (err instanceof ValidationError || err instanceof NotFoundError) {
     res.status(err.statusCode).json({ success: false, message: err.message });
     return;
   }
@@ -33,6 +33,18 @@ export const getSessionSummary = async (
   try {
     const data = await sessionService.summary(req.query as Record<string, string | undefined>);
     res.status(200).json({ success: true, message: 'Session summary fetched', data });
+  } catch (err) {
+    handleError(err, res);
+  }
+};
+
+export const cancelSession = async (
+  req: Request,
+  res: Response<ApiResponse<any>>
+): Promise<void> => {
+  try {
+    const data = await sessionService.cancel(req.params.id, req.body ?? {});
+    res.status(200).json({ success: true, message: 'Session cancelled', data });
   } catch (err) {
     handleError(err, res);
   }

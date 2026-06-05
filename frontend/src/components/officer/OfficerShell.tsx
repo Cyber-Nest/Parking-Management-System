@@ -4,7 +4,10 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { OfficerDutyWidget } from "@/components/officer/OfficerDutyWidget";
-import { officerPortalService, type OfficerProfile } from "@/services/officer-portal.service";
+import {
+  officerPortalService,
+  type OfficerProfile,
+} from "@/services/officer-portal.service";
 import {
   Bell,
   Camera,
@@ -70,7 +73,8 @@ export function OfficerShell({ children }: { children: React.ReactNode }) {
         /* ignore */
       }
     }
-    void officerPortalService.getProfile()
+    void officerPortalService
+      .getProfile()
       .then((p) => {
         setProfile(p);
         window.localStorage.setItem("officerProfile", JSON.stringify(p));
@@ -84,7 +88,8 @@ export function OfficerShell({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("token");
     localStorage.removeItem("refreshToken");
     document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-    document.cookie = "refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    document.cookie =
+      "refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     router.push("/officer/login");
   };
 
@@ -99,7 +104,7 @@ export function OfficerShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-[#f5f7fb] text-[#12213f]">
       <div className="flex min-h-screen">
-        <aside className="hidden w-[210px] shrink-0 bg-[#061b3d] text-white lg:flex lg:flex-col">
+        <aside className="hidden w-52.5 shrink-0 bg-[#061b3d] text-white lg:flex lg:flex-col">
           <div className="flex items-center gap-3 px-6 py-7">
             <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/20 bg-white/10">
               <Shield size={24} />
@@ -154,7 +159,8 @@ export function OfficerShell({ children }: { children: React.ReactNode }) {
               {ticketsExpanded ? (
                 <div className="ml-4 space-y-1 border-l border-white/15 pl-3">
                   {ticketSubItems.map((item) => {
-                    const active = onTicketsRoute && activeTicketTab === item.tab;
+                    const active =
+                      onTicketsRoute && activeTicketTab === item.tab;
                     return (
                       <Link
                         key={item.tab}
@@ -219,22 +225,33 @@ export function OfficerShell({ children }: { children: React.ReactNode }) {
                     3
                   </span>
                 </button>
-                <button className="hidden items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700 md:inline-flex">
+                <button
+                  type="button"
+                  onClick={() => router.push("/officer/evidence?capture=true")}
+                  className="inline-flex items-center gap-2 rounded-md border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-700"
+                >
                   <Camera size={16} />
                   Take Photo
                 </button>
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-full bg-[url('https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=120&q=80')] bg-cover bg-center" />
-                  <div className="hidden md:block">
-                    <p className="text-sm font-bold">{profile?.fullName ?? "Officer"}</p>
+                  <div>
+                    <p className="text-sm font-bold">
+                      {profile?.fullName ?? "Officer"}
+                    </p>
                     <p className="text-xs text-slate-500">
-                      {profile?.parkingLotName
-                        ? `${profile.parkingLotName} • ID: ${profile?.badgeNumber ?? profile?.id?.slice(0, 8) ?? "—"}`
+                      {profile?.parkingLotName || profile?.assignedZone
+                        ? `${profile?.parkingLotName || profile?.assignedZone} • ID: ${profile?.badgeNumber ?? profile?.id?.slice(0, 8) ?? "—"}`
                         : `ID: ${profile?.badgeNumber ?? profile?.id?.slice(0, 8) ?? "—"}`}
                     </p>
+                    <p className="text-xs text-slate-400">{profile?.email}</p>
                   </div>
                 </div>
-                <button type="button" onClick={handleLogout} className="rounded-full p-2 text-slate-500 hover:bg-slate-100">
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="rounded-full p-2 text-slate-500 hover:bg-slate-100"
+                >
                   <LogOut size={18} />
                 </button>
               </div>
@@ -242,8 +259,12 @@ export function OfficerShell({ children }: { children: React.ReactNode }) {
 
             <div className="border-t border-slate-200 px-4 py-3 md:px-7 lg:hidden">
               <div className="flex items-center justify-between gap-3">
-                <div className="text-sm font-semibold text-slate-700">Quick Actions</div>
-                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">On Duty</span>
+                <div className="text-sm font-semibold text-slate-700">
+                  Quick Actions
+                </div>
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                  On Duty
+                </span>
               </div>
               <nav className="mt-3 flex gap-2 overflow-x-auto pb-1">
                 {navItems.map((item) => {

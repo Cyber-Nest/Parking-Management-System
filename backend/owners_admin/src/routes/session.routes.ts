@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { verifyToken, requireAdmin } from '../middleware/auth.middleware';
-import { getSessionSummary, listSessions } from '../controllers/session.controller';
+import { cancelSession, getSessionSummary, listSessions } from '../controllers/session.controller';
 
 const router = Router();
 
@@ -14,6 +14,7 @@ const adminOnly = (
 
 router.get('/', ...adminOnly(listSessions));
 router.get('/summary', ...adminOnly(getSessionSummary));
+router.patch('/:id/cancel', ...adminOnly(cancelSession));
 
 export default router;
 

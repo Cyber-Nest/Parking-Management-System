@@ -120,7 +120,9 @@ export class OfficerPortalRepository {
 
   async findOfficerById(id: string): Promise<OfficerProfileRow | null> {
     const rows = await queryRows<OfficerProfileRow>(
-      `SELECT o.id, o.full_name, o.email, o.phone, o.badge_number, o.role, o.status, o.assigned_zone, o.last_login_at, o.parking_lot_id, pl.lot_name
+      `SELECT o.id, o.full_name, o.email, o.phone, o.badge_number, o.role, o.status, o.assigned_zone, o.last_login_at,
+              COALESCE(o.parking_lot_id, (SELECT id FROM parking_lots ORDER BY created_at ASC LIMIT 1)) AS parking_lot_id,
+              COALESCE(pl.lot_name, (SELECT lot_name FROM parking_lots ORDER BY created_at ASC LIMIT 1)) AS lot_name
        FROM officers o
        LEFT JOIN parking_lots pl ON o.parking_lot_id = pl.id
        WHERE o.id = ? LIMIT 1`,

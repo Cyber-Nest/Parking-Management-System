@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import { execute, queryRows } from '../config/database';
 import { TicketStatus } from '../types';
+import { nextNumericTicketNumber } from '../utils/ticketNumber';
 
 export interface EnforcementTicketInput {
   officerId: string;
@@ -127,6 +128,7 @@ interface AmountRow {
 
 export interface OfficerTicketListQuery {
   limit?: number;
+  officerId?: string;
   status?: string;
   violationType?: string;
   location?: string;
@@ -146,13 +148,7 @@ export interface OfficerSessionListQuery {
 
 export class EnforcementRepository {
   private async nextTicketNumber(): Promise<string> {
-    const rows = await queryRows<{ max_number: number | null }>(
-      `SELECT MAX(CAST(SUBSTRING(ticket_number, 5) AS UNSIGNED)) AS max_number
-       FROM penalty_tickets
-       WHERE ticket_number REGEXP '^TKT-[0-9]+$'`,
-    );
-    const next = Number(rows[0]?.max_number ?? 0) + 1;
-    return `TKT-${String(next).padStart(3, '0')}`;
+    return nextNumericTicketNumber();
   }
 
   private evidenceTableReady = false;
@@ -206,17 +202,35 @@ export class EnforcementRepository {
          WHERE status = 'success' AND DATE(COALESCE(paid_at, created_at)) = CURDATE()`
       ),
       queryRows(
-        `SELECT license_plate, location_name, start_time AS checked_at, 'valid' AS scan_status
-         FROM parking_sessions
-         ORDER BY start_time DESC
+        `SELECT ps.license_plate,
+                COALESCE(ps.location_name, z.parking_name, b.parking_name) AS location_name,
+                ps.start_time AS checked_at,
+                'valid' AS scan_status
+         FROM parking_sessions ps
+         LEFT JOIN parking_plans pp ON pp.id = ps.plan_id
+         LEFT JOIN parking_zones z ON z.id = pp.parking_zone_id
+         LEFT JOIN bookings b
+           ON REPLACE(REPLACE(UPPER(b.vehicle_plate_number), ' ', ''), '-', '') = REPLACE(REPLACE(UPPER(ps.license_plate), ' ', ''), '-', '')
+          AND b.start_time <= ps.end_time
+          AND b.end_time >= ps.start_time
+         WHERE ps.status = 'active' AND ps.end_time >= NOW()
+         ORDER BY ps.start_time DESC
          LIMIT 5`
       ),
       queryRows<EnforcementSessionRow>(
-        `SELECT id, license_plate, plan_name, location_name, start_time, end_time, duration_minutes,
-                status, notes, created_by_officer, created_at
-         FROM parking_sessions
-         WHERE status = 'active' AND end_time >= NOW()
-         ORDER BY end_time ASC
+        `SELECT ps.id, ps.license_plate, ps.plan_name,
+                COALESCE(ps.location_name, z.parking_name, b.parking_name) AS location_name,
+                ps.start_time, ps.end_time, ps.duration_minutes,
+                ps.status, ps.notes, ps.created_by_officer, ps.created_at
+         FROM parking_sessions ps
+         LEFT JOIN parking_plans pp ON pp.id = ps.plan_id
+         LEFT JOIN parking_zones z ON z.id = pp.parking_zone_id
+         LEFT JOIN bookings b
+           ON REPLACE(REPLACE(UPPER(b.vehicle_plate_number), ' ', ''), '-', '') = REPLACE(REPLACE(UPPER(ps.license_plate), ' ', ''), '-', '')
+          AND b.start_time <= ps.end_time
+          AND b.end_time >= ps.start_time
+         WHERE ps.status = 'active' AND ps.end_time >= NOW()
+         ORDER BY ps.end_time ASC
          LIMIT 1`
       ),
       queryRows<{ reason: string; total: number }>(
@@ -244,10 +258,12 @@ export class EnforcementRepository {
     const normalized = plate.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
     const [sessions, tickets] = await Promise.all([
       queryRows<EnforcementSessionRow>(
-        `SELECT ps.id, ps.license_plate, ps.plan_name, ps.location_name, ps.start_time, ps.end_time,
+        `SELECT ps.id, ps.license_plate, ps.plan_name,
+                COALESCE(ps.location_name, z.parking_name, b.parking_name) AS location_name,
+                ps.start_time, ps.end_time,
                 ps.duration_minutes, ps.status, ps.notes, ps.created_by_officer, ps.created_at, ps.user_id,
-                COALESCE(u.username, u.email) AS customer_name,
-                u.email AS customer_email,
+                COALESCE(u.username, u.email, b.customer_email) AS customer_name,
+                COALESCE(u.email, b.customer_email) AS customer_email,
                 (SELECT p.amount FROM payments p
                  WHERE p.session_id = ps.id AND p.status = 'success'
                  ORDER BY p.paid_at DESC LIMIT 1) AS amount_paid,
@@ -259,8 +275,14 @@ export class EnforcementRepository {
                  ORDER BY p.paid_at DESC LIMIT 1) AS paid_at
          FROM parking_sessions ps
          LEFT JOIN users u ON u.id = ps.user_id
+         LEFT JOIN parking_plans pp ON pp.id = ps.plan_id
+         LEFT JOIN parking_zones z ON z.id = pp.parking_zone_id
+         LEFT JOIN bookings b
+           ON REPLACE(REPLACE(UPPER(b.vehicle_plate_number), ' ', ''), '-', '') = REPLACE(REPLACE(UPPER(ps.license_plate), ' ', ''), '-', '')
+          AND b.start_time <= ps.end_time
+          AND b.end_time >= ps.start_time
          WHERE REPLACE(REPLACE(UPPER(ps.license_plate), ' ', ''), '-', '') = ?
-         ORDER BY ps.start_time DESC
+         ORDER BY ps.start_time DESC, b.start_time DESC
          LIMIT 1`,
         [normalized]
       ),
@@ -315,6 +337,10 @@ export class EnforcementRepository {
     if (query.status) {
       conditions.push('status = ?');
       values.push(query.status);
+    }
+    if (query.officerId) {
+      conditions.push('officer_id = ?');
+      values.push(query.officerId);
     }
     if (query.violationType) {
       conditions.push('reason LIKE ?');
@@ -641,6 +667,19 @@ export class EnforcementRepository {
     const violationDate = input.violationDateTime ?? new Date().toISOString().slice(0, 19).replace('T', ' ');
     const dueDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().slice(0, 19).replace('T', ' ');
     const totalAmount = Number(input.fineAmount) + Number(input.lateFee ?? 0);
+    let locationName = input.locationName?.trim() || null;
+    if (!locationName && input.sessionId) {
+      const sessionRows = await queryRows<{ location_name: string | null }>(
+        `SELECT COALESCE(ps.location_name, z.parking_name) AS location_name
+         FROM parking_sessions ps
+         LEFT JOIN parking_plans pp ON pp.id = ps.plan_id
+         LEFT JOIN parking_zones z ON z.id = pp.parking_zone_id
+         WHERE ps.id = ?
+         LIMIT 1`,
+        [input.sessionId],
+      );
+      locationName = sessionRows[0]?.location_name ?? null;
+    }
     const remarks = JSON.stringify({
       provinceState: input.provinceState ?? 'Ontario (ON)',
       vehicleMake: input.vehicleMake ?? '',
@@ -669,7 +708,7 @@ export class EnforcementRepository {
         input.officerName,
         input.sessionId ?? null,
         input.licensePlate.trim().toUpperCase(),
-        input.locationName ?? null,
+        locationName,
         totalAmount,
         input.violationType.trim(),
         input.status ?? 'unpaid',

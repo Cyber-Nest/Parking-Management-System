@@ -130,6 +130,7 @@ export const API_ENDPOINTS = {
   SESSIONS: {
     LIST: "/admin/sessions",
     SUMMARY: "/admin/sessions/summary",
+    CANCEL: (id: string) => `/admin/sessions/${id}/cancel`,
   },
 
   SETTINGS: {

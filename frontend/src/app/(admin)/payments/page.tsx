@@ -509,7 +509,7 @@ export default function PaymentsPage() {
                   <th className="px-6 py-5">Payment ID</th>
                   <th className="px-6 py-5">Date & Time</th>
                   <th className="px-6 py-5">Plate No.</th>
-                  <th className="px-6 py-5">Session ID</th>
+                  {/* <th className="px-6 py-5">Session ID</th> */}
                   <th className="px-6 py-5">Parking Lot</th>
                   <th className="px-6 py-5">Type</th>
                   <th className="px-6 py-5">Amount</th>
@@ -550,16 +550,16 @@ export default function PaymentsPage() {
                       <td className="px-6 py-4 font-bold text-[var(--color-text-primary)]">
                         {row.plate}
                       </td>
-                      <td className="px-6 py-4 font-bold text-[var(--color-primary)]" title={row.sessionId}>
+                      {/* <td className="px-6 py-4 font-bold text-[var(--color-primary)]" title={row.sessionId}>
                         {truncateId(row.sessionId)}
-                      </td>
+                      </td> */}
                       <td className="px-6 py-4">
                         <div className="font-bold text-[var(--color-text-primary)]">
                           {row.parkingLotName || "Unassigned"}
                         </div>
                         {row.parkingLotId ? (
                           <div className="text-[10px] text-[var(--color-text-muted)] font-mono" title={row.parkingLotId}>
-                            {truncateId(row.parkingLotId)}
+                            {row.parkingLotId}
                           </div>
                         ) : null}
                       </td>

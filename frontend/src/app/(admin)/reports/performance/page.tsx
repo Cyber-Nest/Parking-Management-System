@@ -7,6 +7,14 @@ import React, {
   useMemo,
   useRef,
 } from "react";
+
+const defaultLast30Range = () => {
+  const today = new Date();
+  const end = today.toISOString().split("T")[0];
+  const start = new Date(today);
+  start.setDate(start.getDate() - 30);
+  return { startDate: start.toISOString().split("T")[0], endDate: end };
+};
 import {
   Download,
   Users,
@@ -48,6 +56,13 @@ import {
   TopOfficerData,
 } from "@/services/officer-performance.service";
 
+type OfficerOption = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+};
+
 export default function OfficerPerformanceReport() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
@@ -71,14 +86,16 @@ export default function OfficerPerformanceReport() {
   );
   const [trendData, setTrendData] = useState<PerformanceTrendData[]>([]);
   const [topOfficersData, setTopOfficersData] = useState<TopOfficerData[]>([]);
+  const [officerOptions, setOfficerOptions] = useState<OfficerOption[]>([]);
 
   // Filters
+  const defaultRange = defaultLast30Range();
   const [filters, setFilters] = useState<OfficerPerformanceFilters>({
     dateRange: "Last 30 Days",
     location: "All Locations",
     officer: "All Officers",
-    startDate: "",
-    endDate: "",
+    startDate: defaultRange.startDate,
+    endDate: defaultRange.endDate,
     parkingLotId: "",
   });
 
@@ -164,7 +181,10 @@ export default function OfficerPerformanceReport() {
     return officersData.filter(
       (row) =>
         row.name.toLowerCase().includes(query) ||
-        row.officerId.toLowerCase().includes(query),
+        row.officerId.toLowerCase().includes(query) ||
+        row.email.toLowerCase().includes(query) ||
+        row.phone.toLowerCase().includes(query) ||
+        row.role.toLowerCase().includes(query),
     );
   }, [officersData, searchQuery]);
 
@@ -202,14 +222,38 @@ export default function OfficerPerformanceReport() {
     fetchAllData();
   }, [fetchAllData]);
 
+  useEffect(() => {
+    let cancelled = false;
+    officerPerformanceService
+      .getOfficerOptions({ parkingLotId: filters.parkingLotId })
+      .then((items) => {
+        if (cancelled) return;
+        setOfficerOptions(items);
+        if (
+          filters.officer !== "All Officers" &&
+          !items.some((officer) => officer.id === filters.officer)
+        ) {
+          setFilters((prev) => ({ ...prev, officer: "All Officers" }));
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to load officers", error);
+        if (!cancelled) setOfficerOptions([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [filters.parkingLotId, filters.officer]);
+
   // Reset filters
   const handleResetFilters = () => {
+    const range = defaultLast30Range();
     setFilters({
       dateRange: "Last 30 Days",
       location: "All Locations",
       officer: "All Officers",
-      startDate: "",
-      endDate: "",
+      startDate: range.startDate,
+      endDate: range.endDate,
       parkingLotId: "",
     });
     setSearchQuery("");
@@ -285,17 +329,6 @@ export default function OfficerPerformanceReport() {
     "Downtown",
     "Airport",
   ];
-  const officerOptions = [
-    "All Officers",
-    "John Smith",
-    "Michael Brown",
-    "David Johnson",
-    "Robert Wilson",
-    "James Taylor",
-    "Sarah Wright",
-    "Adam Milner",
-  ];
-
   return (
     <div className="min-h-screen px-4 md:px-6 py-6 space-y-8 bg-[var(--color-bg)]">
       {/* Header */}
@@ -421,7 +454,7 @@ export default function OfficerPerformanceReport() {
             <div className="bg-[var(--color-surface)] p-5 rounded-2xl border border-[var(--color-border)] shadow-sm">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {/* Custom Date Range Inputs */}
-{/* 
+                {/* 
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
                     Date Range
@@ -510,8 +543,11 @@ export default function OfficerPerformanceReport() {
                     }
                     className="w-full bg-[var(--color-surface-soft)] border border-[var(--color-border)] rounded-xl p-2.5 text-sm font-semibold outline-none focus:border-[var(--color-primary)] transition-all"
                   >
-                    {officerOptions.map((opt) => (
-                      <option key={opt}>{opt}</option>
+                    <option value="All Officers">All Officers</option>
+                    {officerOptions.map((officer) => (
+                      <option key={officer.id} value={officer.id}>
+                        {officer.name}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -551,7 +587,7 @@ export default function OfficerPerformanceReport() {
             />
             <input
               type="text"
-              placeholder="Search by name or ID..."
+              placeholder="Search by name, email, phone or ID..."
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
@@ -564,10 +600,12 @@ export default function OfficerPerformanceReport() {
 
         {/* Table  */}
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse min-w-[900px]">
+            <table className="w-full text-left border-collapse min-w-[1100px]">
             <thead className="bg-[var(--color-surface-soft)] border-b border-[var(--color-border)]">
               <tr className="text-[10px] uppercase text-[var(--color-text-muted)] font-black tracking-widest">
                 <th className="px-4 sm:px-6 py-4">Officer Information</th>
+                <th className="px-4 sm:px-6 py-4">Email</th>
+                <th className="px-4 sm:px-6 py-4">Phone</th>
                 <th className="px-4 sm:px-6 py-4 text-center">
                   Tickets Issued
                 </th>
@@ -580,16 +618,16 @@ export default function OfficerPerformanceReport() {
                   Penalty Revenue
                 </th>
                 <th className="px-4 sm:px-6 py-4 text-center">Avg/Day</th>
-                <th className="px-4 sm:px-6 py-4 text-center">Actions</th>
+                {/* <th className="px-4 sm:px-6 py-4 text-center">Actions</th> */}
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-border)] text-[13px]">
               {loading ? (
-                <TableSkeleton rows={5} cols={8} />
+                <TableSkeleton rows={5} cols={9} />
               ) : paginatedData.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={8}
+                    colSpan={9}
                     className="text-center py-12 text-[var(--color-text-muted)]"
                   >
                     No data available
@@ -619,6 +657,16 @@ export default function OfficerPerformanceReport() {
                         </div>
                       </div>
                     </td>
+                    <td className="px-4 sm:px-6 py-4">
+                      <div className="text-sm font-semibold text-[var(--color-text-primary)]">
+                        {row.email || "-"}
+                      </div>
+                    </td>
+                    <td className="px-4 sm:px-6 py-4">
+                      <div className="text-sm font-semibold text-[var(--color-text-primary)]">
+                        {row.phone || "-"}
+                      </div>
+                    </td>
                     <td className="px-4 sm:px-6 py-4 text-center font-semibold">
                       {row.ticketsIssued}
                     </td>
@@ -637,14 +685,14 @@ export default function OfficerPerformanceReport() {
                     <td className="px-4 sm:px-6 py-4 text-center font-bold text-blue-600">
                       {row.avgPerDay}
                     </td>
-                    <td className="px-4 sm:px-6 py-4 text-center">
+                    {/* <td className="px-4 sm:px-6 py-4 text-center">
                       <button
                         onClick={() => handleViewDetails(row)}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-[var(--color-primary)]/10 text-[var(--color-primary)] hover:bg-[var(--color-primary)] hover:text-white transition-all"
                       >
                         View Details
                       </button>
-                    </td>
+                    </td> */}
                   </tr>
                 ))
               )}

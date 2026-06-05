@@ -1,6 +1,20 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
+
+const defaultLast30Range = () => {
+  const today = new Date();
+  const end = today.toISOString().split("T")[0];
+  const start = new Date(today);
+  start.setDate(start.getDate() - 30);
+  return { startDate: start.toISOString().split("T")[0], endDate: end };
+};
 import {
   Download,
   MapPin,
@@ -25,7 +39,10 @@ import { TableSkeleton } from "@/components/common/TableSkeleton";
 import { ParkingLotFilter } from "@/components/common/ParkingLotFilter";
 import { LocationPerformanceCharts } from "@/components/reports/charts/LocationPerformanceCharts";
 import { LocationDetailsDrawer } from "@/components/reports/drawers/LocationDetailsDrawer";
-import { listParkingLots, ParkingLotRecord } from "@/services/parking-lots.service";
+import {
+  listParkingLots,
+  ParkingLotRecord,
+} from "@/services/parking-lots.service";
 
 import {
   locationPerformanceService,
@@ -64,14 +81,15 @@ export default function LocationPerformanceReport() {
   );
 
   // Filters
+  const defaultRange = defaultLast30Range();
   const [filters, setFilters] = useState<LocationPerformanceFilters>({
     dateRange: "Last 30 Days",
     location: "All Locations",
     paymentMethod: "All Methods",
     planType: "All Plans",
     status: "All Status",
-    startDate: "",
-    endDate: "",
+    startDate: defaultRange.startDate,
+    endDate: defaultRange.endDate,
     parkingLotId: "",
   });
 
@@ -84,7 +102,10 @@ export default function LocationPerformanceReport() {
   // Close export dropdown on click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target as Node)) {
+      if (
+        exportDropdownRef.current &&
+        !exportDropdownRef.current.contains(event.target as Node)
+      ) {
         setShowExportDropdown(false);
       }
     };
@@ -95,7 +116,7 @@ export default function LocationPerformanceReport() {
   // Auto-set dates based on dateRange selection
   useEffect(() => {
     const today = new Date();
-    const formatDate = (date: Date) => date.toISOString().split('T')[0];
+    const formatDate = (date: Date) => date.toISOString().split("T")[0];
 
     if (filters.dateRange === "Custom Range") return;
 
@@ -132,7 +153,11 @@ export default function LocationPerformanceReport() {
         end = formatDate(lastDay);
         break;
       case "Last Month":
-        const firstDayLast = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const firstDayLast = new Date(
+          today.getFullYear(),
+          today.getMonth() - 1,
+          1,
+        );
         const lastDayLast = new Date(today.getFullYear(), today.getMonth(), 0);
         start = formatDate(firstDayLast);
         end = formatDate(lastDayLast);
@@ -141,7 +166,7 @@ export default function LocationPerformanceReport() {
         return;
     }
 
-    setFilters(prev => ({ ...prev, startDate: start, endDate: end }));
+    setFilters((prev) => ({ ...prev, startDate: start, endDate: end }));
   }, [filters.dateRange]);
 
   // Filtered data based on search
@@ -190,14 +215,15 @@ export default function LocationPerformanceReport() {
 
   // Reset filters
   const handleResetFilters = () => {
+    const range = defaultLast30Range();
     setFilters({
       dateRange: "Last 30 Days",
       location: "All Locations",
       paymentMethod: "All Methods",
       planType: "All Plans",
       status: "All Status",
-      startDate: "",
-      endDate: "",
+      startDate: range.startDate,
+      endDate: range.endDate,
       parkingLotId: "",
     });
     setSearchQuery("");
@@ -221,14 +247,19 @@ export default function LocationPerformanceReport() {
         const url = window.URL.createObjectURL(response.blob);
         const link = document.createElement("a");
         link.href = url;
-        link.setAttribute("download", `location_performance_${new Date().toISOString().split('T')[0]}.${format === "pdf" ? "pdf" : "xlsx"}`);
+        link.setAttribute(
+          "download",
+          `location_performance_${new Date().toISOString().split("T")[0]}.${format === "pdf" ? "pdf" : "xlsx"}`,
+        );
         document.body.appendChild(link);
         link.click();
         link.remove();
         window.URL.revokeObjectURL(url);
         toast.success(`Report exported as ${format.toUpperCase()}`);
       } else {
-        toast.success(response.message || `Report exported as ${format.toUpperCase()}`);
+        toast.success(
+          response.message || `Report exported as ${format.toUpperCase()}`,
+        );
       }
     } catch (error) {
       console.error("Export error:", error);
@@ -331,7 +362,13 @@ export default function LocationPerformanceReport() {
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <StatCard key={i} loading={true} title="" icon={undefined} value=""/>
+            <StatCard
+              key={i}
+              loading={true}
+              title=""
+              icon={undefined}
+              value=""
+            />
           ))}
         </div>
       ) : (

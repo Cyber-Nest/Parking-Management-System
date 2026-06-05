@@ -112,7 +112,14 @@ export const uploadOfficerPhoto = async (req: Request, res: Response): Promise<v
 
 export const captureOfficerEvidence = async (req: Request, res: Response): Promise<void> => {
   try {
-    const data = await enforcementService.captureEvidence(req.body);
+    const { resolveOfficerId, officerPortalService } = await import('../services/officerPortal.service');
+    const officerId = resolveOfficerId(req);
+    const profile = await officerPortalService.getProfile(officerId);
+    const data = await enforcementService.captureEvidence({
+      ...req.body,
+      officerId,
+      officerName: profile.fullName,
+    });
     res.status(201).json({ success: true, message: 'Evidence captured', data });
   } catch (err) {
     handleError(err, res);
@@ -139,7 +146,9 @@ export const deleteOfficerEvidence = async (req: Request, res: Response): Promis
 
 export const createOfficerManualEntry = async (req: Request, res: Response): Promise<void> => {
   try {
-    const data = await enforcementService.createManualEntry(req.body);
+    const { resolveOfficerId } = await import('../services/officerPortal.service');
+    const officerId = resolveOfficerId(req);
+    const data = await enforcementService.createManualEntry({ ...req.body, officerId });
     res.status(201).json({ success: true, message: 'Manual entry created', data });
   } catch (err) {
     handleError(err, res);
@@ -157,7 +166,14 @@ export const getOfficerVehicleHistory = async (req: Request, res: Response): Pro
 
 export const createOfficerTicket = async (req: Request, res: Response): Promise<void> => {
   try {
-    const data = await enforcementService.createTicket(req.body);
+    const { resolveOfficerId, officerPortalService } = await import('../services/officerPortal.service');
+    const officerId = resolveOfficerId(req);
+    const profile = await officerPortalService.getProfile(officerId);
+    const data = await enforcementService.createTicket({
+      ...req.body,
+      officerId,
+      officerName: profile.fullName,
+    });
     res.status(201).json({ success: true, message: 'Ticket issued', data });
   } catch (err) {
     handleError(err, res);

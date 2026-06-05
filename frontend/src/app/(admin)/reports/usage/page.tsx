@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import {
   Download,
   Filter,
@@ -55,7 +61,7 @@ export default function ParkingUsageReport() {
   const [selectedRow, setSelectedRow] = useState<any>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
-  const [selectedDateOption, setSelectedDateOption] = useState("Last 30 Days");
+  // Use filters.dateRange directly to avoid sync issues
   const exportDropdownRef = useRef<HTMLDivElement>(null);
   const itemsPerPage = 10;
 
@@ -73,7 +79,7 @@ export default function ParkingUsageReport() {
     location: "All Locations",
     planType: "All Plans",
     paymentMethod: "All Methods",
-    status: "All Status",
+    status: "All Statuses",
     startDate: initialUsageRange.startDate,
     endDate: initialUsageRange.endDate,
     parkingLotId: "",
@@ -85,7 +91,10 @@ export default function ParkingUsageReport() {
   // Close export dropdown on click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target as Node)) {
+      if (
+        exportDropdownRef.current &&
+        !exportDropdownRef.current.contains(event.target as Node)
+      ) {
         setShowExportDropdown(false);
       }
     };
@@ -98,15 +107,24 @@ export default function ParkingUsageReport() {
     const today = new Date();
     const formatDate = (date: Date) => {
       const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
       return `${year}-${month}-${day}`;
     };
+
+    if (filters.dateRange === "Custom Range") {
+      setFilters((prev: ParkingUsageFilters) => ({
+        ...prev,
+        startDate: "",
+        endDate: "",
+      }));
+      return;
+    }
 
     let start = "";
     let end = "";
 
-    switch (selectedDateOption) {
+    switch (filters.dateRange) {
       case "Today":
         start = formatDate(today);
         end = formatDate(today);
@@ -136,26 +154,25 @@ export default function ParkingUsageReport() {
         end = formatDate(lastDay);
         break;
       case "Last Month":
-        const firstDayLast = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const firstDayLast = new Date(
+          today.getFullYear(),
+          today.getMonth() - 1,
+          1,
+        );
         const lastDayLast = new Date(today.getFullYear(), today.getMonth(), 0);
         start = formatDate(firstDayLast);
         end = formatDate(lastDayLast);
         break;
-      case "Custom Range":
-        return;
       default:
         return;
     }
 
-    if (selectedDateOption && (selectedDateOption as string) !== "Custom Range") {
-      setFilters((prev: ParkingUsageFilters) => ({
-        ...prev,
-        startDate: start,
-        endDate: end,
-        dateRange: selectedDateOption,
-      }));
-    }
-  }, [selectedDateOption]);
+    setFilters((prev: ParkingUsageFilters) => ({
+      ...prev,
+      startDate: start,
+      endDate: end,
+    }));
+  }, [filters.dateRange]);
 
   // Fetch all data
   const fetchAllData = useCallback(async () => {
@@ -204,12 +221,12 @@ export default function ParkingUsageReport() {
       location: "All Locations",
       planType: "All Plans",
       paymentMethod: "All Methods",
-      status: "All Status",
+      status: "All Statuses",
       startDate: r.startDate,
       endDate: r.endDate,
       parkingLotId: "",
     });
-    setSelectedDateOption("");
+    // keep filters.dateRange in sync (no separate selectedDateOption state)
     setChartDays(30);
     setCurrentPage(1);
     setShowFilters(false);
@@ -231,14 +248,19 @@ export default function ParkingUsageReport() {
         const url = window.URL.createObjectURL(response.blob);
         const link = document.createElement("a");
         link.href = url;
-        link.setAttribute("download", `parking_usage_report_${new Date().toISOString().split('T')[0]}.${format === "pdf" ? "pdf" : "xlsx"}`);
+        link.setAttribute(
+          "download",
+          `parking_usage_report_${new Date().toISOString().split("T")[0]}.${format === "pdf" ? "pdf" : "xlsx"}`,
+        );
         document.body.appendChild(link);
         link.click();
         link.remove();
         window.URL.revokeObjectURL(url);
         toast.success(`Report exported as ${format.toUpperCase()}`);
       } else {
-        toast.success(response.message || `Report exported as ${format.toUpperCase()}`);
+        toast.success(
+          response.message || `Report exported as ${format.toUpperCase()}`,
+        );
       }
     } catch (error) {
       console.error("Export error:", error);
@@ -278,7 +300,7 @@ export default function ParkingUsageReport() {
   const planTypeOptions = ["All Plans", "Hourly", "Daily", "Monthly", "Event"];
   const paymentMethodOptions = ["All Methods", "Card", "Cash", "Wallet"];
   const statusOptions = [
-    "All Status",
+    "All Statuses",
     "Completed",
     "Active",
     "Expired",
@@ -301,10 +323,11 @@ export default function ParkingUsageReport() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setShowFilters(!showFilters)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${showFilters
-              ? "bg-[var(--color-primary)] text-white border-[var(--color-primary)]"
-              : "bg-[var(--color-surface)] text-[var(--color-text-secondary)] border-[var(--color-border)] hover:border-[var(--color-primary)]"
-              }`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all border ${
+              showFilters
+                ? "bg-[var(--color-primary)] text-white border-[var(--color-primary)]"
+                : "bg-[var(--color-surface)] text-[var(--color-text-secondary)] border-[var(--color-border)] hover:border-[var(--color-primary)]"
+            }`}
           >
             <Filter size={16} />
             Filters
@@ -349,7 +372,13 @@ export default function ParkingUsageReport() {
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <StatCard key={i} loading={true} icon={undefined} title={""} value={""} />
+            <StatCard
+              key={i}
+              loading={true}
+              icon={undefined}
+              title={""}
+              value={""}
+            />
           ))}
         </div>
       ) : (
@@ -395,8 +424,10 @@ export default function ParkingUsageReport() {
                     Date Range
                   </label>
                   <select
-                    value={selectedDateOption || filters.dateRange}
-                    onChange={(e) => setSelectedDateOption(e.target.value)}
+                    value={filters.dateRange}
+                    onChange={(e) =>
+                      setFilters({ ...filters, dateRange: e.target.value })
+                    }
                     className="w-full bg-[var(--color-surface-soft)] border border-[var(--color-border)] rounded-xl p-2.5 text-sm font-semibold outline-none focus:border-[var(--color-primary)] transition-all"
                   >
                     {dateRangeOptions.map((opt) => (
@@ -419,7 +450,7 @@ export default function ParkingUsageReport() {
                   />
                 </div>
 
-                {selectedDateOption === "Custom Range" && (
+                {filters.dateRange === "Custom Range" && (
                   <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
@@ -429,8 +460,11 @@ export default function ParkingUsageReport() {
                         type="date"
                         value={filters.startDate}
                         onChange={(e) => {
-                          setFilters({ ...filters, startDate: e.target.value, dateRange: "Custom Range" });
-                          setSelectedDateOption("Custom Range");
+                          setFilters({
+                            ...filters,
+                            startDate: e.target.value,
+                            dateRange: "Custom Range",
+                          });
                         }}
                         className="w-full bg-[var(--color-surface-soft)] border border-[var(--color-border)] rounded-xl p-2.5 text-sm font-semibold outline-none focus:border-[var(--color-primary)] transition-all"
                       />
@@ -443,8 +477,11 @@ export default function ParkingUsageReport() {
                         type="date"
                         value={filters.endDate}
                         onChange={(e) => {
-                          setFilters({ ...filters, endDate: e.target.value, dateRange: "Custom Range" });
-                          setSelectedDateOption("Custom Range");
+                          setFilters({
+                            ...filters,
+                            endDate: e.target.value,
+                            dateRange: "Custom Range",
+                          });
                         }}
                         className="w-full bg-[var(--color-surface-soft)] border border-[var(--color-border)] rounded-xl p-2.5 text-sm font-semibold outline-none focus:border-[var(--color-primary)] transition-all"
                       />
@@ -632,10 +669,11 @@ export default function ParkingUsageReport() {
                 <button
                   key={page}
                   onClick={() => setCurrentPage(page)}
-                  className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${currentPage === page
-                    ? "bg-[var(--color-primary)] text-white"
-                    : "hover:bg-[var(--color-surface)] text-[var(--color-text-secondary)]"
-                    }`}
+                  className={`w-8 h-8 rounded-lg text-xs font-bold transition-all ${
+                    currentPage === page
+                      ? "bg-[var(--color-primary)] text-white"
+                      : "hover:bg-[var(--color-surface)] text-[var(--color-text-secondary)]"
+                  }`}
                 >
                   {page}
                 </button>

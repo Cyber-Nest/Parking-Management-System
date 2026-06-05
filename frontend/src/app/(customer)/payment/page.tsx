@@ -31,7 +31,8 @@ import {
   VehicleDetails,
 } from "@/contexts/CustomerParkingContext";
 
-const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim() ?? "";
+const stripePublishableKey =
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim() ?? "";
 
 interface CheckoutFormProps {
   parkingDetails: ParkingDetails | null;
@@ -61,7 +62,9 @@ function CheckoutForm({
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [stripeError, setStripeError] = useState<string | null>(null);
-  const [completedBooking, setCompletedBooking] = useState<BookingResponse | null>(null);
+  const [postalCode, setPostalCode] = useState("");
+  const [completedBooking, setCompletedBooking] =
+    useState<BookingResponse | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
   const isExtensionCheckout = Boolean(extensionDetails);
   const checkoutTotal = extensionDetails?.amount ?? bookingSummary?.total ?? 0;
@@ -148,9 +151,8 @@ function CheckoutForm({
         return;
       }
 
-      const paymentIntentResponse = await customerService.createPaymentIntent(
-        checkoutTotal,
-      );
+      const paymentIntentResponse =
+        await customerService.createPaymentIntent(checkoutTotal);
 
       // Confirm payment with Stripe
       const result = await stripe.confirmCardPayment(
@@ -158,6 +160,11 @@ function CheckoutForm({
         {
           payment_method: {
             card: elements.getElement(CardElement)!,
+            billing_details: {
+              address: {
+                postal_code: postalCode.trim() || undefined,
+              },
+            },
           },
         },
       );
@@ -178,7 +185,10 @@ function CheckoutForm({
         return;
       }
 
-      if (!result.paymentIntent || result.paymentIntent.status !== "succeeded") {
+      if (
+        !result.paymentIntent ||
+        result.paymentIntent.status !== "succeeded"
+      ) {
         toast.error("Payment did not complete successfully.");
         return;
       }
@@ -229,8 +239,8 @@ function CheckoutForm({
         | Error;
       const backendMessage =
         axiosError &&
-          "response" in axiosError &&
-          axiosError.response?.data?.message
+        "response" in axiosError &&
+        axiosError.response?.data?.message
           ? axiosError.response.data.message
           : error instanceof Error
             ? error.message
@@ -258,7 +268,14 @@ function CheckoutForm({
         invoiceId = details?.invoice?.id ?? details?.invoiceId;
         if (invoiceId) {
           setCompletedBooking((prev) =>
-            prev ? { ...prev, invoiceId, invoiceNumber: details?.invoice?.invoice_number ?? prev.invoiceNumber } : prev,
+            prev
+              ? {
+                  ...prev,
+                  invoiceId,
+                  invoiceNumber:
+                    details?.invoice?.invoice_number ?? prev.invoiceNumber,
+                }
+              : prev,
           );
         }
       } catch (error) {
@@ -267,7 +284,9 @@ function CheckoutForm({
     }
 
     if (!invoiceId) {
-      toast.error("Invoice is not available yet. Your booking is still confirmed.");
+      toast.error(
+        "Invoice is not available yet. Your booking is still confirmed.",
+      );
       return;
     }
 
@@ -335,6 +354,7 @@ function CheckoutForm({
                 <div className="bg-[#0F0F0F] border border-white/10 rounded-3xl p-4">
                   <CardElement
                     options={{
+                      hidePostalCode: true,
                       style: {
                         base: {
                           color: "#FFFFFF",
@@ -350,6 +370,19 @@ function CheckoutForm({
                         },
                       },
                     }}
+                  />
+                </div>
+                <div className="mt-4">
+                  <label className="text-[10px] uppercase tracking-[0.2em] text-[#4B5563] font-bold mb-2 block">
+                    ZIP / Postal code
+                  </label>
+                  <input
+                    value={postalCode}
+                    onChange={(event) => setPostalCode(event.target.value)}
+                    inputMode="text"
+                    autoComplete="postal-code"
+                    placeholder="A1A 1A1"
+                    className="w-full rounded-3xl border border-white/10 bg-[#0F0F0F] px-4 py-3 text-white outline-none transition focus:border-[#C6F432]/60"
                   />
                 </div>
                 {stripeError && (
@@ -371,7 +404,12 @@ function CheckoutForm({
                   ? `Extension (${extensionDetails.parkingName})`
                   : `Base Fare (${parkingDetails?.parkingName})`}
                 <span className="text-white font-mono">
-                  ${(extensionDetails?.amount ?? bookingSummary?.subtotal ?? 0).toFixed(2)}
+                  $
+                  {(
+                    extensionDetails?.amount ??
+                    bookingSummary?.subtotal ??
+                    0
+                  ).toFixed(2)}
                 </span>
               </div>
               {!extensionDetails ? (
@@ -389,7 +427,9 @@ function CheckoutForm({
                     Grand Total
                   </p>
                   <p className="text-lg font-bold">
-                    {extensionDetails ? `Extend for ${extensionDetails.durationLabel}` : "Ready to park"}
+                    {extensionDetails
+                      ? `Extend for ${extensionDetails.durationLabel}`
+                      : "Ready to park"}
                   </p>
                 </div>
                 <p className="text-[#C6F432] text-3xl lg:text-4xl font-black font-mono tracking-tighter">
@@ -406,10 +446,11 @@ function CheckoutForm({
               <button
                 disabled={isProcessing}
                 onClick={handlePayment}
-                className={`w-full py-4 rounded-full font-black text-base transition-all flex items-center justify-center gap-3 ${isProcessing
+                className={`w-full py-4 rounded-full font-black text-base transition-all flex items-center justify-center gap-3 ${
+                  isProcessing
                     ? "bg-[#1A1A1A] text-[#4B5563]"
                     : "bg-[#C6F432] text-black shadow-[0_8px_30px_rgba(198,244,50,0.2)] hover:scale-[1.02] active:scale-[0.98]"
-                  }`}
+                }`}
               >
                 {isProcessing ? (
                   <span className="flex items-center gap-2">
@@ -458,7 +499,8 @@ function CheckoutForm({
                       </span>
                       <span className="text-xs font-bold text-white flex items-center gap-1.5">
                         <Clock size={12} className="text-[#C6F432]" />
-                        {bookingSummary?.endTime ?? extensionDetails?.durationLabel}
+                        {bookingSummary?.endTime ??
+                          extensionDetails?.durationLabel}
                       </span>
                     </div>
                   </div>
@@ -467,7 +509,8 @@ function CheckoutForm({
                       Duration
                     </span>
                     <span className="text-xs font-bold text-[#C6F432]">
-                      {bookingSummary?.duration ?? extensionDetails?.durationLabel}
+                      {bookingSummary?.duration ??
+                        extensionDetails?.durationLabel}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
@@ -538,8 +581,11 @@ export default function PaymentPageWrapper() {
     clearBooking,
   } = useParkingBooking();
 
-  const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(null);
-  const [stripeConfigError, setStripeConfigError] = useState<string | null>(null);
+  const [stripePromise, setStripePromise] =
+    useState<Promise<Stripe | null> | null>(null);
+  const [stripeConfigError, setStripeConfigError] = useState<string | null>(
+    null,
+  );
   const [isStripeLoading, setIsStripeLoading] = useState(true);
 
   useEffect(() => {
@@ -550,14 +596,14 @@ export default function PaymentPageWrapper() {
           : (await customerService.getStripeConfig()).stripePublishableKey;
 
         if (!publishableKey) {
-          throw new Error('Stripe publishable key is missing');
+          throw new Error("Stripe publishable key is missing");
         }
 
         setStripePromise(loadStripe(publishableKey));
       } catch (error) {
         console.error(error);
         setStripeConfigError(
-          'Stripe is not configured. Please check backend and frontend settings.',
+          "Stripe is not configured. Please check backend and frontend settings.",
         );
       } finally {
         setIsStripeLoading(false);
@@ -579,13 +625,16 @@ export default function PaymentPageWrapper() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#0D0D0D] text-white p-6">
         <div className="max-w-lg rounded-3xl border border-[#2D2D2D] bg-[#111111] p-10 text-center shadow-xl">
-          <h1 className="text-2xl font-bold mb-3">Stripe configuration missing</h1>
+          <h1 className="text-2xl font-bold mb-3">
+            Stripe configuration missing
+          </h1>
           <p className="text-sm text-[#C6F6FF] mb-6">
             {stripeConfigError ||
-              'The Stripe publishable key is not configured. Please add it to frontend/.env.local or backend .env.'}
+              "The Stripe publishable key is not configured. Please add it to frontend/.env.local or backend .env."}
           </p>
           <p className="text-xs text-[#9CA3AF]">
-            If this keeps happening, restart both servers and verify Stripe settings.
+            If this keeps happening, restart both servers and verify Stripe
+            settings.
           </p>
         </div>
       </div>
@@ -602,7 +651,7 @@ export default function PaymentPageWrapper() {
         extensionDetails={extensionDetails}
         returnUrl={returnUrl}
         clearBooking={clearBooking}
-        onComplete={() => { }}
+        onComplete={() => {}}
       />
     </Elements>
   );

@@ -282,7 +282,7 @@ export const GeneralSettings = ({
 
   return (
     <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left: Logo Card */}
         <div className="lg:col-span-4 flex flex-col gap-6">
           <div className="bg-[var(--color-surface)] p-8 rounded-[32px] border border-[var(--color-border)] shadow-[var(--shadow-card)] relative overflow-hidden group">
@@ -294,12 +294,6 @@ export const GeneralSettings = ({
                   Company Brand
                 </h3>
               </div>
-              {/* <button
-                onClick={handleReset}
-                className="p-2 hover:rotate-180 transition-all duration-500 text-[var(--color-text-muted)] hover:text-[var(--color-primary)]"
-              >
-                <RotateCcw size={16} />
-              </button> */}
             </div>
 
             <div className="relative aspect-square w-full max-w-[240px] mx-auto bg-[var(--color-bg)] rounded-[2.5rem] border-2 border-dashed border-[var(--color-border)] group-hover:border-[var(--color-primary)]/30 flex flex-col items-center justify-center transition-all duration-300 overflow-hidden shadow-inner">
@@ -311,8 +305,13 @@ export const GeneralSettings = ({
                     className="w-full h-full object-contain"
                   />
                   <button
-                    onClick={handleLogoRemove}
-                    className="absolute top-4 right-4 p-2 bg-white/90 backdrop-blur-md rounded-full text-red-500 shadow-sm hover:bg-red-50 transition-colors"
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleLogoRemove();
+                    }}
+                    className="absolute top-4 right-4 z-[999] p-2 bg-white/90 backdrop-blur-md rounded-full text-red-500 shadow-sm hover:bg-red-50 transition-colors"
                   >
                     <X size={14} strokeWidth={3} />
                   </button>
@@ -330,7 +329,7 @@ export const GeneralSettings = ({
               )}
               <input
                 type="file"
-                className="absolute inset-0 opacity-0 cursor-pointer"
+                className="absolute inset-0 opacity-0 cursor-pointer z-10"
                 accept="image/png,image/jpeg,image/svg+xml"
                 onChange={handleLogoUpload}
               />

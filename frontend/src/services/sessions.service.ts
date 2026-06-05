@@ -24,3 +24,8 @@ export const listSessions = async (params: SessionListParams = {}) => {
   return getResponseData(response);
 };
 
+export const cancelSession = async (id: string, reason?: string) => {
+  const response = await axiosInstance.patch(API_ENDPOINTS.SESSIONS.CANCEL(id), { reason });
+  return getResponseData(response);
+};
+

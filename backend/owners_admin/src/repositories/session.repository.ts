@@ -25,6 +25,7 @@ export interface SessionRow {
   status: SessionStatus;
   notes: string | null;
   amount: number;
+  location_name?: string | null;
   created_by_officer: string | null;
   created_at: Date;
   parking_lot_id?: string | null;
@@ -76,16 +77,20 @@ export class SessionRepository {
 
     const items = await queryRows<SessionRow>(
       `SELECT
-        ps.id, ps.user_id, ps.vehicle_id, ps.license_plate, ps.plan_id, ps.plan_name,
+        ps.id, ps.user_id, ps.vehicle_id, ps.license_plate, ps.plan_id, ps.plan_name, ps.location_name,
         ps.start_time, ps.end_time, ps.duration_minutes, ps.status, ps.notes,
         COALESCE((SELECT SUM(amount) FROM payments p WHERE p.session_id = ps.id AND p.status = 'success'), 0) AS amount,
         ps.created_by_officer, ps.created_at,
-        COALESCE(z.parking_lot_id, pp.parking_lot_id) AS parking_lot_id,
-        pl.lot_name AS parking_lot_name
+        COALESCE(z.parking_lot_id, z_id.parking_lot_id, pp.parking_lot_id, o.parking_lot_id, pl_direct.id, (SELECT id FROM parking_lots ORDER BY created_at ASC LIMIT 1)) AS parking_lot_id,
+        COALESCE(pl.lot_name, pl_by_officer.lot_name, pl_direct.lot_name, (SELECT lot_name FROM parking_lots ORDER BY created_at ASC LIMIT 1)) AS parking_lot_name
        FROM parking_sessions ps
        LEFT JOIN parking_zones z ON z.parking_name = ps.location_name
+       LEFT JOIN parking_zones z_id ON z_id.id = ps.location_name
        LEFT JOIN parking_plans pp ON pp.id = ps.plan_id
-       LEFT JOIN parking_lots pl ON pl.id = COALESCE(z.parking_lot_id, pp.parking_lot_id)
+       LEFT JOIN officers o ON o.id = ps.created_by_officer
+       LEFT JOIN parking_lots pl_by_officer ON pl_by_officer.id = o.parking_lot_id
+       LEFT JOIN parking_lots pl_direct ON (pl_direct.lot_name = ps.location_name OR pl_direct.id = ps.location_name)
+       LEFT JOIN parking_lots pl ON pl.id = COALESCE(z.parking_lot_id, z_id.parking_lot_id, pp.parking_lot_id)
        ${clause}
        ORDER BY ps.start_time DESC
        LIMIT ? OFFSET ?`,
@@ -142,6 +147,7 @@ export class SessionRepository {
     durationMinutes: number;
     status?: SessionStatus;
     notes?: string;
+    locationName?: string;
     userId?: string;
     vehicleId?: string;
     createdByOfficer?: string;
@@ -149,8 +155,8 @@ export class SessionRepository {
     const id = crypto.randomUUID();
     await execute(
       `INSERT INTO parking_sessions
-      (id, user_id, vehicle_id, license_plate, plan_id, plan_name, start_time, end_time, duration_minutes, status, notes, created_by_officer)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (id, user_id, vehicle_id, license_plate, plan_id, plan_name, location_name, start_time, end_time, duration_minutes, status, notes, created_by_officer)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         params.userId ?? null,
@@ -158,6 +164,7 @@ export class SessionRepository {
         params.licensePlate.trim().toUpperCase(),
         params.planId ?? null,
         params.planName ?? null,
+        params.locationName ?? null,
         params.startTime,
         params.endTime,
         params.durationMinutes,
@@ -167,6 +174,32 @@ export class SessionRepository {
       ]
     );
     return id;
+  }
+
+  async cancel(id: string, reason?: string): Promise<SessionRow | null> {
+    const note = reason?.trim() || 'Cancelled manually by admin.';
+    await execute(
+      `UPDATE parking_sessions
+       SET status = 'cancelled',
+           end_time = LEAST(end_time, NOW()),
+           notes = CASE
+             WHEN notes IS NULL OR notes = '' THEN ?
+             ELSE CONCAT(notes, '\n', ?)
+           END,
+           updated_at = NOW()
+       WHERE id = ?`,
+      [note, note, id],
+    );
+
+    const rows = await queryRows<SessionRow>(
+      `SELECT id, user_id, vehicle_id, license_plate, plan_id, plan_name, location_name,
+              start_time, end_time, duration_minutes, status, notes, created_by_officer, created_at
+       FROM parking_sessions
+       WHERE id = ?
+       LIMIT 1`,
+      [id],
+    );
+    return rows[0] ?? null;
   }
 }
 

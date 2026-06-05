@@ -92,14 +92,14 @@ export const ActionDropdown = ({
                 setOpen(false);
               }}
             />
-            <MenuItem
+            {/* <MenuItem
               icon={<RefreshCw size={14} className="sm:w-[15px] sm:h-[15px]" />}
               label="Extend Session"
               onClick={() => {
                 onExtend(session);
                 setOpen(false);
               }}
-            />
+            /> */}
             <MenuItem
               icon={<Ban size={14} className="sm:w-[15px] sm:h-[15px]" />}
               label="Cancel Session"

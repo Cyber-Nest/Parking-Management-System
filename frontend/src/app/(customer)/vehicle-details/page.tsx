@@ -164,14 +164,43 @@ export default function VehicleDetailsPage() {
     selectedDurationValue === "custom"
       ? customPrice
       : selectedDuration?.price || 0;
+      
 
   const formatDuration = (minutes: number) => {
-    const hrs = Math.floor(minutes / 60);
-    const mins = minutes % 60;
+    if (minutes <= 0) return "0 Min";
 
-    if (hrs && mins) return `${hrs} Hr ${mins} Min`;
-    if (hrs) return `${hrs} Hr`;
-    return `${mins} Min`;
+    const minsInMonth = 30 * 24 * 60; // 43200 mins (30 Days)
+    const minsInWeek = 7 * 24 * 60; // 10080 mins (7 Days)
+    const minsInDay = 24 * 60; // 1440 mins (24 Hrs)
+    const minsInHr = 60;
+
+    let remainder = minutes;
+
+    // Months calculation
+    const months = Math.floor(remainder / minsInMonth);
+    remainder %= minsInMonth;
+
+    // Weeks calculation
+    const weeks = Math.floor(remainder / minsInWeek);
+    remainder %= minsInWeek;
+
+    //  Days calculation
+    const days = Math.floor(remainder / minsInDay);
+    remainder %= minsInDay;
+
+    // Hours & Minutes calculation
+    const hrs = Math.floor(remainder / minsInHr);
+    const mins = remainder % minsInHr;
+
+    const parts = [];
+
+    if (months) parts.push(`${months} ${months === 1 ? "Month" : "Months"}`);
+    if (weeks) parts.push(`${weeks} ${weeks === 1 ? "Week" : "Weeks"}`);
+    if (days) parts.push(`${days} ${days === 1 ? "Day" : "Days"}`);
+    if (hrs) parts.push(`${hrs} Hr`);
+    if (mins) parts.push(`${mins} Min`);
+
+    return parts.slice(0, 2).join(" ");
   };
   const handleProceedToPayment = async () => {
     if (!parkingDetails) {
@@ -234,7 +263,7 @@ export default function VehicleDetailsPage() {
           <div className="space-y-6">
             {/* Email */}
             <div className="space-y-1.5">
-              <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold">
+              <label className="text-[9px] uppercase tracking-[0.2em] text-white/90 ml-1 font-bold">
                 Receipt Email
               </label>
 
@@ -250,14 +279,14 @@ export default function VehicleDetailsPage() {
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="your@email.com"
-                  className="w-full bg-[#1A1A1A] border border-white/5 rounded-xl py-3.5 pl-11 pr-4 focus:border-[#C6F432]/40 focus:outline-none transition-all placeholder:text-[#374151] text-sm"
+                  className="w-full bg-[#1A1A1A] border border-white/20 rounded-xl py-3.5 pl-11 pr-4 focus:border-[#C6F432]/40 focus:outline-none transition-all placeholder:text-[#374151] text-sm"
                 />
               </div>
             </div>
 
             {/* Vehicle Model */}
             <div className="space-y-1.5">
-              <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold">
+              <label className="text-[9px] uppercase tracking-[0.2em] text-white/90 ml-1 font-bold">
                 Vehicle Model
               </label>
 
@@ -273,7 +302,7 @@ export default function VehicleDetailsPage() {
                   value={formData.vehicleModel}
                   onChange={handleChange}
                   placeholder="e.g. Tesla Model 3"
-                  className="w-full bg-[#1A1A1A] border border-white/5 rounded-xl py-3.5 pl-11 pr-4 focus:border-[#C6F432]/40 focus:outline-none transition-all placeholder:text-[#374151] text-sm"
+                  className="w-full bg-[#1A1A1A] border border-white/20 rounded-xl py-3.5 pl-11 pr-4 focus:border-[#C6F432]/40 focus:outline-none transition-all placeholder:text-[#374151] text-sm"
                 />
               </div>
             </div>
@@ -282,7 +311,7 @@ export default function VehicleDetailsPage() {
             <div className="grid grid-cols-2 gap-4">
               {/* Plate */}
               <div className="space-y-1.5">
-                <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold">
+                <label className="text-[9px] uppercase tracking-[0.2em] text-white/90 ml-1 font-bold">
                   Plate No.
                 </label>
 
@@ -298,14 +327,14 @@ export default function VehicleDetailsPage() {
                     value={formData.plateNumber}
                     onChange={handleChange}
                     placeholder="ONT-123"
-                    className="w-full bg-[#1A1A1A] border border-white/5 rounded-xl py-3.5 pl-11 pr-4 focus:border-[#C6F432]/40 focus:outline-none transition-all placeholder:text-[#374151] text-sm font-mono"
+                    className="w-full bg-[#1A1A1A] border border-white/20 rounded-xl py-3.5 pl-11 pr-4 focus:border-[#C6F432]/40 focus:outline-none transition-all placeholder:text-[#374151] text-sm font-mono"
                   />
                 </div>
               </div>
 
               {/* Color */}
               <div className="space-y-1.5">
-                <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold">
+                <label className="text-[9px] uppercase tracking-[0.2em] text-white/90 ml-1 font-bold">
                   Car Color
                 </label>
 
@@ -321,33 +350,70 @@ export default function VehicleDetailsPage() {
                     value={formData.carColor}
                     onChange={handleChange}
                     placeholder="e.g. Silver"
-                    className="w-full bg-[#1A1A1A] border border-white/5 rounded-xl py-3.5 pl-11 pr-4 focus:border-[#C6F432]/40 focus:outline-none transition-all placeholder:text-[#374151] text-sm"
+                    className="w-full bg-[#1A1A1A] border border-white/20 rounded-xl py-3.5 pl-11 pr-4 focus:border-[#C6F432]/40 focus:outline-none transition-all placeholder:text-[#374151] text-sm"
                   />
                 </div>
               </div>
             </div>
-
             <div className="space-y-4">
-              <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold">
+              <label className="text-[9px] uppercase tracking-[0.2em] text-white/90 ml-1 font-bold">
                 Parking Plan
               </label>
-              <select
-                value={selectedDurationValue}
-                onChange={(event) =>
-                  setSelectedDurationValue(event.target.value)
-                }
-                disabled={loadingPlans || durations.length === 0}
-                className="w-full bg-[#1A1A1A] border border-white/5 rounded-xl py-3.5 px-4 focus:border-[#C6F432]/40 focus:outline-none transition-all text-sm disabled:opacity-50"
-              >
-                <option value="">
-                  {loadingPlans ? "Loading plans..." : "Select a plan"}
-                </option>
-                {durations.map((duration) => (
-                  <option key={duration.value} value={duration.value}>
-                    {duration.label} - ${duration.price.toFixed(2)}
-                  </option>
-                ))}
-              </select>
+
+              {loadingPlans ? (
+                /* Skeleton Loader: */
+                <div className="grid grid-cols-2 gap-3 animate-pulse">
+                  {[1, 2].map((i) => (
+                    <div
+                      key={i}
+                      className="p-3.5 rounded-xl border border-white/5 bg-[#1A1A1A]/50 h-[68px] flex flex-col justify-center space-y-2"
+                    >
+                      {/* Label Skeleton */}
+                      <div className="h-4 bg-white/10 rounded w-24"></div>
+                      {/* Price Skeleton */}
+                      <div className="h-3 bg-white/5 rounded w-12"></div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3">
+                  {durations.map((duration) => {
+                    const isSelected = selectedDurationValue === duration.value;
+
+                    return (
+                      <div
+                        key={duration.value}
+                        onClick={() => setSelectedDurationValue(duration.value)}
+                        className={`
+              cursor-pointer p-3.5 rounded-xl border transition-all duration-200
+              ${
+                isSelected
+                  ? "border-[#C6F432] bg-[#1C1D17]"
+                  : "border-white/5 bg-[#1A1A1A] hover:border-white/10"
+              }
+            `}
+                      >
+                        <div className="flex flex-col space-y-1.5">
+                          <span
+                            className={`text-sm font-bold tracking-wide transition-colors ${
+                              isSelected ? "text-[#C6F432]" : "text-white"
+                            }`}
+                          >
+                            {duration.label}
+                          </span>
+                          <span
+                            className={`text-xs ${
+                              isSelected ? "text-white/80" : "text-white/60"
+                            }`}
+                          >
+                            ${duration.price.toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
 
@@ -372,10 +438,10 @@ export default function VehicleDetailsPage() {
               >
                 Proceed to Payment
               </button>
-              <p className="text-center lg:text-left text-[8px] text-[#4B5563] mt-4 uppercase tracking-[0.2em]">
-                Secure Payment Powered by Stripe
-              </p>
             </div>
+            <p className="text-center lg:text-left text-[8px] text-[#4B5563] mt-4 uppercase tracking-[0.2em]">
+              Secure Payment Powered by Stripe
+            </p>
           </div>
         </div>
       </div>

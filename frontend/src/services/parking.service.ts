@@ -1,4 +1,4 @@
-import { listSessions, getSessionSummary } from "@/services/sessions.service";
+import { cancelSession, listSessions, getSessionSummary } from "@/services/sessions.service";
 import type { SessionListParams } from "@/services/sessions.service";
 
 export interface ParkingSession {
@@ -107,6 +107,10 @@ export const parkingService = {
       unpaidIssues: "0",
       todayRevenue: "$0",
     };
+  },
+
+  async cancelParkingSession(id: string, reason?: string) {
+    return cancelSession(id, reason);
   },
 };
 

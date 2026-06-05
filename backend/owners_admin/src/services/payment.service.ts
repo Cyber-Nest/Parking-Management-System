@@ -21,8 +21,22 @@ export class PaymentService {
       parkingLotId: query.parking_lot_id ?? query.parkingLotId ?? query.lotId,
     });
 
+    const mapped: PaymentPublic[] = items.map((p) => ({
+      id: p.id,
+      license_plate: p.license_plate,
+      amount: Number(p.amount),
+      payment_method: p.payment_method,
+      payment_type: p.payment_type,
+      status: p.status,
+      transaction_ref: p.transaction_ref,
+      paid_at: p.paid_at,
+      created_at: p.created_at,
+      parking_lot_id: p.parking_lot_id,
+      parking_lot_name: p.parking_lot_name,
+    }));
+
     return {
-      items,
+      items: mapped,
       total,
       page,
       limit,

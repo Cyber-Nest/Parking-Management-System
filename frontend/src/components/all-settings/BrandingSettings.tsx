@@ -416,8 +416,13 @@ export const BrandingSettings = () => {
                         alt="Logo"
                       />
                       <button
-                        onClick={() => setLogoPreview(null)}
-                        className="absolute top-3 right-3 p-2 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          setLogoPreview(null);
+                        }}
+                        className="absolute top-3 right-3 z-[999] p-2 bg-red-500 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <X size={14} />
                       </button>
@@ -432,7 +437,7 @@ export const BrandingSettings = () => {
                   )}
                   <input
                     type="file"
-                    className="absolute inset-0 opacity-0 cursor-pointer"
+                    className="absolute inset-0 z-10 opacity-0 cursor-pointer"
                     accept="image/*"
                     onChange={handleLogoUpload}
                   />

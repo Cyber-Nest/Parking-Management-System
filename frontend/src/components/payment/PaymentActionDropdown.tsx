@@ -83,7 +83,7 @@ export const PaymentActionDropdown = ({
                 setOpen(false);
               }}
             />
-            {payment.status === "Paid" && (
+            {/* {payment.status === "Paid" && (
               <DropdownItem
                 icon={<RotateCcw size={14} className="sm:w-[15px] sm:h-[15px]" />}
                 label="Refund Payment"
@@ -93,7 +93,7 @@ export const PaymentActionDropdown = ({
                   setOpen(false);
                 }}
               />
-            )}
+            )} */}
           </motion.div>
         )}
       </AnimatePresence>
