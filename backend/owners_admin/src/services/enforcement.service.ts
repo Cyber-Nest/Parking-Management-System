@@ -36,6 +36,7 @@ export class EnforcementService {
   async listTickets(query?: any) {
     return enforcementRepository.listTickets({
       limit: this.parseLimit(String(query?.limit ?? '25')),
+      officerId: String(query?.officerId ?? '').trim() || undefined,
       status: String(query?.status ?? '').trim() || undefined,
       violationType: String(query?.violationType ?? '').trim() || undefined,
       location: String(query?.location ?? '').trim() || undefined,
@@ -83,12 +84,13 @@ export class EnforcementService {
     const fallbackOfficer = await enforcementRepository.findDefaultOfficer();
     const officerId = body.officerId?.trim() || fallbackOfficer?.id;
     if (!officerId) throw new ValidationError('No active officer is available to capture evidence');
+    const officerName = body.officerName?.trim() || await this.getOfficerName(officerId) || fallbackOfficer?.full_name || DEFAULT_OFFICER_NAME;
 
     const photos = await uploadMediaList(body.photos, { folder: 'parksmart/evidence' });
 
     return enforcementRepository.createStandaloneEvidence({
       officerId,
-      officerName: body.officerName?.trim() || fallbackOfficer?.full_name || DEFAULT_OFFICER_NAME,
+      officerName,
       licensePlate: body.licensePlate,
       locationName: body.locationName,
       evidenceType: body.evidenceType,
@@ -160,12 +162,13 @@ export class EnforcementService {
     const fallbackOfficer = await enforcementRepository.findDefaultOfficer();
     const officerId = body.officerId?.trim() || fallbackOfficer?.id;
     if (!officerId) throw new ValidationError('No active officer is available to issue this ticket');
+    const officerName = body.officerName?.trim() || await this.getOfficerName(officerId) || fallbackOfficer?.full_name || DEFAULT_OFFICER_NAME;
 
     const photos = await uploadMediaList(body.photos, { folder: 'parksmart/tickets' });
 
     const ticket = await enforcementRepository.createTicket({
       officerId,
-      officerName: body.officerName?.trim() || fallbackOfficer?.full_name || DEFAULT_OFFICER_NAME,
+      officerName,
       licensePlate: body.licensePlate,
       provinceState: body.provinceState,
       vehicleMake: body.vehicleMake,
@@ -304,6 +307,16 @@ export class EnforcementService {
 
   private parseLimit(limit?: string) {
     return Math.min(100, Math.max(1, Number(limit ?? 25) || 25));
+  }
+
+  private async getOfficerName(officerId: string): Promise<string | null> {
+    try {
+      const { officerPortalService } = await import('./officerPortal.service');
+      const profile = await officerPortalService.getProfile(officerId);
+      return profile.fullName || null;
+    } catch {
+      return null;
+    }
   }
 }
 

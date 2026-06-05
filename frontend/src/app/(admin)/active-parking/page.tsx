@@ -178,22 +178,20 @@ export default function ActiveParkingSessionsPage() {
     showToast(`Session ${session.id} extended by 1 hour`, "success");
   };
 
-  const handleCancel = (session: ParkingSession) => {
-    const updated = sessions.map((item) => {
-      if (item.id === session.id) {
-        return {
-          ...item,
-          sessionStatus: "cancelled" as const,
-          cancelledAt: new Date().toLocaleString(),
-          cancelledBy: "Admin",
-          cancelReason: "Cancelled manually by admin.",
-        };
-      }
-      return item;
-    });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    setSessions(updated as any);
-    showToast(`Session ${session.id} has been cancelled`, "success");
+  const handleCancel = async (session: ParkingSession) => {
+    try {
+      await parkingService.cancelParkingSession(
+        session.id,
+        "Cancelled manually by admin.",
+      );
+      setSessions((current) =>
+        current.filter((item) => item.id !== session.id),
+      );
+      showToast(`Session ${session.id} has been cancelled`, "success");
+    } catch (error) {
+      console.error(error);
+      showToast("Failed to cancel session", "error");
+    }
   };
 
   const handleIssue = (session: ParkingSession) => {

@@ -91,6 +91,7 @@ export default function OfficerIssueTicketPage() {
   const [showIssuedModal, setShowIssuedModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [summaryDateTime, setSummaryDateTime] = useState("");
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const vehiclePhotoInputRef = useRef<HTMLInputElement>(null);
   const evidencePhotoInputRef = useRef<HTMLInputElement>(null);
 
@@ -99,6 +100,10 @@ export default function OfficerIssueTicketPage() {
     const params = new URLSearchParams(window.location.search);
     const plate = params.get("plate");
     if (plate) setLicensePlate(plate);
+    const linkedSessionId = params.get("sessionId");
+    if (linkedSessionId) setSessionId(linkedSessionId);
+    const linkedLocation = params.get("location");
+    if (linkedLocation) setLocationName(linkedLocation);
     void listParkingLots()
       .then(setParkingLots)
       .catch((err) => {
@@ -148,6 +153,7 @@ export default function OfficerIssueTicketPage() {
       fineAmount,
       lateFee: 0,
       locationName,
+      sessionId,
       violationDateTime: new Date()
         .toISOString()
         .slice(0, 19)
@@ -401,7 +407,7 @@ export default function OfficerIssueTicketPage() {
                   value={String(fineAmount)}
                   onChange={(v) => setFineAmount(Number(v))}
                 />
-                <label className="block">
+                {/* <label className="block">
                   <span className="text-xs font-bold text-slate-500">
                     Parking Lot
                   </span>
@@ -430,7 +436,7 @@ export default function OfficerIssueTicketPage() {
                       </option>
                     ))}
                   </select>
-                </label>
+                </label> */}
                 <Field
                   label="Location"
                   value={locationName}

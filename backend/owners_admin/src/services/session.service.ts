@@ -1,5 +1,6 @@
 import { PaginatedResponse, SessionPublic, SessionStatus } from '../types';
 import { SessionRepository } from '../repositories/session.repository';
+import { NotFoundError, ValidationError } from './commonErrors';
 
 const sessionRepo = new SessionRepository();
 
@@ -47,5 +48,21 @@ export class SessionService {
       parkingLotId: query.parking_lot_id ?? query.parkingLotId ?? query.lotId,
     });
   }
-}
 
+  async cancel(id: string, body: { reason?: string } = {}) {
+    if (!id?.trim()) throw new ValidationError('session id is required');
+    const session = await sessionRepo.cancel(id, body.reason);
+    if (!session) throw new NotFoundError('Session not found');
+    return {
+      id: session.id,
+      license_plate: session.license_plate,
+      plan_name: session.plan_name,
+      start_time: session.start_time,
+      end_time: session.end_time,
+      duration_minutes: session.duration_minutes,
+      status: session.status,
+      notes: session.notes,
+      created_at: session.created_at,
+    };
+  }
+}

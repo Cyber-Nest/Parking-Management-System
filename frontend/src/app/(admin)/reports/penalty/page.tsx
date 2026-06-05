@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import {
   Download,
   Ticket,
@@ -60,6 +66,14 @@ const TabButton = ({ active, onClick, label, count }: any) => (
   </button>
 );
 
+const defaultLast30Range = () => {
+  const today = new Date();
+  const end = today.toISOString().split("T")[0];
+  const start = new Date(today);
+  start.setDate(start.getDate() - 30);
+  return { startDate: start.toISOString().split("T")[0], endDate: end };
+};
+
 export default function PenaltyReport() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
@@ -82,6 +96,7 @@ export default function PenaltyReport() {
   const [violationData, setViolationData] = useState<ViolationTypeData[]>([]);
 
   // Filters
+  const penaltyInitialRange = defaultLast30Range();
   const [filters, setFilters] = useState<PenaltyReportFilters>({
     dateRange: "Last 30 Days",
     location: "All Locations",
@@ -91,15 +106,18 @@ export default function PenaltyReport() {
     paymentStatus: "All Payments",
     minAmount: "",
     maxAmount: "",
-    startDate: "",
-    endDate: "",
+    startDate: penaltyInitialRange.startDate,
+    endDate: penaltyInitialRange.endDate,
     parkingLotId: "",
   });
 
   // Close export dropdown on click outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (exportDropdownRef.current && !exportDropdownRef.current.contains(event.target as Node)) {
+      if (
+        exportDropdownRef.current &&
+        !exportDropdownRef.current.contains(event.target as Node)
+      ) {
         setShowExportDropdown(false);
       }
     };
@@ -112,17 +130,24 @@ export default function PenaltyReport() {
     const today = new Date();
     const formatDate = (date: Date) => {
       const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const day = String(date.getDate()).padStart(2, "0");
       return `${year}-${month}-${day}`;
     };
-    
-    if (filters.dateRange === "Custom Range") return;
-    
+
+    if (filters.dateRange === "Custom Range") {
+      setFilters((prev) => ({
+        ...prev,
+        startDate: "",
+        endDate: "",
+      }));
+      return;
+    }
+
     let start = "";
     let end = "";
-    
-    switch(filters.dateRange) {
+
+    switch (filters.dateRange) {
       case "Today":
         start = formatDate(today);
         end = formatDate(today);
@@ -152,7 +177,11 @@ export default function PenaltyReport() {
         end = formatDate(lastDay);
         break;
       case "Last Month":
-        const firstDayLast = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+        const firstDayLast = new Date(
+          today.getFullYear(),
+          today.getMonth() - 1,
+          1,
+        );
         const lastDayLast = new Date(today.getFullYear(), today.getMonth(), 0);
         start = formatDate(firstDayLast);
         end = formatDate(lastDayLast);
@@ -160,8 +189,8 @@ export default function PenaltyReport() {
       default:
         return;
     }
-    
-    setFilters(prev => ({ ...prev, startDate: start, endDate: end }));
+
+    setFilters((prev) => ({ ...prev, startDate: start, endDate: end }));
   }, [filters.dateRange]);
 
   // Filter data based on active tab
@@ -176,15 +205,49 @@ export default function PenaltyReport() {
 
   // Filter data based on search
   const filteredData = useMemo(() => {
-    if (!searchQuery) return filteredByTab;
-    const query = searchQuery.toLowerCase();
-    return filteredByTab.filter(
-      (row) =>
+    return filteredByTab.filter((row) => {
+      const query = searchQuery.toLowerCase();
+      const matchesSearch =
+        !searchQuery ||
         row.ticketId.toLowerCase().includes(query) ||
         row.date.toLowerCase().includes(query) ||
-        row.violationType.toLowerCase().includes(query),
-    );
-  }, [filteredByTab, searchQuery]);
+        row.violationType.toLowerCase().includes(query);
+
+      const matchesOfficer =
+        filters.officer === "All Officers" ||
+        (row.officerName ?? "").toLowerCase() === filters.officer.toLowerCase();
+
+      const matchesLocation =
+        filters.location === "All Locations" ||
+        row.location.toLowerCase().includes(filters.location.toLowerCase());
+
+      const matchesViolationType =
+        filters.violationType === "All Types" ||
+        row.violationType.toLowerCase() === filters.violationType.toLowerCase();
+
+      const matchesStatus =
+        filters.ticketStatus === "All Statuses" ||
+        row.status === filters.ticketStatus;
+
+      const amountValue = Number(row.amount) || 0;
+      const minAmountValue = Number(filters.minAmount);
+      const maxAmountValue = Number(filters.maxAmount);
+      const matchesMinAmount =
+        filters.minAmount === "" || amountValue >= minAmountValue;
+      const matchesMaxAmount =
+        filters.maxAmount === "" || amountValue <= maxAmountValue;
+
+      return (
+        matchesSearch &&
+        matchesOfficer &&
+        matchesLocation &&
+        matchesViolationType &&
+        matchesStatus &&
+        matchesMinAmount &&
+        matchesMaxAmount
+      );
+    });
+  }, [filteredByTab, filters, searchQuery]);
 
   // Pagination
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
@@ -241,6 +304,7 @@ export default function PenaltyReport() {
 
   // Reset filters
   const handleResetFilters = () => {
+    const range = defaultLast30Range();
     setFilters({
       dateRange: "Last 30 Days",
       location: "All Locations",
@@ -250,8 +314,8 @@ export default function PenaltyReport() {
       paymentStatus: "All Payments",
       minAmount: "",
       maxAmount: "",
-      startDate: "",
-      endDate: "",
+      startDate: range.startDate,
+      endDate: range.endDate,
       parkingLotId: "",
     });
     setSearchQuery("");
@@ -270,20 +334,25 @@ export default function PenaltyReport() {
         tab: activeTab,
         format: format,
       });
-      
+
       // Handle blob download
       if (response.blob) {
         const url = window.URL.createObjectURL(response.blob);
         const link = document.createElement("a");
         link.href = url;
-        link.setAttribute("download", `penalty_report_${new Date().toISOString().split('T')[0]}.${format === "pdf" ? "pdf" : "xlsx"}`);
+        link.setAttribute(
+          "download",
+          `penalty_report_${new Date().toISOString().split("T")[0]}.${format === "pdf" ? "pdf" : "xlsx"}`,
+        );
         document.body.appendChild(link);
         link.click();
         link.remove();
         window.URL.revokeObjectURL(url);
         toast.success(`Report exported as ${format.toUpperCase()}`);
       } else {
-        toast.success(response.message || `Report exported as ${format.toUpperCase()}`);
+        toast.success(
+          response.message || `Report exported as ${format.toUpperCase()}`,
+        );
       }
     } catch (error) {
       console.error("Export error:", error);
@@ -313,30 +382,38 @@ export default function PenaltyReport() {
     "Last Month",
     "Custom Range",
   ];
-  const locationOptions = [
-    "All Locations",
-    "Lot A",
-    "Lot B",
-    "Zone 1",
-    "Zone 2",
-    "Downtown",
-    "Airport",
-  ];
-  const officerOptions = [
-    "All Officers",
-    "John Smith",
-    "Sarah Wright",
-    "Adam Milner",
-    "Mike Johnson",
-  ];
-  const violationTypeOptions = [
-    "All Types",
-    "Overstay",
-    "No Permit",
-    "Wrong Zone",
-    "Expired Parking",
-    "Blocking",
-  ];
+  const locationOptions = useMemo(() => {
+    const unique = Array.from(
+      new Set(
+        ticketsData
+          .map((row) => row.location)
+          .filter((value) => value && value !== "—"),
+      ),
+    );
+    return ["All Locations", ...unique];
+  }, [ticketsData]);
+
+  const officerOptions = useMemo(() => {
+    const unique = Array.from(
+      new Set(
+        ticketsData
+          .map((row) => row.officerName)
+          .filter((value): value is string => Boolean(value && value !== "—")),
+      ),
+    );
+    return ["All Officers", ...unique];
+  }, [ticketsData]);
+
+  const violationTypeOptions = useMemo(() => {
+    const unique = Array.from(
+      new Set(
+        ticketsData
+          .map((row) => row.violationType)
+          .filter((value) => Boolean(value)),
+      ),
+    );
+    return ["All Types", ...unique];
+  }, [ticketsData]);
   const ticketStatusOptions = ["All Statuses", "Paid", "Unpaid", "Cancelled"];
   const paymentStatusOptions = [
     "All Payments",
@@ -371,7 +448,7 @@ export default function PenaltyReport() {
             <Filter size={16} />
             Filters
           </button>
-          
+
           {/* Export Dropdown */}
           <div className="relative" ref={exportDropdownRef}>
             <button
@@ -386,7 +463,7 @@ export default function PenaltyReport() {
               )}
               Export
             </button>
-            
+
             {showExportDropdown && (
               <div className="absolute right-0 mt-2 w-36 bg-[var(--color-surface)] rounded-xl shadow-lg border border-[var(--color-border)] overflow-hidden z-10">
                 <button
@@ -399,7 +476,7 @@ export default function PenaltyReport() {
                   onClick={() => handleExport("excel")}
                   className="w-full px-4 py-2 text-left text-sm font-semibold hover:bg-[var(--color-surface-soft)] transition-colors flex items-center gap-2 border-t border-[var(--color-border)]"
                 >
-                 <SquaresExclude size={16} className="text-green-500" /> Excel
+                  <SquaresExclude size={16} className="text-green-500" /> Excel
                 </button>
               </div>
             )}
@@ -411,7 +488,13 @@ export default function PenaltyReport() {
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map((i) => (
-            <StatCard key={i} loading={true} icon={undefined} title={""} value={""} />
+            <StatCard
+              key={i}
+              loading={true}
+              icon={undefined}
+              title={""}
+              value={""}
+            />
           ))}
         </div>
       ) : (
@@ -468,7 +551,7 @@ export default function PenaltyReport() {
                     ))}
                   </select>
                 </div>
-                
+
                 {/* Parking Lot Filter */}
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
@@ -513,7 +596,7 @@ export default function PenaltyReport() {
                     </div>
                   </div>
                 )}
-                
+
                 {/* <div className="space-y-1.5">
                   <label className="text-[10px] font-black uppercase text-[var(--color-text-muted)] tracking-widest">
                     Location
@@ -728,7 +811,10 @@ export default function PenaltyReport() {
                     <td className="px-4 sm:px-6 py-4 font-medium text-[var(--color-text-primary)]">
                       {row.date}
                     </td>
-                    <td className="px-4 sm:px-6 py-4 font-bold text-[var(--color-primary)]" title={row.ticketId}>
+                    <td
+                      className="px-4 sm:px-6 py-4 font-bold text-[var(--color-primary)]"
+                      title={row.ticketId}
+                    >
                       {truncateId(row.ticketId)}
                     </td>
                     <td className="px-4 sm:px-6 py-4 text-[var(--color-text-primary)]">

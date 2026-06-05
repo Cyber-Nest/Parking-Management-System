@@ -302,6 +302,7 @@ export class CustomerService {
       licensePlate: payload.plateNumber,
       planId: planId ?? undefined,
       planName,
+      locationName: zone.parking_name,
       startTime: formatDateTime(startTime),
       endTime: formatDateTime(endTime),
       durationMinutes: payload.durationMinutes,

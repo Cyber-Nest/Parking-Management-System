@@ -153,7 +153,7 @@ export default function OfficerSessionsPage() {
                       </option>
                     ))}
                   </select>
-                  <select
+                  {/* <select
                     value={lotFilter}
                     onChange={(event) => setLotFilter(event.target.value)}
                     className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
@@ -164,7 +164,7 @@ export default function OfficerSessionsPage() {
                         {lot.lot_name}
                       </option>
                     ))}
-                  </select>
+                  </select> */}
                   <select
                     value={sortBy}
                     onChange={(event) => setSortBy(event.target.value as any)}

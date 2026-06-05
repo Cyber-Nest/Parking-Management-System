@@ -641,6 +641,7 @@ function PenaltyStripeModal({
   const stripe = useStripe();
   const elements = useElements();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [postalCode, setPostalCode] = useState("");
 
   const handleConfirmPayment = async () => {
     if (!stripe || !elements) {
@@ -657,6 +658,11 @@ function PenaltyStripeModal({
       const result = await stripe.confirmCardPayment(paymentIntent.clientSecret, {
         payment_method: {
           card: elements.getElement(CardElement)!,
+          billing_details: {
+            address: {
+              postal_code: postalCode.trim() || undefined,
+            },
+          },
         },
       });
 
@@ -725,6 +731,7 @@ function PenaltyStripeModal({
           <div className="rounded-3xl border border-white/10 bg-[#121212] p-4">
             <CardElement
               options={{
+                hidePostalCode: true,
                 style: {
                   base: {
                     color: "#FFFFFF",
@@ -740,6 +747,19 @@ function PenaltyStripeModal({
                   },
                 },
               }}
+            />
+          </div>
+          <div className="mt-4">
+            <label className="text-[10px] uppercase tracking-[0.2em] text-[#4B5563] font-bold mb-2 block">
+              ZIP / Postal code
+            </label>
+            <input
+              value={postalCode}
+              onChange={(event) => setPostalCode(event.target.value)}
+              inputMode="text"
+              autoComplete="postal-code"
+              placeholder="A1A 1A1"
+              className="w-full rounded-3xl border border-white/10 bg-[#121212] px-4 py-3 text-white outline-none transition focus:border-[#C6F432]/60"
             />
           </div>
           {stripeError ? (

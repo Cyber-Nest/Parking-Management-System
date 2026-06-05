@@ -188,7 +188,7 @@ export default function OfficerScanPage() {
                 <dl className="space-y-3 text-sm">
                   <div className="flex justify-between gap-4">
                     <dt className="text-slate-500">Name</dt>
-                    <dd className="text-right font-semibold">{customer?.name ?? session.customer_name ?? "Guest / Walk-in"}</dd>
+                    <dd className="text-right font-semibold">{"Guest "}</dd>
                   </div>
                   <div className="flex justify-between gap-4">
                     <dt className="text-slate-500">Email</dt>
@@ -257,7 +257,17 @@ export default function OfficerScanPage() {
           <section className="grid grid-cols-2 gap-3">
             {canIssueTicket ? (
               <Link
-                href={activePlate ? `/officer/issue-ticket?plate=${encodeURIComponent(activePlate)}` : "/officer/issue-ticket"}
+                href={
+                  activePlate
+                    ? `/officer/issue-ticket?plate=${encodeURIComponent(activePlate)}${
+                        session?.id ? `&sessionId=${encodeURIComponent(session.id)}` : ""
+                      }${
+                        session?.location_name
+                          ? `&location=${encodeURIComponent(session.location_name)}`
+                          : ""
+                      }`
+                    : "/officer/issue-ticket"
+                }
                 className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white p-4 text-sm font-bold text-[#1062ff]"
               >
                 <FileText size={18} />

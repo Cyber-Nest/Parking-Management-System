@@ -231,11 +231,11 @@ export const LocationDetailsDrawer = ({
                           Location Identifier
                         </p>
                         <h1 className="text-3xl font-black tracking-tighter mb-1">
-                          {details?.name}
+                          {details?.name || locationName || "Location"}
                         </h1>
                         <p className="text-xs opacity-70 font-medium flex items-center gap-1.5">
                           <MapPin size={12} className="text-indigo-400" />{" "}
-                          {details?.address}
+                          {details?.address || "No address available"}
                         </p>
                       </div>
                       <div className="px-4 py-2 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">

@@ -62,6 +62,7 @@ function CheckoutForm({
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [stripeError, setStripeError] = useState<string | null>(null);
+  const [postalCode, setPostalCode] = useState("");
   const [completedBooking, setCompletedBooking] =
     useState<BookingResponse | null>(null);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -159,6 +160,11 @@ function CheckoutForm({
         {
           payment_method: {
             card: elements.getElement(CardElement)!,
+            billing_details: {
+              address: {
+                postal_code: postalCode.trim() || undefined,
+              },
+            },
           },
         },
       );
@@ -348,6 +354,7 @@ function CheckoutForm({
                 <div className="bg-[#0F0F0F] border border-white/10 rounded-3xl p-4">
                   <CardElement
                     options={{
+                      hidePostalCode: true,
                       style: {
                         base: {
                           color: "#FFFFFF",
@@ -363,6 +370,19 @@ function CheckoutForm({
                         },
                       },
                     }}
+                  />
+                </div>
+                <div className="mt-4">
+                  <label className="text-[10px] uppercase tracking-[0.2em] text-[#4B5563] font-bold mb-2 block">
+                    ZIP / Postal code
+                  </label>
+                  <input
+                    value={postalCode}
+                    onChange={(event) => setPostalCode(event.target.value)}
+                    inputMode="text"
+                    autoComplete="postal-code"
+                    placeholder="A1A 1A1"
+                    className="w-full rounded-3xl border border-white/10 bg-[#0F0F0F] px-4 py-3 text-white outline-none transition focus:border-[#C6F432]/60"
                   />
                 </div>
                 {stripeError && (

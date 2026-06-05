@@ -25,6 +25,7 @@ export interface SessionRow {
   status: SessionStatus;
   notes: string | null;
   amount: number;
+  location_name?: string | null;
   created_by_officer: string | null;
   created_at: Date;
   parking_lot_id?: string | null;
@@ -76,7 +77,7 @@ export class SessionRepository {
 
     const items = await queryRows<SessionRow>(
       `SELECT
-        ps.id, ps.user_id, ps.vehicle_id, ps.license_plate, ps.plan_id, ps.plan_name,
+        ps.id, ps.user_id, ps.vehicle_id, ps.license_plate, ps.plan_id, ps.plan_name, ps.location_name,
         ps.start_time, ps.end_time, ps.duration_minutes, ps.status, ps.notes,
         COALESCE((SELECT SUM(amount) FROM payments p WHERE p.session_id = ps.id AND p.status = 'success'), 0) AS amount,
         ps.created_by_officer, ps.created_at,
@@ -146,6 +147,7 @@ export class SessionRepository {
     durationMinutes: number;
     status?: SessionStatus;
     notes?: string;
+    locationName?: string;
     userId?: string;
     vehicleId?: string;
     createdByOfficer?: string;
@@ -153,8 +155,8 @@ export class SessionRepository {
     const id = crypto.randomUUID();
     await execute(
       `INSERT INTO parking_sessions
-      (id, user_id, vehicle_id, license_plate, plan_id, plan_name, start_time, end_time, duration_minutes, status, notes, created_by_officer)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (id, user_id, vehicle_id, license_plate, plan_id, plan_name, location_name, start_time, end_time, duration_minutes, status, notes, created_by_officer)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,
         params.userId ?? null,
@@ -162,6 +164,7 @@ export class SessionRepository {
         params.licensePlate.trim().toUpperCase(),
         params.planId ?? null,
         params.planName ?? null,
+        params.locationName ?? null,
         params.startTime,
         params.endTime,
         params.durationMinutes,
@@ -171,6 +174,32 @@ export class SessionRepository {
       ]
     );
     return id;
+  }
+
+  async cancel(id: string, reason?: string): Promise<SessionRow | null> {
+    const note = reason?.trim() || 'Cancelled manually by admin.';
+    await execute(
+      `UPDATE parking_sessions
+       SET status = 'cancelled',
+           end_time = LEAST(end_time, NOW()),
+           notes = CASE
+             WHEN notes IS NULL OR notes = '' THEN ?
+             ELSE CONCAT(notes, '\n', ?)
+           END,
+           updated_at = NOW()
+       WHERE id = ?`,
+      [note, note, id],
+    );
+
+    const rows = await queryRows<SessionRow>(
+      `SELECT id, user_id, vehicle_id, license_plate, plan_id, plan_name, location_name,
+              start_time, end_time, duration_minutes, status, notes, created_by_officer, created_at
+       FROM parking_sessions
+       WHERE id = ?
+       LIMIT 1`,
+      [id],
+    );
+    return rows[0] ?? null;
   }
 }
 

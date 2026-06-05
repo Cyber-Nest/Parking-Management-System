@@ -28,6 +28,7 @@ import {
   PenaltyTicket,
   PenaltyStats,
 } from "@/services/penalty.service";
+import { officerService, type Officer } from "@/services/officer.service";
 import {
   markTicketPaid,
   cancelTicket,
@@ -38,7 +39,10 @@ import { EditTicketDrawer } from "@/components/penalty/EditTicketDrawer";
 import toast from "react-hot-toast";
 import { printKeyValuePayload } from "@/lib/printPayload";
 import { ParkingLotFilter } from "@/components/common/ParkingLotFilter";
-import { listParkingLots, ParkingLotRecord } from "@/services/parking-lots.service";
+import {
+  listParkingLots,
+  ParkingLotRecord,
+} from "@/services/parking-lots.service";
 import { truncateId } from "@/lib/truncateId";
 
 const PERIOD_TABS = [
@@ -51,7 +55,8 @@ const PERIOD_TABS = [
 
 const apiErrorMessage = (e: unknown, fallback: string): string => {
   if (typeof e === "object" && e !== null && "response" in e) {
-    const data = (e as { response?: { data?: { message?: unknown } } }).response?.data;
+    const data = (e as { response?: { data?: { message?: unknown } } }).response
+      ?.data;
     const m = data?.message;
     if (typeof m === "string" && m.trim()) return m;
   }
@@ -87,8 +92,10 @@ const isThisWeek = (dateStr: string) => {
 const isThisMonth = (dateStr: string) => {
   const ticketDate = new Date(dateStr);
   const today = new Date();
-  return ticketDate.getMonth() === today.getMonth() && 
-         ticketDate.getFullYear() === today.getFullYear();
+  return (
+    ticketDate.getMonth() === today.getMonth() &&
+    ticketDate.getFullYear() === today.getFullYear()
+  );
 };
 
 const isInDateRange = (dateStr: string, startDate: Date, endDate: Date) => {
@@ -111,10 +118,10 @@ export default function PenaltyTicketsPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("Yesterday");
   const [showCustomDate, setShowCustomDate] = useState(false);
-  
+
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
-  
+
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("All Status");
   const [officerFilter, setOfficerFilter] = useState("All Officers");
@@ -132,13 +139,20 @@ export default function PenaltyTicketsPage() {
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [parkingLots, setParkingLots] = useState<ParkingLotRecord[]>([]);
   const [parkingLotId, setParkingLotId] = useState("");
+  const [officerMap, setOfficerMap] = useState<Record<string, string>>({});
 
   const itemsPerPage = 10;
 
   const refreshTickets = async () => {
     const [statsRes, ticketsRes] = await Promise.all([
-      penaltyService.getPenaltyStats({ parking_lot_id: parkingLotId || undefined }),
-      penaltyService.getPenaltyTickets({ limit: 200, page: 1, parking_lot_id: parkingLotId || undefined }),
+      penaltyService.getPenaltyStats({
+        parking_lot_id: parkingLotId || undefined,
+      }),
+      penaltyService.getPenaltyTickets({
+        limit: 200,
+        page: 1,
+        parking_lot_id: parkingLotId || undefined,
+      }),
     ]);
     setStats(statsRes);
     setTickets(ticketsRes);
@@ -161,14 +175,29 @@ export default function PenaltyTicketsPage() {
   }, [parkingLotId]);
 
   useEffect(() => {
-    listParkingLots().then(setParkingLots).catch((error) => console.error("Failed to load parking lots", error));
+    void officerService
+      .getOfficers({ limit: 500 })
+      .then((list) => {
+        const map: Record<string, string> = {};
+        list.forEach((o: Officer) => {
+          map[o.id] = o.name || o.full_name || "Officer";
+        });
+        setOfficerMap(map);
+      })
+      .catch((err) => console.error("Failed to load officers", err));
+  }, []);
+
+  useEffect(() => {
+    listParkingLots()
+      .then(setParkingLots)
+      .catch((error) => console.error("Failed to load parking lots", error));
   }, []);
 
   // Filter by Period (Date Range)
   const filterByPeriod = (ticket: PenaltyTicket) => {
     const issueDateTime = `${ticket.issueDate} ${ticket.issueTime}`;
-    
-    switch(activeTab) {
+
+    switch (activeTab) {
       case "Today":
         return isToday(ticket.issueDate);
       case "Yesterday":
@@ -202,10 +231,18 @@ export default function PenaltyTicketsPage() {
           ? true
           : ticket.officer === officerFilter;
       const matchesPeriod = filterByPeriod(ticket);
-      
+
       return matchesSearch && matchesStatus && matchesOfficer && matchesPeriod;
     });
-  }, [tickets, search, statusFilter, officerFilter, activeTab, customStartDate, customEndDate]);
+  }, [
+    tickets,
+    search,
+    statusFilter,
+    officerFilter,
+    activeTab,
+    customStartDate,
+    customEndDate,
+  ]);
 
   // Pagination
   const totalPages = Math.ceil(filteredTickets.length / itemsPerPage);
@@ -308,7 +345,9 @@ export default function PenaltyTicketsPage() {
 
   // Get unique officers from tickets for filter dropdown
   const uniqueOfficers = useMemo(() => {
-    const officers = new Set(tickets.map(ticket => ticket.officer));
+    const officers = new Set(
+      tickets.map((ticket) => officerMap[ticket.officerId as any] || ticket.officer),
+    );
     return ["All Officers", ...Array.from(officers)];
   }, [tickets]);
 
@@ -540,7 +579,10 @@ export default function PenaltyTicketsPage() {
                       key={idx}
                       className="hover:bg-[var(--color-surface-soft)]/50 transition-colors"
                     >
-                      <td className="px-6 py-4 font-bold text-[var(--color-primary)]" title={ticket.ticketNo || ticket.id}>
+                      <td
+                        className="px-6 py-4 font-bold text-[var(--color-primary)]"
+                        title={ticket.ticketNo || ticket.id}
+                      >
                         {truncateId(ticket.ticketNo || ticket.id)}
                       </td>
                       <td className="px-6 py-4 font-bold text-[var(--color-text-primary)]">
@@ -550,17 +592,20 @@ export default function PenaltyTicketsPage() {
                         <span className="px-2.5 py-1 rounded-md bg-orange-50 text-[var(--color-accent)] text-[11px] font-bold border border-orange-100">
                           {ticket.violationType}
                         </span>
-                       </td>
+                      </td>
                       <td className="px-6 py-4">
                         <div className="font-bold text-[var(--color-text-primary)]">
                           {ticket.parkingLotName || "Unassigned"}
                         </div>
                         {ticket.parkingLotId ? (
-                          <div className="text-[10px] text-[var(--color-text-muted)] font-mono" title={ticket.parkingLotId}>
+                          <div
+                            className="text-[10px] text-[var(--color-text-muted)] font-mono"
+                            title={ticket.parkingLotId}
+                          >
                             {ticket.parkingLotId}
                           </div>
                         ) : null}
-                       </td>
+                      </td>
                       {/* <td className="px-6 py-4 font-medium text-[var(--color-text-secondary)]">
                         {ticket.location}
                        </td> */}
@@ -569,14 +614,17 @@ export default function PenaltyTicketsPage() {
                           <div className="font-bold text-[var(--color-text-primary)]">
                             {ticket.officer}
                           </div>
-                          <div className="text-[11px] text-[var(--color-text-muted)]" title={ticket.officerId}>
+                          <div
+                            className="text-[11px] text-[var(--color-text-muted)]"
+                            title={ticket.officerId}
+                          >
                             {truncateId(ticket.officerId)}
                           </div>
                         </div>
-                       </td>
+                      </td>
                       <td className="px-6 py-4 font-black text-sm">
                         {ticket.amount}
-                       </td>
+                      </td>
                       <td className="px-6 py-4">
                         <span
                           className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-tight ${
@@ -589,7 +637,7 @@ export default function PenaltyTicketsPage() {
                         >
                           {ticket.status}
                         </span>
-                       </td>
+                      </td>
                       <td className="px-6 py-4">
                         <div className="font-medium text-[var(--color-text-primary)]">
                           {ticket.issueDate}
@@ -597,7 +645,7 @@ export default function PenaltyTicketsPage() {
                         <div className="text-[11px] text-[var(--color-text-muted)] font-bold">
                           {ticket.issueTime}
                         </div>
-                       </td>
+                      </td>
                       <td className="px-6 py-4">
                         <TicketActionDropdown
                           ticket={ticket}
@@ -609,7 +657,7 @@ export default function PenaltyTicketsPage() {
                           onEdit={handleEdit}
                           onAddNote={handleAddNote}
                         />
-                       </td>
+                      </td>
                     </tr>
                   ))
                 )}

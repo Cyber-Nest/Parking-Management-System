@@ -100,7 +100,7 @@ export const penaltyService = {
         : [];
 
       return {
-        id: String(t.id ?? `TKT-${String(100 + idx).padStart(3, "0")}`),
+        id: String(t.id ?? String(10000 + idx)),
         plate: String(t.license_plate ?? t.licensePlate ?? "-"),
         violation: String(t.reason ?? "-"),
         violationType: String(t.reason ?? "-"),

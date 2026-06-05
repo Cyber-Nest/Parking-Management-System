@@ -2,6 +2,7 @@
 
 import { ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import toast from "react-hot-toast";
 import {
   Camera,
@@ -38,14 +39,20 @@ const PAGE_SIZE = 10;
 function inferKind(photo: EvidencePhoto): EvidenceKind {
   const url = photo.photo_url.toLowerCase();
   if (url.includes(".mp4") || url.includes("video")) return "video";
-  if (url.includes(".pdf") || photo.source === "standalone" && !url.startsWith("data:image")) return "document";
+  if (
+    url.includes(".pdf") ||
+    (photo.source === "standalone" && !url.startsWith("data:image"))
+  )
+    return "document";
   return "photo";
 }
 
 function violationBadge(reason: string) {
   const lower = reason.toLowerCase();
-  if (lower.includes("no parking") || lower.includes("fire")) return "bg-rose-50 text-rose-700";
-  if (lower.includes("expired") || lower.includes("meter")) return "bg-amber-50 text-amber-700";
+  if (lower.includes("no parking") || lower.includes("fire"))
+    return "bg-rose-50 text-rose-700";
+  if (lower.includes("expired") || lower.includes("meter"))
+    return "bg-amber-50 text-amber-700";
   return "bg-blue-50 text-blue-700";
 }
 
@@ -97,6 +104,23 @@ export default function OfficerEvidencePage() {
     void reload();
   }, []);
 
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (searchParams.get("capture") === "true") {
+      // open the hidden file input to capture photo
+      uploadRef.current?.click();
+      try {
+        const url = new URL(window.location.href);
+        url.searchParams.delete("capture");
+        router.replace(url.pathname + url.search);
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [searchParams, router]);
+
   const stats = useMemo(() => {
     const photoCount = photos.filter((p) => inferKind(p) === "photo").length;
     const videoCount = photos.filter((p) => inferKind(p) === "video").length;
@@ -109,20 +133,30 @@ export default function OfficerEvidencePage() {
     let list = [...photos];
     if (view === "ticket") list = list.filter((p) => p.ticket_id);
     if (view === "type") list = list.filter((p) => inferKind(p) === "photo");
-    if (typeFilter !== "all") list = list.filter((p) => inferKind(p) === typeFilter);
+    if (typeFilter !== "all")
+      list = list.filter((p) => inferKind(p) === typeFilter);
     if (ticketFilter === "linked") list = list.filter((p) => p.ticket_id);
     if (ticketFilter === "standalone") list = list.filter((p) => !p.ticket_id);
     if (statusFilter === "synced") list = list;
     if (searchText.trim()) {
       const q = searchText.trim().toLowerCase();
       list = list.filter((p) =>
-        [p.ticket_number, p.license_plate, p.reason, p.location_name, p.officer_name]
+        [
+          p.ticket_number,
+          p.license_plate,
+          p.reason,
+          p.location_name,
+          p.officer_name,
+        ]
           .join(" ")
           .toLowerCase()
           .includes(q),
       );
     }
-    return list.sort((a, b) => new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime());
+    return list.sort(
+      (a, b) =>
+        new Date(b.uploaded_at).getTime() - new Date(a.uploaded_at).getTime(),
+    );
   }, [photos, view, typeFilter, ticketFilter, statusFilter, searchText]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -142,6 +176,7 @@ export default function OfficerEvidencePage() {
     try {
       const dataUrl = await fileToDataUrl(file);
       setAddPhotos((prev) => [...prev, dataUrl]);
+      setShowAddModal(true);
     } catch {
       setAddError("Could not read the selected photo.");
     } finally {
@@ -162,7 +197,10 @@ export default function OfficerEvidencePage() {
     setAddError(null);
     try {
       const folder = `parksmart/officer/evidence/${addPlate.trim() || "unassigned"}`;
-      const urls = await officerEnforcementService.uploadPhotosForSubmit(addPhotos, folder);
+      const urls = await officerEnforcementService.uploadPhotosForSubmit(
+        addPhotos,
+        folder,
+      );
       await officerEnforcementService.captureEvidence({
         licensePlate: addPlate.trim(),
         locationName: addLocation.trim() || undefined,
@@ -200,14 +238,21 @@ export default function OfficerEvidencePage() {
     }
     setEditSaving(true);
     try {
-      const updated = await officerEnforcementService.updateEvidence(editing.id, {
-        licensePlate: editPlate.trim(),
-        locationName: editLocation.trim(),
-        reason: editReason.trim(),
-        notes: editNotes.trim(),
-      });
-      setPhotos((items) => items.map((item) => (item.id === updated.id ? updated : item)));
-      setSelected((current) => (current?.id === updated.id ? updated : current));
+      const updated = await officerEnforcementService.updateEvidence(
+        editing.id,
+        {
+          licensePlate: editPlate.trim(),
+          locationName: editLocation.trim(),
+          reason: editReason.trim(),
+          notes: editNotes.trim(),
+        },
+      );
+      setPhotos((items) =>
+        items.map((item) => (item.id === updated.id ? updated : item)),
+      );
+      setSelected((current) =>
+        current?.id === updated.id ? updated : current,
+      );
       setViewing((current) => (current?.id === updated.id ? updated : current));
       setEditing(null);
       toast.success("Evidence updated");
@@ -235,15 +280,28 @@ export default function OfficerEvidencePage() {
 
   return (
     <div className="space-y-6">
-      <input ref={uploadRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => void handleAddPhotoPick(e)} />
+      <input
+        ref={uploadRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => void handleAddPhotoPick(e)}
+      />
 
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Evidence</h1>
-          <p className="text-sm text-slate-500">View and manage evidence captured during enforcement.</p>
+          <p className="text-sm text-slate-500">
+            View and manage evidence captured during enforcement.
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => void reload()} className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-[#1062ff]">
+          <button
+            type="button"
+            onClick={() => void reload()}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-[#1062ff]"
+          >
             <RefreshCw size={16} />
             Sync
           </button>
@@ -258,7 +316,10 @@ export default function OfficerEvidencePage() {
             <Upload size={16} />
             Add Evidence
           </button>
-          <Link href="/officer/scan" className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700">
+          <Link
+            href="/officer/scan"
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-bold text-slate-700"
+          >
             <Camera size={16} />
             Capture New
           </Link>
@@ -301,56 +362,110 @@ export default function OfficerEvidencePage() {
               className="w-full bg-transparent text-sm outline-none"
             />
           </div>
-          <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)} className="rounded-lg border px-3 py-2 text-sm">
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value)}
+            className="rounded-lg border px-3 py-2 text-sm"
+          >
             <option value="all">All Types</option>
             <option value="photo">Photos</option>
             <option value="video">Videos</option>
             <option value="document">Documents</option>
           </select>
-          <select value={ticketFilter} onChange={(e) => setTicketFilter(e.target.value)} className="rounded-lg border px-3 py-2 text-sm">
+          <select
+            value={ticketFilter}
+            onChange={(e) => setTicketFilter(e.target.value)}
+            className="rounded-lg border px-3 py-2 text-sm"
+          >
             <option value="all">All Tickets</option>
             <option value="linked">Linked to Ticket</option>
             <option value="standalone">Standalone</option>
           </select>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="rounded-lg border px-3 py-2 text-sm">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="rounded-lg border px-3 py-2 text-sm"
+          >
             <option value="all">All Status</option>
             <option value="synced">Synced</option>
           </select>
-          <button type="button" onClick={resetFilters} className="rounded-lg border px-4 py-2 text-sm font-bold text-slate-600">
+          <button
+            type="button"
+            onClick={resetFilters}
+            className="rounded-lg border px-4 py-2 text-sm font-bold text-slate-600"
+          >
             Reset
           </button>
         </div>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard icon={ImageIcon} color="text-blue-600" bg="bg-blue-50" label="Photos" value={stats.photoCount} />
-        <StatCard icon={Video} color="text-purple-600" bg="bg-purple-50" label="Videos" value={stats.videoCount} />
-        <StatCard icon={FileText} color="text-emerald-600" bg="bg-emerald-50" label="Documents" value={stats.docCount} />
-        <StatCard icon={FileText} color="text-orange-600" bg="bg-orange-50" label="Linked Tickets" value={stats.linked} />
+        <StatCard
+          icon={ImageIcon}
+          color="text-blue-600"
+          bg="bg-blue-50"
+          label="Photos"
+          value={stats.photoCount}
+        />
+        <StatCard
+          icon={Video}
+          color="text-purple-600"
+          bg="bg-purple-50"
+          label="Videos"
+          value={stats.videoCount}
+        />
+        <StatCard
+          icon={FileText}
+          color="text-emerald-600"
+          bg="bg-emerald-50"
+          label="Documents"
+          value={stats.docCount}
+        />
+        <StatCard
+          icon={FileText}
+          color="text-orange-600"
+          bg="bg-orange-50"
+          label="Linked Tickets"
+          value={stats.linked}
+        />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_360px]">
         <section className="rounded-xl border border-slate-200 bg-white">
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-4 py-3">
-            <p className="text-sm font-bold">Evidence List ({filtered.length})</p>
+            <p className="text-sm font-bold">
+              Evidence List ({filtered.length})
+            </p>
             <div className="flex items-center gap-2">
               <select className="rounded-lg border px-2 py-1.5 text-xs font-semibold">
                 <option>Newest First</option>
                 <option>Oldest First</option>
               </select>
-              <button type="button" onClick={() => setLayout("list")} className={`rounded p-1.5 ${layout === "list" ? "bg-slate-100" : ""}`}>
+              <button
+                type="button"
+                onClick={() => setLayout("list")}
+                className={`rounded p-1.5 ${layout === "list" ? "bg-slate-100" : ""}`}
+              >
                 <List size={16} />
               </button>
-              <button type="button" onClick={() => setLayout("grid")} className={`rounded p-1.5 ${layout === "grid" ? "bg-slate-100" : ""}`}>
+              <button
+                type="button"
+                onClick={() => setLayout("grid")}
+                className={`rounded p-1.5 ${layout === "grid" ? "bg-slate-100" : ""}`}
+              >
                 <Grid3x3 size={16} />
               </button>
             </div>
           </div>
 
           {loading ? (
-            <p className="p-10 text-center text-sm text-slate-500">Loading evidence...</p>
+            <p className="p-10 text-center text-sm text-slate-500">
+              Loading evidence...
+            </p>
           ) : paginated.length === 0 ? (
-            <p className="p-10 text-center text-sm text-slate-500">No evidence matched your filters.</p>
+            <p className="p-10 text-center text-sm text-slate-500">
+              No evidence matched your filters.
+            </p>
           ) : layout === "grid" ? (
             <div className="grid gap-3 p-4 sm:grid-cols-2">
               {paginated.map((item) => (
@@ -359,7 +474,9 @@ export default function OfficerEvidencePage() {
                   item={item}
                   active={selected?.id === item.id}
                   menuOpen={openMenuId === item.id}
-                  onMenuToggle={() => setOpenMenuId((id) => (id === item.id ? null : item.id))}
+                  onMenuToggle={() =>
+                    setOpenMenuId((id) => (id === item.id ? null : item.id))
+                  }
                   onSelect={() => setSelected(item)}
                   onView={() => {
                     setViewing(item);
@@ -378,7 +495,9 @@ export default function OfficerEvidencePage() {
                   item={item}
                   active={selected?.id === item.id}
                   menuOpen={openMenuId === item.id}
-                  onMenuToggle={() => setOpenMenuId((id) => (id === item.id ? null : item.id))}
+                  onMenuToggle={() =>
+                    setOpenMenuId((id) => (id === item.id ? null : item.id))
+                  }
                   onSelect={() => setSelected(item)}
                   onView={() => {
                     setViewing(item);
@@ -393,16 +512,27 @@ export default function OfficerEvidencePage() {
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-sm">
             <p className="text-slate-500">
-              {(page - 1) * PAGE_SIZE + 1} to {Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
+              {(page - 1) * PAGE_SIZE + 1} to{" "}
+              {Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
             </p>
             <div className="flex items-center gap-2">
-              <button type="button" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="rounded border px-2 py-1 disabled:opacity-40">
+              <button
+                type="button"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => p - 1)}
+                className="rounded border px-2 py-1 disabled:opacity-40"
+              >
                 <ChevronLeft size={16} />
               </button>
               <span className="font-semibold">
                 {page} / {totalPages}
               </span>
-              <button type="button" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className="rounded border px-2 py-1 disabled:opacity-40">
+              <button
+                type="button"
+                disabled={page >= totalPages}
+                onClick={() => setPage((p) => p + 1)}
+                className="rounded border px-2 py-1 disabled:opacity-40"
+              >
                 <ChevronRight size={16} />
               </button>
             </div>
@@ -413,7 +543,11 @@ export default function OfficerEvidencePage() {
           <div className="mb-4 flex items-center justify-between">
             <h2 className="font-bold">Evidence Details</h2>
             {selected ? (
-              <button type="button" onClick={() => setSelected(null)} className="text-slate-400 hover:text-slate-700">
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                className="text-slate-400 hover:text-slate-700"
+              >
                 <X size={18} />
               </button>
             ) : null}
@@ -421,7 +555,9 @@ export default function OfficerEvidencePage() {
           {selected ? (
             <EvidenceDetail item={selected} />
           ) : (
-            <p className="text-sm text-slate-500">Select evidence from the list to view details.</p>
+            <p className="text-sm text-slate-500">
+              Select evidence from the list to view details.
+            </p>
           )}
         </aside>
       </div>
@@ -431,12 +567,19 @@ export default function OfficerEvidencePage() {
           <section className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-lg font-bold">Add Evidence</h2>
-              <button type="button" onClick={() => setShowAddModal(false)} className="text-slate-500">
+              <button
+                type="button"
+                onClick={() => setShowAddModal(false)}
+                className="text-slate-500"
+              >
                 <X size={18} />
               </button>
             </div>
             {addError ? (
-              <p className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700" role="alert">
+              <p
+                className="mb-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"
+                role="alert"
+              >
                 {addError}
               </p>
             ) : null}
@@ -467,7 +610,9 @@ export default function OfficerEvidencePage() {
                 />
               </label>
               <div>
-                <p className="text-xs font-bold text-slate-500">Photos (upload on submit)</p>
+                <p className="text-xs font-bold text-slate-500">
+                  Photos (upload on submit)
+                </p>
                 <button
                   type="button"
                   onClick={() => uploadRef.current?.click()}
@@ -478,10 +623,16 @@ export default function OfficerEvidencePage() {
                 <div className="mt-3 grid grid-cols-3 gap-2">
                   {addPhotos.map((src) => (
                     <div key={src.slice(0, 32)} className="relative">
-                      <img src={src} alt="" className="h-20 w-full rounded object-cover" />
+                      <img
+                        src={src}
+                        alt=""
+                        className="h-20 w-full rounded object-cover"
+                      />
                       <button
                         type="button"
-                        onClick={() => setAddPhotos((prev) => prev.filter((p) => p !== src))}
+                        onClick={() =>
+                          setAddPhotos((prev) => prev.filter((p) => p !== src))
+                        }
                         className="absolute right-1 top-1 rounded bg-white px-1 text-xs font-bold"
                       >
                         x
@@ -492,7 +643,11 @@ export default function OfficerEvidencePage() {
               </div>
             </div>
             <div className="mt-6 flex justify-end gap-3">
-              <button type="button" onClick={() => setShowAddModal(false)} className="rounded-md border px-4 py-2 text-sm font-bold">
+              <button
+                type="button"
+                onClick={() => setShowAddModal(false)}
+                className="rounded-md border px-4 py-2 text-sm font-bold"
+              >
                 Cancel
               </button>
               <button
@@ -509,7 +664,10 @@ export default function OfficerEvidencePage() {
       ) : null}
 
       {viewing ? (
-        <EvidenceModal title="Evidence Details" onClose={() => setViewing(null)}>
+        <EvidenceModal
+          title="Evidence Details"
+          onClose={() => setViewing(null)}
+        >
           <EvidenceDetail item={viewing} showActions={false} />
         </EvidenceModal>
       ) : null}
@@ -551,7 +709,11 @@ export default function OfficerEvidencePage() {
               />
             </label>
             <div className="flex justify-end gap-3 pt-2">
-              <button type="button" onClick={() => setEditing(null)} className="rounded-md border px-4 py-2 text-sm font-bold">
+              <button
+                type="button"
+                onClick={() => setEditing(null)}
+                className="rounded-md border px-4 py-2 text-sm font-bold"
+              >
                 Cancel
               </button>
               <button
@@ -585,7 +747,9 @@ function StatCard({
 }) {
   return (
     <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4">
-      <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${bg}`}>
+      <div
+        className={`flex h-10 w-10 items-center justify-center rounded-lg ${bg}`}
+      >
         <Icon size={20} className={color} />
       </div>
       <div>
@@ -623,7 +787,11 @@ function EvidenceListRow({
     >
       <div className="h-14 w-20 shrink-0 overflow-hidden rounded-md bg-slate-100">
         {kind === "photo" ? (
-          <img src={item.photo_url} alt="" className="h-full w-full object-cover" />
+          <img
+            src={item.photo_url}
+            alt=""
+            className="h-full w-full object-cover"
+          />
         ) : (
           <div className="flex h-full items-center justify-center text-slate-400">
             {kind === "video" ? <Video size={20} /> : <FileText size={20} />}
@@ -632,17 +800,30 @@ function EvidenceListRow({
       </div>
       <div className="min-w-0 flex-1">
         <p className="font-semibold text-slate-900">
-          {item.ticket_number ? `Ticket: ${item.ticket_number}` : "Standalone Evidence"}
+          {item.ticket_number
+            ? `Ticket: ${item.ticket_number}`
+            : "Standalone Evidence"}
         </p>
         <p className="text-xs text-slate-500">
-          Plate: {item.license_plate} • {item.location_name ?? "Unknown location"}
+          Plate: {item.license_plate} •{" "}
+          {item.location_name ?? "Unknown location"}
         </p>
         <p className="text-xs text-slate-400">
           {kind.toUpperCase()} • {new Date(item.uploaded_at).toLocaleString()}
         </p>
       </div>
-      <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${violationBadge(item.reason)}`}>{item.reason}</span>
-      <ActionMenu open={menuOpen} onToggle={onMenuToggle} onView={onView} onEdit={onEdit} onDelete={onDelete} />
+      <span
+        className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-bold ${violationBadge(item.reason)}`}
+      >
+        {item.reason}
+      </span>
+      <ActionMenu
+        open={menuOpen}
+        onToggle={onMenuToggle}
+        onView={onView}
+        onEdit={onEdit}
+        onDelete={onDelete}
+      />
     </div>
   );
 }
@@ -667,14 +848,31 @@ function EvidenceGridCard({
   onDelete: () => void;
 }) {
   return (
-    <div onClick={onSelect} className={`cursor-pointer rounded-lg border text-left ${active ? "border-[#1062ff] ring-2 ring-[#1062ff]/30" : "border-slate-200"}`}>
-      <img src={item.photo_url} alt="" className="h-32 w-full rounded-t-lg object-cover" />
+    <div
+      onClick={onSelect}
+      className={`cursor-pointer rounded-lg border text-left ${active ? "border-[#1062ff] ring-2 ring-[#1062ff]/30" : "border-slate-200"}`}
+    >
+      <img
+        src={item.photo_url}
+        alt=""
+        className="h-32 w-full rounded-t-lg object-cover"
+      />
       <div className="flex items-start gap-2 p-3">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-bold">{item.ticket_number ?? item.license_plate}</p>
-          <p className="text-xs text-slate-500">{new Date(item.uploaded_at).toLocaleDateString()}</p>
+          <p className="truncate text-sm font-bold">
+            {item.ticket_number ?? item.license_plate}
+          </p>
+          <p className="text-xs text-slate-500">
+            {new Date(item.uploaded_at).toLocaleDateString()}
+          </p>
         </div>
-        <ActionMenu open={menuOpen} onToggle={onMenuToggle} onView={onView} onEdit={onEdit} onDelete={onDelete} />
+        <ActionMenu
+          open={menuOpen}
+          onToggle={onMenuToggle}
+          onView={onView}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
       </div>
     </div>
   );
@@ -710,15 +908,27 @@ function ActionMenu({
       </button>
       {open ? (
         <div className="absolute right-0 top-8 z-20 w-32 overflow-hidden rounded-lg border border-slate-200 bg-white py-1 text-sm shadow-lg">
-          <button type="button" onClick={(event) => run(event, onView)} className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-slate-50">
+          <button
+            type="button"
+            onClick={(event) => run(event, onView)}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-slate-50"
+          >
             <Eye size={14} />
             View
           </button>
-          <button type="button" onClick={(event) => run(event, onEdit)} className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-slate-50">
+          <button
+            type="button"
+            onClick={(event) => run(event, onEdit)}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-slate-50"
+          >
             <Pencil size={14} />
             Edit
           </button>
-          <button type="button" onClick={(event) => run(event, onDelete)} className="flex w-full items-center gap-2 px-3 py-2 text-left text-rose-600 hover:bg-rose-50">
+          <button
+            type="button"
+            onClick={(event) => run(event, onDelete)}
+            className="flex w-full items-center gap-2 px-3 py-2 text-left text-rose-600 hover:bg-rose-50"
+          >
             <Trash2 size={14} />
             Delete
           </button>
@@ -728,7 +938,13 @@ function ActionMenu({
   );
 }
 
-function EvidenceDetail({ item, showActions = true }: { item: EvidencePhoto; showActions?: boolean }) {
+function EvidenceDetail({
+  item,
+  showActions = true,
+}: {
+  item: EvidencePhoto;
+  showActions?: boolean;
+}) {
   const kind = inferKind(item);
   return (
     <div className="space-y-4 text-sm">
@@ -739,29 +955,56 @@ function EvidenceDetail({ item, showActions = true }: { item: EvidencePhoto; sho
       <DetailRow label="Plate Number" value={item.license_plate} />
       <DetailRow label="Violation Type" value={item.reason} highlight />
       <DetailRow label="Location" value={item.location_name ?? "Unknown"} />
-      <DetailRow label="Captured" value={new Date(item.uploaded_at).toLocaleString()} />
-      <DetailRow label="Captured By" value={item.officer_name ?? "Officer John"} />
+      <DetailRow
+        label="Captured"
+        value={new Date(item.uploaded_at).toLocaleString()}
+      />
+      <DetailRow
+        label="Captured By"
+        value={item.officer_name ?? "Officer John"}
+      />
       <DetailRow label="File Type" value={kind.toUpperCase()} />
       {item.notes ? <DetailRow label="Notes" value={item.notes} /> : null}
       <div className="flex items-center gap-2 text-xs text-slate-500">
         <MapPin size={14} className="text-[#1062ff]" />
         43.6532, -79.3832
       </div>
-      <span className="inline-block rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">Synced</span>
-      {showActions ? <div className="grid gap-2 pt-2">
-        <a href={item.photo_url} target="_blank" rel="noreferrer" className="rounded-lg bg-[#1062ff] py-2.5 text-center text-xs font-bold text-white">
-          View Full Screen
-        </a>
-        <a href={item.photo_url} download className="inline-flex items-center justify-center gap-2 rounded-lg border py-2.5 text-xs font-bold">
-          <Download size={14} />
-          Download
-        </a>
-      </div> : null}
+      <span className="inline-block rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
+        Synced
+      </span>
+      {showActions ? (
+        <div className="grid gap-2 pt-2">
+          <a
+            href={item.photo_url}
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-lg bg-[#1062ff] py-2.5 text-center text-xs font-bold text-white"
+          >
+            View Full Screen
+          </a>
+          <a
+            href={item.photo_url}
+            download
+            className="inline-flex items-center justify-center gap-2 rounded-lg border py-2.5 text-xs font-bold"
+          >
+            <Download size={14} />
+            Download
+          </a>
+        </div>
+      ) : null}
     </div>
   );
 }
 
-function EvidenceModal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
+function EvidenceModal({
+  title,
+  children,
+  onClose,
+}: {
+  title: string;
+  children: React.ReactNode;
+  onClose: () => void;
+}) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
       <section className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-xl bg-white p-6 shadow-xl">
@@ -777,11 +1020,23 @@ function EvidenceModal({ title, children, onClose }: { title: string; children: 
   );
 }
 
-function DetailRow({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
+function DetailRow({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+}) {
   return (
     <div>
       <p className="text-xs font-bold text-slate-500">{label}</p>
-      <p className={`font-semibold ${highlight ? "text-rose-600" : "text-slate-900"}`}>{value}</p>
+      <p
+        className={`font-semibold ${highlight ? "text-rose-600" : "text-slate-900"}`}
+      >
+        {value}
+      </p>
     </div>
   );
 }
