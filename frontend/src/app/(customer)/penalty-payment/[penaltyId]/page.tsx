@@ -225,7 +225,7 @@ export default function PenaltyPage() {
                       <h2 className="text-base font-bold tracking-tight">
                         Penalty Notice
                       </h2>
-                      <p className="text-[11px] text-[#4B5563] font-medium font-mono mt-0.5">
+                      <p className="text-[11px] text-white/80 font-medium font-mono mt-0.5">
                         #{penalty.penaltyId?.slice(0, 8).toUpperCase()}
                       </p>
                     </div>
@@ -251,7 +251,7 @@ export default function PenaltyPage() {
 
                 {/* Price Badge */}
                 <div className="bg-black/40 border border-white/5 rounded-xl px-4 py-3 flex items-center justify-between mt-2">
-                  <p className="text-[9px] uppercase tracking-widest text-[#4B5563] font-black">
+                  <p className="text-[9px] uppercase tracking-widest text-white/80 font-black">
                     Total Fine Assessed
                   </p>
                   <p className="text-2xl md:text-3xl font-black text-[#C6F432] font-mono tracking-tighter">
@@ -274,7 +274,7 @@ export default function PenaltyPage() {
                   <h3 className="text-xs font-bold uppercase tracking-wider">
                     Infraction Details
                   </h3>
-                  <p className="text-[11px] text-[#4B5563] mt-0.5">
+                  <p className="text-[11px] text-white/50 mt-0.5">
                     System log timestamps and parameters.
                   </p>
                 </div>

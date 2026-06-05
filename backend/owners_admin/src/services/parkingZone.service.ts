@@ -62,7 +62,7 @@ export class ParkingZoneService {
   const availableSpots = Number(
     body.available_spots ??
     body.availableSpots ??
-    10
+    100
   );
 
   const totalSpots = Number(
@@ -97,10 +97,10 @@ export class ParkingZoneService {
       : 4.5,
     available_spots: Number.isFinite(availableSpots)
       ? availableSpots
-      : 10,
+      : 100,
     total_spots: Number.isFinite(totalSpots)
       ? totalSpots
-      : 10,
+      : 100,
     spot_id: spotId,
     status,
     parking_lot_id: parkingLotId,

@@ -257,7 +257,7 @@ export default function PenaltyDisputePage() {
   //evidence uploader component
   const EvidenceUploader = () => (
     <div className="space-y-1.5 w-full">
-      <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold">
+      <label className="text-[9px] uppercase tracking-[0.2em] text-white/80 ml-1 font-bold">
         Supporting Evidence (Optional)
       </label>
       <label className="w-full min-h-[140px] rounded-xl border border-dashed border-white/10 bg-[#111111] flex flex-col items-center justify-center text-center cursor-pointer hover:border-[#C6F432]/40 transition-all overflow-hidden relative p-4 group">
@@ -426,7 +426,7 @@ export default function PenaltyDisputePage() {
                   <h3 className="text-sm font-bold uppercase tracking-wider">
                     Statement of Case
                   </h3>
-                  <p className="text-[11px] text-[#4B5563] mt-0.5">
+                  <p className="text-[11px] text-white/60 mt-0.5">
                     Please fill out all required details accurately.
                   </p>
                 </div>
@@ -435,7 +435,7 @@ export default function PenaltyDisputePage() {
               <div className="space-y-4">
                 {/* Ticket Number */}
                 <div className="space-y-1.5">
-                  <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold">
+                  <label className="text-[9px] uppercase tracking-[0.2em] text-white/80 ml-1 font-bold">
                     Ticket Number
                   </label>
                   <input
@@ -448,7 +448,7 @@ export default function PenaltyDisputePage() {
 
                 {/* Full Name */}
                 <div className="space-y-1.5">
-                  <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold">
+                  <label className="text-[9px] uppercase tracking-[0.2em] text-white/80 ml-1 font-bold">
                     Full Name
                   </label>
                   <div className="relative">
@@ -466,14 +466,14 @@ export default function PenaltyDisputePage() {
                           fullName: e.target.value,
                         }))
                       }
-                      className="w-full bg-[#111111] border border-white/5 rounded-xl py-3.5 pl-11 pr-4 text-sm focus:border-[#C6F432]/40 focus:outline-none transition-all placeholder:text-[#374151]"
+                      className="w-full bg-[#111111] border border-white/20 rounded-xl py-3.5 pl-11 pr-4 text-sm focus:border-[#C6F432]/40 focus:outline-none transition-all placeholder:text-[#374151]"
                     />
                   </div>
                 </div>
 
                 {/* Email */}
                 <div className="space-y-1.5">
-                  <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold">
+                  <label className="text-[9px] uppercase tracking-[0.2em] text-white/80 ml-1 font-bold">
                     Email Address
                   </label>
                   <div className="relative">
@@ -491,14 +491,14 @@ export default function PenaltyDisputePage() {
                           email: e.target.value,
                         }))
                       }
-                      className="w-full bg-[#111111] border border-white/5 rounded-xl py-3.5 pl-11 pr-4 text-sm focus:border-[#C6F432]/40 focus:outline-none transition-all placeholder:text-[#374151]"
+                      className="w-full bg-[#111111] border border-white/20 rounded-xl py-3.5 pl-11 pr-4 text-sm focus:border-[#C6F432]/40 focus:outline-none transition-all placeholder:text-[#374151]"
                     />
                   </div>
                 </div>
 
                 {/* Phone */}
                 <div className="space-y-1.5">
-                  <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold">
+                  <label className="text-[9px] uppercase tracking-[0.2em] text-white/80 ml-1 font-bold">
                     Contact Number
                   </label>
                   <div className="relative">
@@ -516,14 +516,14 @@ export default function PenaltyDisputePage() {
                           phone: e.target.value,
                         }))
                       }
-                      className="w-full bg-[#111111] border border-white/5 rounded-xl py-3.5 pl-11 pr-4 text-sm focus:border-[#C6F432]/40 focus:outline-none transition-all placeholder:text-[#374151]"
+                      className="w-full bg-[#111111] border border-white/20 rounded-xl py-3.5 pl-11 pr-4 text-sm focus:border-[#C6F432]/40 focus:outline-none transition-all placeholder:text-[#374151]"
                     />
                   </div>
                 </div>
 
                 {/* Address */}
                 <div className="space-y-1.5">
-                  <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold">
+                  <label className="text-[9px] uppercase tracking-[0.2em] text-white/80 ml-1 font-bold">
                     Parking / Incident Address
                   </label>
                   <textarea
@@ -536,13 +536,13 @@ export default function PenaltyDisputePage() {
                         address: e.target.value,
                       }))
                     }
-                    className="w-full rounded-xl bg-[#111111] border border-white/5 p-4 text-sm outline-none resize-none focus:border-[#C6F432]/40 focus:outline-none transition-all placeholder:text-[#374151] leading-relaxed"
+                    className="w-full rounded-xl bg-[#111111] border border-white/20 p-4 text-sm outline-none resize-none focus:border-[#C6F432]/40 focus:outline-none transition-all placeholder:text-[#374151] leading-relaxed"
                   />
                 </div>
 
                 {/* Explanation */}
                 <div className="space-y-1.5">
-                  <label className="text-[9px] uppercase tracking-[0.2em] text-[#4B5563] ml-1 font-bold">
+                  <label className="text-[9px] uppercase tracking-[0.2em] text-white/80 ml-1 font-bold">
                     Explanation Statement
                   </label>
                   <textarea
@@ -555,7 +555,7 @@ export default function PenaltyDisputePage() {
                         explanation: e.target.value,
                       }))
                     }
-                    className="w-full rounded-xl bg-[#111111] border border-white/5 p-4 text-sm outline-none resize-none focus:border-[#C6F432]/40 focus:outline-none transition-all placeholder:text-[#374151] leading-relaxed"
+                    className="w-full rounded-xl bg-[#111111] border border-white/20 p-4 text-sm outline-none resize-none focus:border-[#C6F432]/40 focus:outline-none transition-all placeholder:text-[#374151] leading-relaxed"
                   />
                 </div>
 
@@ -574,7 +574,7 @@ export default function PenaltyDisputePage() {
                       ? "Processing Verification..."
                       : "File Official Dispute"}
                   </button>
-                  <p className="text-center text-[9px] text-[#374151] mt-3 uppercase tracking-[0.15em] font-medium">
+                  <p className="text-center text-[9px] text-white/50 mt-3 uppercase tracking-[0.15em] font-medium">
                     Case evaluation is subject to audit review parameters
                   </p>
                 </div>
