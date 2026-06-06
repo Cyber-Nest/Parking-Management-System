@@ -88,7 +88,7 @@ export class TicketRepository {
     }
     if (filters.to) {
       conditions.push(`${col("date_issued")} <= ?`);
-      values.push(filters.to);
+      values.push(`${filters.to} 23:59:59`);
     }
     if (filters.parkingLotId) {
       conditions.push(`(

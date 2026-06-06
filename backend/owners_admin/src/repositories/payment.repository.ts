@@ -69,7 +69,7 @@ export class PaymentRepository {
     }
     if (filters.to) {
       conditions.push(`${col('created_at')} <= ?`);
-      values.push(filters.to);
+      values.push(`${filters.to} 23:59:59`);
     }
     if (filters.parkingLotId) {
       conditions.push(`(
