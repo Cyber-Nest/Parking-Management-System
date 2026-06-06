@@ -35,7 +35,12 @@ const axiosInstance = axios.create({
 });
 
 axiosInstance.interceptors.request.use((config) => {
-  const token = getTokenValue("token");
+  // Path based on selected role
+  const isOfficerPath =
+    typeof window !== "undefined" &&
+    window.location.pathname.startsWith("/officer");
+  const tokenName = isOfficerPath ? "officer_token" : "Admin_token";
+  const token = getTokenValue(tokenName);
   if (token) {
     config.headers = {
       ...(config.headers as AxiosRequestHeaders),
@@ -49,16 +54,26 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error?.response?.status === 401 && typeof window !== "undefined") {
-      window.localStorage.removeItem("token");
-      window.localStorage.removeItem("refreshToken");
-      document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-      document.cookie = "refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
       const currentPath = window.location.pathname;
+      const isOfficerPath = currentPath.startsWith("/officer");
+
+      if (isOfficerPath) {
+        window.localStorage.removeItem("officer_token");
+        window.localStorage.removeItem("officer_refreshToken");
+        document.cookie = "officer_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        document.cookie = "officer_refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      } else {
+        window.localStorage.removeItem("Admin_token");
+        window.localStorage.removeItem("Admin_refreshToken");
+        document.cookie = "Admin_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        document.cookie = "Admin_refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      }
+
       const isAuthPath = ["/admin/login", "/officer/login", "/officer/forgot-password", "/officer/reset-password"].includes(currentPath);
       // Only redirect for admin/officer routes, not for customer routes
       const isCustomerRoute = currentPath.includes("/payment") || currentPath.includes("/vehicle-details") || currentPath.includes("/booking") || currentPath.includes("/extend") || currentPath.includes("/penalty");
       if (!isAuthPath && !isCustomerRoute) {
-        window.location.href = currentPath.startsWith("/officer") ? "/officer/login" : "/admin/login";
+        window.location.href = isOfficerPath ? "/officer/login" : "/admin/login";
       }
     }
     return Promise.reject(error);

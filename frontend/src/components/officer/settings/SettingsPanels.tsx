@@ -491,8 +491,8 @@ export function AccountSettingsPanel() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("officer_token");
+    localStorage.removeItem("officer_refreshToken");
     localStorage.removeItem("officerProfile");
     window.location.href = "/officer/login";
   };

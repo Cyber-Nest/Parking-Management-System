@@ -35,7 +35,10 @@ export default function Sidebar({
   }, []);
 
   const handleLogout = () => {
-    document.cookie = "auth=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+    document.cookie = "Admin_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+    document.cookie = "Admin_refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+    window.localStorage.removeItem("Admin_token");
+    window.localStorage.removeItem("Admin_refreshToken");
     window.location.href = "/admin/login";
   };
 

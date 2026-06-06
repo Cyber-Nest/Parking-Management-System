@@ -85,11 +85,11 @@ export function OfficerShell({ children }: { children: React.ReactNode }) {
   }, [isAuthRoute]);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("refreshToken");
-    document.cookie = "token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    localStorage.removeItem("officer_token");
+    localStorage.removeItem("officer_refreshToken");
+    document.cookie = "officer_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     document.cookie =
-      "refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      "officer_refreshToken=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
     router.push("/officer/login");
   };
 

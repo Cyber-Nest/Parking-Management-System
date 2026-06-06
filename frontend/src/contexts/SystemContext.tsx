@@ -99,8 +99,10 @@ export const SystemProvider = ({ children }: { children: React.ReactNode }) => {
       if (stored.system) setSystem(stored.system);
       if (stored.branding) setBranding(stored.branding);
 
-      const token = getTokenValue("token");
       const currentPath = window.location.pathname;
+      const isOfficerPath = currentPath.startsWith("/officer");
+      const tokenName = isOfficerPath ? "officer_token" : "Admin_token";
+      const token = getTokenValue(tokenName);
       const isAuthPath = [
         "/admin/login",
         "/officer/login",
