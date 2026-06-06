@@ -194,7 +194,7 @@ export default function PayPenaltyLookup({
 
                 <Link
                   href={`/penalty-payment/${encodeURIComponent(ticketNumber.trim())}${email ? `?email=${encodeURIComponent(email.trim())}` : ""}`}
-                  className="inline-flex w-full items-center justify-center rounded-xl bg-white text-black hover:bg-white/90 font-black py-4 text-sm transition-all active:scale-[0.98] gap-2 shadow-lg"
+                  className="inline-flex w-full items-center justify-center rounded-xl  bg-[#C6F432] text-black hover:bg-white/90 font-black py-4 text-sm transition-all active:scale-[0.98] gap-2 shadow-lg"
                 >
                   Proceed to Secure Payment
                   <ArrowRight size={16} />
