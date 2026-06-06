@@ -8,6 +8,8 @@ import {
 import { TicketService } from './ticket.service';
 import { NotFoundError, ValidationError } from './commonErrors';
 import { ensureCloudinaryUrl, uploadMediaList } from './cloudinary.service';
+import { sendEmail, penaltyNoticeTemplate } from '../utils/email';
+import { queryRows } from '../config/database';
 
 const ticketService = new TicketService();
 
@@ -191,6 +193,41 @@ export class EnforcementService {
       status: body.status,
     });
     if (!ticket) throw new NotFoundError('Ticket could not be created');
+
+    try {
+      const userRows = await queryRows<{ email: string }>(
+        `SELECT u.email 
+         FROM users u 
+         JOIN vehicles v ON v.user_id = u.id 
+         WHERE v.license_plate = ? 
+         LIMIT 1`,
+        [ticket.license_plate]
+      );
+      
+      const customerEmail = userRows[0]?.email;
+      if (customerEmail) {
+        await sendEmail({
+          to: customerEmail,
+          subject: `Parking Violation Notice - ${ticket.ticket_number}`,
+          html: penaltyNoticeTemplate({
+            customerEmail,
+            licensePlate: ticket.license_plate,
+            ticketNumber: ticket.ticket_number,
+            amount: Number(ticket.amount),
+            reason: ticket.reason,
+            location: ticket.location_name || 'Unknown Location',
+            issuedAt: ticket.date_issued ? ticket.date_issued.toLocaleString() : new Date().toLocaleString(),
+            dueDate: ticket.due_date ? ticket.due_date.toLocaleDateString() : 'Upon receipt',
+            frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000'
+          }),
+          emailType: 'penalty_notice',
+          relatedId: ticket.id
+        });
+      }
+    } catch (emailErr) {
+      console.error('[EnforcementService] Failed to send penalty notice email:', emailErr);
+    }
+
     return ticket;
   }
 

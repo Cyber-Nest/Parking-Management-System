@@ -78,6 +78,11 @@ export const officerService = {
         status: o.status,
         created_at: o.created_at,
         parkingLotId: o.parking_lot_id,
+        hireDate: created.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+          year: "numeric",
+        }),
       } as Officer;
     });
   },
