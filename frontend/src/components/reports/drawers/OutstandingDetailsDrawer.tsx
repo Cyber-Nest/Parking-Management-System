@@ -285,7 +285,7 @@ export const OutstandingDetailsDrawer = ({
                         value={details.officerId || "N/A"}
                       />
                     </div>
-
+{/* 
                     {details.notes && (
                       <>
                         <SectionTitle
@@ -298,7 +298,7 @@ export const OutstandingDetailsDrawer = ({
                           </p>
                         </div>
                       </>
-                    )}
+                    )} */}
                   </>
                 )
               )}

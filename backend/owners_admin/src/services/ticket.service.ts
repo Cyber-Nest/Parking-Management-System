@@ -131,6 +131,14 @@ export class TicketService {
       location_name: t.location_name ?? null,
       parking_lot_id: t.parking_lot_id,
       parking_lot_name: t.parking_lot_name,
+      evidence_photos: t.evidence_photos,
+      session_id: t.session_id,
+      plan_name: t.plan_name,
+      start_time: t.start_time,
+      end_time: t.end_time,
+      payment_method: t.payment_method,
+      transaction_ref: t.transaction_ref,
+      payment_id: t.payment_id,
     }));
 
     return {
@@ -213,6 +221,14 @@ export class TicketService {
       location_name: t.location_name ?? null,
       parking_lot_id: t.parking_lot_id,
       parking_lot_name: t.parking_lot_name,
+      evidence_photos: t.evidence_photos,
+      session_id: t.session_id,
+      plan_name: t.plan_name,
+      start_time: t.start_time,
+      end_time: t.end_time,
+      payment_method: t.payment_method,
+      transaction_ref: t.transaction_ref,
+      payment_id: t.payment_id,
     };
   }
 
@@ -238,6 +254,14 @@ export class TicketService {
       location_name: t.location_name ?? null,
       parking_lot_id: t.parking_lot_id,
       parking_lot_name: t.parking_lot_name,
+      evidence_photos: t.evidence_photos,
+      session_id: t.session_id,
+      plan_name: t.plan_name,
+      start_time: t.start_time,
+      end_time: t.end_time,
+      payment_method: t.payment_method,
+      transaction_ref: t.transaction_ref,
+      payment_id: t.payment_id,
     };
   }
 

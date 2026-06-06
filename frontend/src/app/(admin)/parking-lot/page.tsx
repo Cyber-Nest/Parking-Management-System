@@ -338,8 +338,10 @@ const ZoneFormDrawer = ({
                     <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     {zone ? "Saving..." : "Creating..."}
                   </>
+                ) : zone ? (
+                  "Save Changes"
                 ) : (
-                  zone ? "Save Changes" : "Create Zone"
+                  "Create Zone"
                 )}
               </button>
             </div>
@@ -358,7 +360,10 @@ const LotFormDrawer = ({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: { lot_name: string; address?: string }) => void | Promise<void>;
+  onSubmit: (data: {
+    lot_name: string;
+    address?: string;
+  }) => void | Promise<void>;
   lot: ParkingLot | null;
 }) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -377,7 +382,10 @@ const LotFormDrawer = ({
     }
     try {
       setIsSubmitting(true);
-      await onSubmit({ lot_name: name.trim(), address: address.trim() || undefined });
+      await onSubmit({
+        lot_name: name.trim(),
+        address: address.trim() || undefined,
+      });
       setName("");
       setAddress("");
       onClose();
@@ -470,8 +478,10 @@ const LotFormDrawer = ({
                     <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     {lot ? "Saving..." : "Creating..."}
                   </>
+                ) : lot ? (
+                  "Save Changes"
                 ) : (
-                  lot ? "Save Changes" : "Create Lot"
+                  "Create Lot"
                 )}
               </button>
             </div>
@@ -741,7 +751,10 @@ export default function MyParkingLotPage() {
       targetLotId = selectedLot.id;
     } else if (parkingOwner) {
       const first = parkingOwner.zones?.[0];
-      targetLotId = (first && (first as any).parking_lot_id) || first?.id || parkingOwner.id;
+      targetLotId =
+        (first && (first as any).parking_lot_id) ||
+        first?.id ||
+        parkingOwner.id;
     }
 
     const targetUrl = `${window.location.origin}/?lotId=${encodeURIComponent(targetLotId)}`;
@@ -950,11 +963,19 @@ export default function MyParkingLotPage() {
                 let targetLotId = selectedLot?.id;
                 if (!targetLotId && parkingOwner) {
                   const first = parkingOwner.zones?.[0];
-                  targetLotId = (first && (first as any).parking_lot_id) || first?.id || parkingOwner.id;
+                  targetLotId =
+                    (first && (first as any).parking_lot_id) ||
+                    first?.id ||
+                    parkingOwner.id;
                 }
-                const targetUrl = targetLotId && typeof window !== "undefined" ? `${window.location.origin}/?lotId=${encodeURIComponent(targetLotId)}` : "";
-                const qrUrl = targetUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(targetUrl)}` : "";
-                
+                const targetUrl =
+                  targetLotId && typeof window !== "undefined"
+                    ? `${window.location.origin}/?lotId=${encodeURIComponent(targetLotId)}`
+                    : "";
+                const qrUrl = targetUrl
+                  ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(targetUrl)}`
+                  : "";
+
                 return qrUrl ? (
                   <img
                     src={qrUrl}

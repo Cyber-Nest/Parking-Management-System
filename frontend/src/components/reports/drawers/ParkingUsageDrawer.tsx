@@ -11,6 +11,9 @@ import {
   Receipt,
   Hash,
   ArrowUpRight,
+  CheckCircle,
+  AlertCircle,
+  RefreshCcw,
 } from "lucide-react";
 
 interface ViewDetailsDrawerProps {
@@ -49,12 +52,49 @@ const MiniStat = ({
   </div>
 );
 
+const InfoCard = ({
+  icon: Icon,
+  label,
+  value,
+  color = "text-[var(--color-text-primary)]",
+}: {
+  icon: any;
+  label: string;
+  value: string | number;
+  color?: string;
+}) => (
+  <div className="p-4 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-soft)]/20 hover:border-[var(--color-primary)]/20 transition-all group">
+    <div className="flex items-center gap-2 mb-1.5">
+      <Icon
+        size={14}
+        className="text-[var(--color-text-muted)] group-hover:text-[var(--color-primary)]"
+      />
+      <p className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] tracking-wider">
+        {label}
+      </p>
+    </div>
+    <h3 className={`font-black text-lg ${color}`}>{value}</h3>
+  </div>
+);
+
 export const ParkingUsageDrawer = ({
   isOpen,
   onClose,
   data,
 }: ViewDetailsDrawerProps) => {
   if (!data) return null;
+
+  const totalSessions = data.totalSessions ?? 0;
+  const completed = data.completed ?? 0;
+  const active = data.active ?? 0;
+  const expired = data.expired ?? 0;
+  const avgDuration = data.avgDuration ?? 0;
+  const revenue = data.revenue ?? 0;
+
+  // Compute percentage bars
+  const completedPct = totalSessions > 0 ? Math.round((completed / totalSessions) * 100) : 0;
+  const activePct = totalSessions > 0 ? Math.round((active / totalSessions) * 100) : 0;
+  const expiredPct = totalSessions > 0 ? Math.round((expired / totalSessions) * 100) : 0;
 
   return (
     <AnimatePresence>
@@ -105,15 +145,15 @@ export const ParkingUsageDrawer = ({
 
               {/* Quick Summary Grid */}
               <div className="grid grid-cols-3 gap-3 mt-8">
-                <MiniStat label="Total" value={data.total} />
+                <MiniStat label="Total" value={totalSessions.toLocaleString()} />
                 <MiniStat
                   label="Revenue"
-                  value={`$${data.revenue}`}
+                  value={`$${revenue.toLocaleString()}`}
                   colorClass="text-emerald-500"
                 />
                 <MiniStat
-                  label="Active"
-                  value={data.active}
+                  label="Avg Duration"
+                  value={`${avgDuration}m`}
                   colorClass="text-blue-500"
                 />
               </div>
@@ -121,67 +161,109 @@ export const ParkingUsageDrawer = ({
 
             {/* Scrollable  */}
             <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xs font-black uppercase tracking-widest text-[var(--color-text-muted)] flex items-center gap-2">
-                  <Car size={14} /> Session Timeline
+              {/* Status Breakdown */}
+              <div>
+                <h3 className="text-xs font-black uppercase tracking-widest text-[var(--color-text-muted)] flex items-center gap-2 mb-5">
+                  <Car size={14} /> Status Breakdown
                 </h3>
-                <span className="text-[10px] font-bold text-[var(--color-text-muted)] bg-[var(--color-surface-soft)] px-2 py-1 rounded">
-                  Showing all records
-                </span>
+
+                <div className="grid grid-cols-3 gap-4 mb-6">
+                  <InfoCard
+                    icon={CheckCircle}
+                    label="Completed"
+                    value={completed.toLocaleString()}
+                    color="text-emerald-600"
+                  />
+                  <InfoCard
+                    icon={RefreshCcw}
+                    label="Active"
+                    value={active.toLocaleString()}
+                    color="text-blue-600"
+                  />
+                  <InfoCard
+                    icon={AlertCircle}
+                    label="Expired"
+                    value={expired.toLocaleString()}
+                    color="text-rose-500"
+                  />
+                </div>
+
+                {/* Visual bar breakdown */}
+                <div className="space-y-3 p-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-soft)]/10">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-[var(--color-text-muted)] mb-3">
+                    Session Distribution
+                  </p>
+                  {/* Completed */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[11px] font-bold">
+                      <span className="text-emerald-600">Completed</span>
+                      <span className="text-[var(--color-text-muted)]">{completedPct}%</span>
+                    </div>
+                    <div className="w-full h-2 bg-[var(--color-surface-soft)] rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                        style={{ width: `${completedPct}%` }}
+                      />
+                    </div>
+                  </div>
+                  {/* Active */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[11px] font-bold">
+                      <span className="text-blue-600">Active</span>
+                      <span className="text-[var(--color-text-muted)]">{activePct}%</span>
+                    </div>
+                    <div className="w-full h-2 bg-[var(--color-surface-soft)] rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-blue-500 rounded-full transition-all duration-500"
+                        style={{ width: `${activePct}%` }}
+                      />
+                    </div>
+                  </div>
+                  {/* Expired */}
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[11px] font-bold">
+                      <span className="text-rose-500">Expired</span>
+                      <span className="text-[var(--color-text-muted)]">{expiredPct}%</span>
+                    </div>
+                    <div className="w-full h-2 bg-[var(--color-surface-soft)] rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-rose-500 rounded-full transition-all duration-500"
+                        style={{ width: `${expiredPct}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              <div className="space-y-4">
-                {(data.sessions || [1, 2, 3]).map(
-                  (session: any, idx: number) => (
-                    <div
-                      key={idx}
-                      className="group relative p-5 rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface-soft)]/10 hover:bg-[var(--color-surface-soft)]/30 transition-all"
-                    >
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-[var(--color-surface)] border border-[var(--color-border)] flex items-center justify-center font-black text-sm group-hover:border-[var(--color-primary)] transition-colors">
-                            {String(idx + 1).padStart(2, "0")}
-                          </div>
-                          <div>
-                            <p className="text-sm font-black text-[var(--color-text)] uppercase tracking-tight">
-                              {session.plateNumber || "AB 1234"}
-                            </p>
-                          </div>
-                        </div>
-                        <StatusBadge status={session.status || "Completed"} />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4 pt-4 border-t border-[var(--color-border)] border-dotted">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1.5 text-[var(--color-text-muted)]">
-                            <Clock size={12} />
-                            <p className="text-[9px] font-black uppercase">
-                              Duration
-                            </p>
-                          </div>
-                          <p className="text-[11px] font-bold text-[var(--color-text)]">
-                            {session.startTime || "10:00 AM"} -{" "}
-                            {session.expiryTime || "12:00 PM"}
-                          </p>
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-1.5 text-[var(--color-text-muted)]">
-                            <CreditCard size={12} />
-                            <p className="text-[9px] font-black uppercase">
-                              Paid Amount
-                            </p>
-                          </div>
-                          <p className="text-[11px] font-bold text-emerald-500">
-                            ${session.amount || "10.00"} •{" "}
-                            <span className="text-[var(--color-text-muted)]">
-                              {session.paymentMethod || "CARD"}
-                            </span>
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ),
-                )}
+              {/* Detailed Stats */}
+              <div>
+                <h3 className="text-xs font-black uppercase tracking-widest text-[var(--color-text-muted)] flex items-center gap-2 mb-5">
+                  <Tag size={14} /> Detailed Metrics
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <InfoCard
+                    icon={Car}
+                    label="Total Sessions"
+                    value={totalSessions.toLocaleString()}
+                  />
+                  <InfoCard
+                    icon={CreditCard}
+                    label="Total Revenue"
+                    value={`$${revenue.toLocaleString()}`}
+                    color="text-emerald-600"
+                  />
+                  <InfoCard
+                    icon={Clock}
+                    label="Avg Duration"
+                    value={`${avgDuration} min`}
+                  />
+                  <InfoCard
+                    icon={ArrowUpRight}
+                    label="Completion Rate"
+                    value={`${completedPct}%`}
+                    color="text-emerald-600"
+                  />
+                </div>
               </div>
             </div>
           </motion.div>

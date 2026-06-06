@@ -36,7 +36,7 @@ export class ReportsService {
             case 'plan':
                 return reportRepo.getPlanPerformance(from, to, parkingLotId);
             case 'audit':
-                return reportRepo.getAuditReport(Number(query.limit ?? '50'));
+                return reportRepo.getAuditReport(Number(query.limit ?? '50'), from, to);
             case 'vehicle-history':
                 if (!query.license_plate?.trim()) {
                     throw new ValidationError('license_plate query parameter is required for vehicle history');

@@ -112,31 +112,29 @@ export const penaltyService = {
         issueDate,
         issueTime,
         dueDate: t.due_date ? new Date(t.due_date).toISOString() : undefined,
-        ticketNo: String(t.ticket_number ?? t.ticketNo ?? ""),
-        location: String(t.location ?? t.zone ?? "-"),
-        vehicle: String(t.vehicle_type ?? t.vehicleType ?? "Unknown"),
-        sessionId: String(t.session_id ?? t.sessionId ?? ""),
-        paymentId: String(t.payment_id ?? t.paymentId ?? ""),
+        ticketNo: t.ticket_number ?? t.ticketNo ?? "",
+        location: t.location_name ?? t.location ?? t.zone ?? "-",
+        vehicle: t.vehicle_type ?? t.vehicleType ?? "Unknown",
+        sessionId: t.session_id ?? t.sessionId ?? undefined,
+        paymentId: t.payment_id ?? t.paymentId ?? undefined,
         paymentStatus: status,
-        paymentMethod: String(t.payment_method ?? t.paymentMethod ?? "Cash"),
-        transactionReference: String(
-          t.transaction_ref ?? t.transactionReference ?? ""
-        ),
+        paymentMethod: t.payment_method ?? t.paymentMethod ?? undefined,
+        transactionReference: t.transaction_ref ?? t.transactionReference ?? undefined,
         paidAt: t.paid_at ? new Date(t.paid_at).toLocaleString() : undefined,
         evidencePhotos: (t.evidence_photos ?? t.evidencePhotos ?? []) as EvidencePhoto[],
-        cancelledBy: String(t.cancelled_by ?? t.cancelledBy ?? ""),
+        cancelledBy: t.cancelled_by ?? t.cancelledBy ?? undefined,
         cancelledAt: t.cancelled_at
           ? new Date(t.cancelled_at).toLocaleString()
           : undefined,
-        cancelReason: String(t.cancel_reason ?? t.cancelReason ?? ""),
-        parkingPlan: String(t.plan_name ?? t.parking_plan ?? "N/A"),
-        parkingStatus: String(t.session_status ?? t.parking_status ?? "N/A"),
+        cancelReason: t.cancel_reason ?? t.cancelReason ?? undefined,
+        parkingPlan: t.plan_name ?? t.parking_plan ?? undefined,
+        parkingStatus: t.session_status ?? t.parking_status ?? undefined,
         parkingStartTime: t.start_time
           ? new Date(t.start_time).toLocaleString()
-          : "",
+          : undefined,
         parkingExpiryTime: t.end_time
           ? new Date(t.end_time).toLocaleString()
-          : "",
+          : undefined,
         parkingLotId: t.parking_lot_id ?? t.parkingLotId ?? null,
         parkingLotName: t.parking_lot_name ?? t.parkingLotName ?? null,
         photos: [],
@@ -156,4 +154,3 @@ export const penaltyService = {
     };
   },
 };
-

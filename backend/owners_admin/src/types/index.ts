@@ -101,10 +101,17 @@ export interface TicketPublic {
   note: string | null;
   dispute_raised: boolean;
   photos: string[];
+  evidence_photos?: { id: string; image: string }[];
   location_name?: string | null;
   payment_id?: string | null;
   parking_lot_id?: string | null;
   parking_lot_name?: string | null;
+  session_id?: string | null;
+  plan_name?: string | null;
+  start_time?: Date | null;
+  end_time?: Date | null;
+  payment_method?: string | null;
+  transaction_ref?: string | null;
 }
 
 export interface CreateTicketBody {

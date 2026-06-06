@@ -594,7 +594,7 @@ export default function LocationPerformanceReport() {
                 <th className="px-4 sm:px-6 py-4">Occupancy Rate</th>
                 <th className="px-4 sm:px-6 py-4">Tickets Issued</th>
                 <th className="px-4 sm:px-6 py-4">Penalty Revenue</th>
-                <th className="px-4 sm:px-6 py-4 text-center">Actions</th>
+                {/* <th className="px-4 sm:px-6 py-4 text-center">Actions</th> */}
               </tr>
             </thead>
             <tbody className="divide-y divide-[var(--color-border)] text-[13px]">
@@ -642,14 +642,14 @@ export default function LocationPerformanceReport() {
                     <td className="px-4 sm:px-6 py-4 font-bold text-rose-500">
                       ${row.penaltyRevenue.toLocaleString()}
                     </td>
-                    <td className="px-4 sm:px-6 py-4 text-center">
+                    {/* <td className="px-4 sm:px-6 py-4 text-center">
                       <button
                         onClick={() => handleViewDetails(row)}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-[var(--color-primary)]/10 text-[var(--color-primary)] hover:bg-[var(--color-primary)] hover:text-white transition-all"
                       >
                         View
                       </button>
-                    </td>
+                    </td> */}
                   </tr>
                 ))
               )}

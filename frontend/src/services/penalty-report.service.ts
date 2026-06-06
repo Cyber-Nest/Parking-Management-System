@@ -3,7 +3,7 @@ import {
   downloadReportExport,
   type ReportExportFormat,
 } from "./report-export.client";
-import { listTickets } from "./tickets.service";
+import { listTickets, getTicketById } from "./tickets.service";
 
 export interface PenaltyReportFilters {
   dateRange: string;
@@ -188,14 +188,24 @@ export const penaltyReportService = {
   },
 
   async getTicketDetails(ticketId: string): Promise<PenaltyTicketDetails> {
-    const { items } = await listTickets({ q: ticketId, limit: 25, page: 1 });
-    const t =
-      items.find(
-        (x: any) => x.id === ticketId || x.ticket_number === ticketId,
-      ) ?? items[0];
+    let t: any = null;
+
+    // Try dedicated single-ticket endpoint first (includes session JOIN data)
+    try {
+      t = await getTicketById(ticketId);
+    } catch {
+      // Fallback to search via list endpoint
+      const { items } = await listTickets({ q: ticketId, limit: 25, page: 1 });
+      t =
+        items.find(
+          (x: any) => x.id === ticketId || x.ticket_number === ticketId,
+        ) ?? items[0];
+    }
+
     if (!t) {
       throw new Error("Ticket not found");
     }
+
     const d = t.date_issued ? new Date(t.date_issued) : new Date();
     const officerNameVal =
       t.officer_name ||
@@ -203,13 +213,14 @@ export const penaltyReportService = {
       t.issued_by ||
       (t.officer_id ? `Officer ${t.officer_id}` : "Officer");
     const officerIdVal = t.officer_id || t.issued_by || "—";
+
     return {
       status: displayStatus(String(t.status)),
       amount: Number(t.amount) || 0,
       issueDate: d.toLocaleDateString(),
       issueTime: d.toLocaleTimeString(),
       location: t.location_name || t.location || "—",
-      plateNumber: t.license_plate || "—",
+      plateNumber: t.license_plate || t.licensePlate || "—",
       vehicleModel: t.vehicle_model || t.vehicleModel || "—",
       evidence: Array.isArray(t.photos) ? t.photos : [],
       officerName: officerNameVal,
@@ -217,9 +228,9 @@ export const penaltyReportService = {
       paymentInfo:
         String(t.status).toLowerCase() === "paid" && t.paid_at
           ? {
-              method: "Card",
+              method: t.payment_method || t.paymentMethod || "Cash",
               date: new Date(t.paid_at).toLocaleString(),
-              transactionId: t.id,
+              transactionId: t.payment_id || t.transaction_ref || t.id,
             }
           : undefined,
       notes: t.remarks

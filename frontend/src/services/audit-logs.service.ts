@@ -52,15 +52,23 @@ const mapRow = (row: any): AuditLog => ({
     status: row.status || "—",
 });
 
-const loadAudit = async (limit = 200, filters?: AuditLogFilters) =>
-    getReport("audit", { limit, parking_lot_id: filters?.parkingLotId?.trim() || undefined }) as Promise<{
+const loadAudit = async (limit = 200, filters?: AuditLogFilters) => {
+    const from = filters?.startDate?.trim() || undefined;
+    const to = filters?.endDate?.trim() || undefined;
+    return getReport("audit", {
+        limit,
+        from,
+        to,
+        parking_lot_id: filters?.parkingLotId?.trim() || undefined,
+    }) as Promise<{
         summary: { total_logs: number; success_count: number; failure_count: number };
         recentActivity: any[];
     }>;
+};
 
 export const auditLogsService = {
-    async getStats(_filters: AuditLogFilters): Promise<AuditLogStats> {
-        const { summary } = await loadAudit(500, _filters);
+    async getStats(filters: AuditLogFilters): Promise<AuditLogStats> {
+        const { summary } = await loadAudit(500, filters);
         return {
             totalLogs: Number(summary.total_logs) || 0,
             successCount: Number(summary.success_count) || 0,
@@ -126,8 +134,12 @@ export const auditLogsService = {
 
     async exportLogs(payload: AuditLogFilters & { format: ReportExportFormat }) {
         const { format, ...filters } = payload;
+        const from = filters.startDate?.trim() || undefined;
+        const to = filters.endDate?.trim() || undefined;
         return downloadReportExport("audit", format, {
             limit: 200,
+            from,
+            to,
             parking_lot_id: filters.parkingLotId?.trim() || undefined,
         });
     },

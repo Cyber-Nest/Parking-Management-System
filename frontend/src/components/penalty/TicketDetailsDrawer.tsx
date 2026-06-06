@@ -212,13 +212,13 @@ export const TicketDetailsDrawer = ({
                 title="Audit Details"
               />
               <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
+                {/* <div className="col-span-2">
                   <InfoCard
                     title="Violation Location"
                     value={ticket.location ?? "-"}
                     icon={MapPin}
                   />
-                </div>
+                </div> */}
                 <InfoCard
                   title="Issue Date"
                   value={ticket.issueDate}
@@ -271,12 +271,12 @@ export const TicketDetailsDrawer = ({
                   value={ticket.parkingPlan ?? "-"}
                   icon={Ticket}
                 />
-                <div className="text-right">
+                {/* <div className="text-right">
                   <p className="text-[10px] uppercase font-bold text-[var(--color-text-muted)] mb-1.5">
                     Session Status
                   </p>
                   <StatusBadge status={ticket.parkingStatus ?? "-"} type="session" />
-                </div>
+                </div> */}
                 <InfoCard
                   title="Session Start"
                   value={ticket.parkingStartTime ?? "-"}

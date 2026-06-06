@@ -59,6 +59,10 @@ export const ActionDropdown = ({
     return () => document.removeEventListener("mousedown", close);
   }, []);
 
+  const canCancel =
+    session.status?.toLowerCase() === "active" &&
+    new Date(session.expiryTime).getTime() > Date.now();
+
   return (
     <div className="relative flex justify-center" ref={menuRef}>
       <button
@@ -100,15 +104,17 @@ export const ActionDropdown = ({
                 setOpen(false);
               }}
             /> */}
-            <MenuItem
-              icon={<Ban size={14} className="sm:w-[15px] sm:h-[15px]" />}
-              label="Cancel Session"
-              onClick={() => {
-                onCancel(session);
-                setOpen(false);
-              }}
-              danger
-            />
+            {canCancel && (
+              <MenuItem
+                icon={<Ban size={14} className="sm:w-[15px] sm:h-[15px]" />}
+                label="Cancel Session"
+                onClick={() => {
+                  onCancel(session);
+                  setOpen(false);
+                }}
+                danger
+              />
+            )}
             {/* <MenuItem
               icon={<Flag size={14} className="sm:w-[15px] sm:h-[15px]" />}
               label="Mark Issue"

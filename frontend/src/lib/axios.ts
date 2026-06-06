@@ -36,9 +36,11 @@ const axiosInstance = axios.create({
 
 axiosInstance.interceptors.request.use((config) => {
   // Path based on selected role
+  // Must NOT match /officer-management (admin route) — only match /officer or /officer/*
   const isOfficerPath =
     typeof window !== "undefined" &&
-    window.location.pathname.startsWith("/officer");
+    (window.location.pathname === "/officer" ||
+      window.location.pathname.startsWith("/officer/"));
   const tokenName = isOfficerPath ? "officer_token" : "Admin_token";
   const token = getTokenValue(tokenName);
   if (token) {
@@ -55,7 +57,8 @@ axiosInstance.interceptors.response.use(
   (error) => {
     if (error?.response?.status === 401 && typeof window !== "undefined") {
       const currentPath = window.location.pathname;
-      const isOfficerPath = currentPath.startsWith("/officer");
+      // Must NOT match /officer-management (admin route) — only match /officer or /officer/*
+      const isOfficerPath = currentPath === "/officer" || currentPath.startsWith("/officer/");
 
       if (isOfficerPath) {
         window.localStorage.removeItem("officer_token");
