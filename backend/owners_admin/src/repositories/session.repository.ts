@@ -55,7 +55,7 @@ export class SessionRepository {
     }
     if (filters.to) {
       conditions.push('end_time <= ?');
-      values.push(filters.to);
+      values.push(`${filters.to} 23:59:59`);
     }
     if (filters.parkingLotId) {
       conditions.push(`(
