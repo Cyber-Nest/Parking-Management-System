@@ -89,21 +89,34 @@ export const penaltyService = {
         minute: "2-digit",
         hour12: true,
       });
-      const remarks = String(t.remarks ?? "");
-      const noteLines = remarks
-        ? remarks.split(/\n+/).map((line: string, i: number) => ({
-            id: `r-${i}`,
-            note: line,
-            createdBy: "System",
-            createdAt: "",
-          }))
-        : [];
+      let parsedRemarks: any = {};
+      try {
+        if (t.remarks && typeof t.remarks === 'string' && t.remarks.trim().startsWith('{')) {
+          parsedRemarks = JSON.parse(t.remarks);
+        }
+      } catch (e) {}
+
+      const noteLines = [];
+      if (t.note) noteLines.push({ id: 'r-note', note: t.note, createdBy: 'Officer', createdAt: '' });
+      if (parsedRemarks.officerNotes) noteLines.push({ id: 'r-officer', note: parsedRemarks.officerNotes, createdBy: 'Officer', createdAt: '' });
+      if (parsedRemarks.violationDetails) noteLines.push({ id: 'r-details', note: parsedRemarks.violationDetails, createdBy: 'System', createdAt: '' });
+
+      let photoStrings: string[] = [];
+      if (Array.isArray(t.photos)) photoStrings = t.photos;
+      else if (typeof t.photos === 'string' && t.photos.startsWith('[')) {
+        try { photoStrings = JSON.parse(t.photos); } catch(e){}
+      }
+
+      const mappedEvidencePhotos = [
+        ...((t.evidence_photos ?? t.evidencePhotos ?? []) as EvidencePhoto[]),
+        ...photoStrings.map((url, i) => ({ id: `photo-${Date.now()}-${i}`, image: url }))
+      ];
 
       return {
         id: String(t.id ?? String(10000 + idx)),
         plate: String(t.license_plate ?? t.licensePlate ?? "-"),
-        violation: String(t.reason ?? "-"),
-        violationType: String(t.reason ?? "-"),
+        violation: String(t.reason ?? parsedRemarks.violationSubType ?? "-"),
+        violationType: String(t.reason ?? parsedRemarks.violationSubType ?? "-"),
         amount: usd(t.amount ?? 0),
         status,
         officer: String(t.officer_name ?? t.officerName ?? "-"),
@@ -114,14 +127,14 @@ export const penaltyService = {
         dueDate: t.due_date ? new Date(t.due_date).toISOString() : undefined,
         ticketNo: t.ticket_number ?? t.ticketNo ?? "",
         location: t.location_name ?? t.location ?? t.zone ?? "-",
-        vehicle: t.vehicle_type ?? t.vehicleType ?? "Unknown",
+        vehicle: t.vehicle_type ?? t.vehicleType ?? parsedRemarks.vehicleType ?? parsedRemarks.vehicleMake ?? "Unknown",
         sessionId: t.session_id ?? t.sessionId ?? undefined,
         paymentId: t.payment_id ?? t.paymentId ?? undefined,
         paymentStatus: status,
         paymentMethod: t.payment_method ?? t.paymentMethod ?? undefined,
         transactionReference: t.transaction_ref ?? t.transactionReference ?? undefined,
         paidAt: t.paid_at ? new Date(t.paid_at).toLocaleString() : undefined,
-        evidencePhotos: (t.evidence_photos ?? t.evidencePhotos ?? []) as EvidencePhoto[],
+        evidencePhotos: mappedEvidencePhotos,
         cancelledBy: t.cancelled_by ?? t.cancelledBy ?? undefined,
         cancelledAt: t.cancelled_at
           ? new Date(t.cancelled_at).toLocaleString()
@@ -137,9 +150,9 @@ export const penaltyService = {
           : undefined,
         parkingLotId: t.parking_lot_id ?? t.parkingLotId ?? null,
         parkingLotName: t.parking_lot_name ?? t.parkingLotName ?? null,
-        photos: [],
+        photos: photoStrings,
         notes: noteLines,
-        raw: t,
+        raw: { ...t, parsedRemarks },
       };
     });
   },

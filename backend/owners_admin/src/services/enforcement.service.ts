@@ -195,17 +195,41 @@ export class EnforcementService {
     if (!ticket) throw new NotFoundError('Ticket could not be created');
 
     try {
-      const userRows = await queryRows<{ email: string }>(
-        `SELECT customer_email AS email
-         FROM bookings 
-         WHERE REPLACE(REPLACE(UPPER(vehicle_plate_number), ' ', ''), '-', '') = REPLACE(REPLACE(UPPER(?), ' ', ''), '-', '')
-         ORDER BY created_at DESC 
-         LIMIT 1`,
-        [ticket.license_plate]
-      );
-      
-      let customerEmail = userRows[0]?.email;
+      let customerEmail: string | undefined;
 
+      // 1. Try to get email from the session if it exists
+      if (ticket.session_id) {
+        const sessionRows = await queryRows<{ customer_email: string | null }>(
+          `SELECT COALESCE(u.email, b.customer_email) AS customer_email
+           FROM parking_sessions ps
+           LEFT JOIN users u ON u.id = ps.user_id
+           LEFT JOIN bookings b
+             ON REPLACE(REPLACE(UPPER(b.vehicle_plate_number), ' ', ''), '-', '') = REPLACE(REPLACE(UPPER(ps.license_plate), ' ', ''), '-', '')
+            AND b.start_time <= ps.end_time
+            AND b.end_time >= ps.start_time
+           WHERE ps.id = ?
+           LIMIT 1`,
+          [ticket.session_id]
+        );
+        if (sessionRows[0]?.customer_email) {
+          customerEmail = sessionRows[0].customer_email;
+        }
+      }
+
+      // 2. Fallback to latest booking by plate
+      if (!customerEmail) {
+        const userRows = await queryRows<{ email: string }>(
+          `SELECT customer_email AS email
+           FROM bookings 
+           WHERE REPLACE(REPLACE(UPPER(vehicle_plate_number), ' ', ''), '-', '') = REPLACE(REPLACE(UPPER(?), ' ', ''), '-', '')
+           ORDER BY start_time DESC 
+           LIMIT 1`,
+          [ticket.license_plate]
+        );
+        customerEmail = userRows[0]?.email;
+      }
+
+      // 3. Fallback to latest app session by plate
       if (!customerEmail) {
         const sessionUserRows = await queryRows<{ email: string }>(
           `SELECT u.email

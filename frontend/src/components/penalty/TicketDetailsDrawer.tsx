@@ -251,6 +251,16 @@ export const TicketDetailsDrawer = ({
                   value={ticket.vehicle ?? "-"}
                   icon={Car}
                 />
+                <InfoCard
+                  title="Vehicle Make"
+                  value={ticket.raw?.parsedRemarks?.vehicleMake ?? ticket.raw?.parsedRemarks?.vehicleModel ?? "-"}
+                  icon={Car}
+                />
+                <InfoCard
+                  title="Vehicle Color"
+                  value={ticket.raw?.parsedRemarks?.vehicleColor ?? "-"}
+                  icon={Car}
+                />
               </div>
 
               {/* Parking Session */}
