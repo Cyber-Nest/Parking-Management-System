@@ -93,7 +93,7 @@ export default function ParkingPlanAndRulesPage() {
   const router = useRouter();
 
   const loadData = useCallback(async () => {
-    const token = getTokenValue("token");
+    const token = getTokenValue("Admin_token");
     if (!token) {
       setLoading(false);
       router.push("/admin/login");

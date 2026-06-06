@@ -77,7 +77,7 @@ export const PenaltyReportCharts = ({
             </div>
           </div>
           
-          <div className="relative group">
+          {/* <div className="relative group">
             <select
               value={selectedPeriod}
               onChange={(e) => handlePeriodChange(e.target.value)}
@@ -88,7 +88,7 @@ export const PenaltyReportCharts = ({
               ))}
             </select>
             <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] group-hover:text-[#F43F5E] pointer-events-none transition-colors" />
-          </div>
+          </div> */}
         </div>
 
         <div className="h-[280px] w-full">

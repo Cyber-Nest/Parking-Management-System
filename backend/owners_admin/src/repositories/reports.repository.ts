@@ -78,7 +78,7 @@ export class ReportsRepository {
         }
         if (to) {
             conditions.push('p.paid_at <= ?');
-            values.push(to);
+            values.push(`${to} 23:59:59`);
         }
         if (parkingLotId?.trim()) {
             conditions.push(this.paymentLotCondition('p'));
@@ -251,7 +251,7 @@ export class ReportsRepository {
         }
         if (to) {
             conditions.push('date_issued <= ?');
-            values.push(to);
+            values.push(`${to} 23:59:59`);
         }
         if (parkingLotId?.trim()) {
             conditions.push(this.ticketLotCondition());
@@ -306,7 +306,7 @@ export class ReportsRepository {
         }
         if (to) {
             joinConditions.push('t.date_issued <= ?');
-            joinValues.push(to);
+            joinValues.push(`${to} 23:59:59`);
         }
         if (parkingLotId?.trim()) {
             joinConditions.push(this.ticketLotCondition('t'));
@@ -355,7 +355,7 @@ export class ReportsRepository {
         }
         if (to) {
             conditions.push('p.paid_at <= ?');
-            values.push(to);
+            values.push(`${to} 23:59:59`);
         }
         if (parkingLotId?.trim()) {
             conditions.push(this.paymentLotCondition('p'));
@@ -391,7 +391,7 @@ export class ReportsRepository {
         }
         if (to) {
             conditions.push('date_issued <= ?');
-            values.push(to);
+            values.push(`${to} 23:59:59`);
         }
         if (parkingLotId?.trim()) {
             conditions.push(this.ticketLotCondition());
@@ -533,7 +533,20 @@ export class ReportsRepository {
         return { planData };
     }
 
-    async getAuditReport(limit = 50) {
+    async getAuditReport(limit = 50, from?: string, to?: string) {
+        const conditions: string[] = [];
+        const values: any[] = [];
+        if (from) {
+            conditions.push('created_at >= ?');
+            values.push(from);
+        }
+        if (to) {
+            conditions.push('created_at <= ?');
+            values.push(`${to} 23:59:59`);
+        }
+
+        const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+
         const summary = await queryRows<{
             total_logs: number;
             success_count: number;
@@ -543,7 +556,9 @@ export class ReportsRepository {
          COUNT(*) AS total_logs,
          SUM(status = 'success') AS success_count,
          SUM(status = 'failure') AS failure_count
-       FROM audit_logs`
+       FROM audit_logs
+       ${whereClause}`,
+            values
         );
 
         const recentActivity = await queryRows<{
@@ -563,11 +578,12 @@ export class ReportsRepository {
             created_at: Date;
         }>(
             `SELECT id, user_id, user_name, action, module, resource_id, resource_name, details,
-              old_value, new_value, ip_address, user_agent, status, created_at
+               old_value, new_value, ip_address, user_agent, status, created_at
        FROM audit_logs
+       ${whereClause}
        ORDER BY created_at DESC
        LIMIT ?`,
-            [limit]
+            [...values, limit]
         );
 
         return { summary: summary[0] ?? { total_logs: 0, success_count: 0, failure_count: 0 }, recentActivity };
@@ -814,7 +830,7 @@ export class ReportsRepository {
         }
         if (to) {
             conditions.push('p.paid_at <= ?');
-            values.push(to);
+            values.push(`${to} 23:59:59`);
         }
         if (parkingLotId?.trim()) {
             conditions.push(this.paymentLotCondition('p'));

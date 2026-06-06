@@ -42,6 +42,9 @@ export interface TicketRow {
   notes?: string | null;
   parking_lot_id?: string | null;
   parking_lot_name?: string | null;
+  payment_method?: string | null;
+  transaction_ref?: string | null;
+  evidence_photos?: { id: string; image: string }[];
 }
 
 interface CountRow {
@@ -111,6 +114,8 @@ export class TicketRepository {
     };
   }
 
+
+
   async list(
     filters: TicketListFilters,
   ): Promise<{ items: TicketRow[]; total: number }> {
@@ -119,9 +124,11 @@ export class TicketRepository {
 
     const items = await queryRows<TicketRow>(
       `SELECT t.id, t.ticket_number, t.officer_id, t.officer_name, t.license_plate, t.location_name, t.amount, t.reason, t.status,
-              t.date_issued, t.due_date, t.paid_at, t.remarks, t.note, t.dispute_raised, t.created_at, t.session_id,
+              t.date_issued, t.due_date, t.paid_at, t.remarks, t.note, t.dispute_raised, t.created_at, t.session_id, t.payment_id,
               COALESCE(tz.parking_lot_id, tz_id.parking_lot_id, sz.parking_lot_id, sz_id.parking_lot_id, pp.parking_lot_id, o.parking_lot_id, pl_direct.id, (SELECT id FROM parking_lots ORDER BY created_at ASC LIMIT 1)) AS parking_lot_id,
-              COALESCE(pl.lot_name, pl_by_officer.lot_name, pl_direct.lot_name, (SELECT lot_name FROM parking_lots ORDER BY created_at ASC LIMIT 1)) AS parking_lot_name
+              COALESCE(pl.lot_name, pl_by_officer.lot_name, pl_direct.lot_name, (SELECT lot_name FROM parking_lots ORDER BY created_at ASC LIMIT 1)) AS parking_lot_name,
+              ps.start_time, ps.end_time, ps.plan_name,
+              pay.payment_method, pay.transaction_ref
        FROM penalty_tickets t
        LEFT JOIN parking_zones tz ON tz.parking_name = t.location_name
        LEFT JOIN parking_zones tz_id ON tz_id.id = t.location_name
@@ -133,11 +140,31 @@ export class TicketRepository {
        LEFT JOIN parking_lots pl_by_officer ON pl_by_officer.id = o.parking_lot_id
        LEFT JOIN parking_lots pl_direct ON (pl_direct.lot_name = t.location_name OR pl_direct.id = t.location_name)
        LEFT JOIN parking_lots pl ON pl.id = COALESCE(tz.parking_lot_id, tz_id.parking_lot_id, sz.parking_lot_id, sz_id.parking_lot_id, pp.parking_lot_id)
+       LEFT JOIN payments pay ON pay.id = t.payment_id
        ${clause}
        ORDER BY t.date_issued DESC
        LIMIT ? OFFSET ?`,
       [...values, filters.limit, offset],
     );
+
+    if (items.length > 0) {
+      const ticketIds = items.map(t => t.id);
+      const placeholders = ticketIds.map(() => '?').join(',');
+      const photosData = await queryRows<{ticket_id: string, photo_url: string, id: string}>(
+        `SELECT id, ticket_id, photo_url FROM ticket_photos WHERE ticket_id IN (${placeholders}) ORDER BY uploaded_at ASC`,
+        ticketIds
+      );
+      
+      const photoMap = new Map<string, {id: string, image: string}[]>();
+      for (const p of photosData) {
+        if (!photoMap.has(p.ticket_id)) photoMap.set(p.ticket_id, []);
+        photoMap.get(p.ticket_id)!.push({ id: p.id, image: p.photo_url });
+      }
+
+      for (const item of items) {
+        item.evidence_photos = photoMap.get(item.id) || [];
+      }
+    }
 
     const countRows = await queryRows<CountRow>(
       `SELECT COUNT(*) AS total
@@ -260,13 +287,23 @@ export class TicketRepository {
     const rows = await queryRows<TicketRow>(
       `SELECT t.id, t.ticket_number, t.officer_id, t.officer_name, t.license_plate, t.location_name, t.amount, t.reason, t.status,
               t.date_issued, t.due_date, t.paid_at, t.payment_id, t.remarks, t.note, t.dispute_raised, t.dispute_message, t.dispute_at,
-              t.dispute_resolved_at, t.created_at, t.session_id, s.start_time, s.end_time, s.plan_name, s.notes
+              t.dispute_resolved_at, t.created_at, t.session_id, s.start_time, s.end_time, s.plan_name, s.notes,
+              pay.payment_method, pay.transaction_ref
        FROM penalty_tickets t
        LEFT JOIN parking_sessions s ON t.session_id = s.id
+       LEFT JOIN payments pay ON pay.id = t.payment_id
        WHERE t.id = ? LIMIT 1`,
       [id],
     );
-    return rows[0] ?? null;
+    const row = rows[0] ?? null;
+    if (row) {
+      const photosData = await queryRows<{id: string, photo_url: string}>(
+        `SELECT id, photo_url FROM ticket_photos WHERE ticket_id = ? ORDER BY uploaded_at ASC`,
+        [row.id]
+      );
+      row.evidence_photos = photosData.map(p => ({ id: p.id, image: p.photo_url }));
+    }
+    return row;
   }
 
   async findByTicketNumber(ticketNumber: string): Promise<TicketRow | null> {
@@ -275,14 +312,24 @@ export class TicketRepository {
     const rows = await queryRows<TicketRow>(
       `SELECT t.id, t.ticket_number, t.officer_id, t.officer_name, t.license_plate, t.location_name, t.amount, t.reason, t.status,
               t.date_issued, t.due_date, t.paid_at, t.payment_id, t.remarks, t.note, t.dispute_raised, t.dispute_message, t.dispute_at,
-              t.dispute_resolved_at, t.created_at, t.session_id, s.start_time, s.end_time, s.plan_name, s.notes
+              t.dispute_resolved_at, t.created_at, t.session_id, s.start_time, s.end_time, s.plan_name, s.notes,
+              pay.payment_method, pay.transaction_ref
        FROM penalty_tickets t
        LEFT JOIN parking_sessions s ON t.session_id = s.id
+       LEFT JOIN payments pay ON pay.id = t.payment_id
        WHERE t.ticket_number IN (${candidates.map(() => "?").join(", ")})
        LIMIT 1`,
       candidates,
     );
-    return rows[0] ?? null;
+    const row = rows[0] ?? null;
+    if (row) {
+      const photosData = await queryRows<{id: string, photo_url: string}>(
+        `SELECT id, photo_url FROM ticket_photos WHERE ticket_id = ? ORDER BY uploaded_at ASC`,
+        [row.id]
+      );
+      row.evidence_photos = photosData.map(p => ({ id: p.id, image: p.photo_url }));
+    }
+    return row;
   }
 
   async raiseDispute(id: string, disputeMessage: string): Promise<number> {

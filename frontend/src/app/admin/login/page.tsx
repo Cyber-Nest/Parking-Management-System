@@ -31,12 +31,12 @@ export default function LoginPage() {
       const refreshToken = data?.data?.refreshToken;
 
       if (accessToken) {
-        document.cookie = `token=${encodeURIComponent(accessToken)}; path=/; samesite=lax`;
-        window.localStorage.setItem("token", accessToken);
+        document.cookie = `Admin_token=${encodeURIComponent(accessToken)}; path=/; samesite=lax`;
+        window.localStorage.setItem("Admin_token", accessToken);
       }
       if (refreshToken) {
-        document.cookie = `refreshToken=${encodeURIComponent(refreshToken)}; path=/; samesite=lax`;
-        window.localStorage.setItem("refreshToken", refreshToken);
+        document.cookie = `Admin_refreshToken=${encodeURIComponent(refreshToken)}; path=/; samesite=lax`;
+        window.localStorage.setItem("Admin_refreshToken", refreshToken);
       }
 
       router.push("/dashboard");

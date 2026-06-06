@@ -12,7 +12,12 @@ import {
   Flag,
   RefreshCw,
   Ban,
+  Timer,
 } from "lucide-react";
+
+type ExpiryFilter = "all" | "active" | "expiry_soon" | "expired";
+
+const EXPIRY_SOON_MINUTES = 10; //expiry of 10 minutes = "Expiry Soon"
 
 import { StatCard } from "@/components/common/StatCard";
 import { TableSkeleton } from "@/components/common/TableSkeleton";
@@ -20,7 +25,10 @@ import toast from "react-hot-toast";
 import { ActionDropdown } from "@/components/active-parking/ActionDropdown";
 import { SessionDetailsDrawer } from "@/components/active-parking/SessionDetailsDrawer";
 import { ParkingLotFilter } from "@/components/common/ParkingLotFilter";
-import { listParkingLots, ParkingLotRecord } from "@/services/parking-lots.service";
+import {
+  listParkingLots,
+  ParkingLotRecord,
+} from "@/services/parking-lots.service";
 
 // Services
 import {
@@ -86,6 +94,7 @@ export default function ActiveParkingSessionsPage() {
   const [isDetailsDrawerOpen, setIsDetailsDrawerOpen] = useState(false);
   const [planFilter, setPlanFilter] = useState("All Plans");
   const [statusFilter, setStatusFilter] = useState("All Status");
+  const [expiryFilter, setExpiryFilter] = useState<ExpiryFilter>("active");
   const [parkingLots, setParkingLots] = useState<ParkingLotRecord[]>([]);
   const [parkingLotId, setParkingLotId] = useState("");
 
@@ -103,8 +112,12 @@ export default function ActiveParkingSessionsPage() {
       try {
         setLoading(true);
         const [statsRes, sessionRes] = await Promise.all([
-          parkingService.getStats({ parking_lot_id: parkingLotId || undefined }),
-          parkingService.getParkingSessions({ parking_lot_id: parkingLotId || undefined }),
+          parkingService.getStats({
+            parking_lot_id: parkingLotId || undefined,
+          }),
+          parkingService.getParkingSessions({
+            parking_lot_id: parkingLotId || undefined,
+          }),
         ]);
         setStats(statsRes);
         setSessions(sessionRes);
@@ -119,8 +132,20 @@ export default function ActiveParkingSessionsPage() {
   }, [parkingLotId]);
 
   useEffect(() => {
-    listParkingLots().then(setParkingLots).catch((error) => console.error("Failed to load parking lots", error));
+    listParkingLots()
+      .then(setParkingLots)
+      .catch((error) => console.error("Failed to load parking lots", error));
   }, []);
+
+  // Expiry filter helper
+  const getExpiryCategory = (expiryTime: string): ExpiryFilter => {
+    const now = Date.now();
+    const expiry = new Date(expiryTime).getTime();
+    const diffMs = expiry - now;
+    if (diffMs <= 0) return "expired";
+    if (diffMs <= EXPIRY_SOON_MINUTES * 60 * 1000) return "expiry_soon";
+    return "active";
+  };
 
   // Filtered Sessions
   const filteredSessions = useMemo(() => {
@@ -134,9 +159,13 @@ export default function ActiveParkingSessionsPage() {
         statusFilter === "All Status"
           ? true
           : session.paymentStatus === statusFilter;
-      return matchesSearch && matchesPlan && matchesStatus;
+      const matchesExpiry =
+        expiryFilter === "all"
+          ? true
+          : getExpiryCategory(session.expiryTime) === expiryFilter;
+      return matchesSearch && matchesPlan && matchesStatus && matchesExpiry;
     });
-  }, [sessions, search, planFilter, statusFilter]);
+  }, [sessions, search, planFilter, statusFilter, expiryFilter]);
 
   // Pagination
   const totalPages = Math.ceil(filteredSessions.length / itemsPerPage);
@@ -179,6 +208,12 @@ export default function ActiveParkingSessionsPage() {
   };
 
   const handleCancel = async (session: ParkingSession) => {
+    const isExpired = new Date(session.expiryTime).getTime() <= Date.now();
+    const isNotActive = session.status?.toLowerCase() !== "active";
+    if (isExpired || isNotActive) {
+      showToast("Only active ongoing sessions can be cancelled.", "error");
+      return;
+    }
     try {
       await parkingService.cancelParkingSession(
         session.id,
@@ -223,6 +258,7 @@ export default function ActiveParkingSessionsPage() {
     setSearch("");
     setPlanFilter("All Plans");
     setStatusFilter("All Status");
+    setExpiryFilter("all");
     setParkingLotId("");
     setCurrentPage(1);
     showToast("All filters cleared", "info");
@@ -300,6 +336,35 @@ export default function ActiveParkingSessionsPage() {
                   setCurrentPage(1);
                 }}
               />
+              {/* Session Expiry Filter */}
+              <div className="relative">
+                <Timer
+                  size={14}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] pointer-events-none"
+                />
+                <select
+                  value={expiryFilter}
+                  onChange={(e) => {
+                    setExpiryFilter(e.target.value as ExpiryFilter);
+                    setCurrentPage(1);
+                  }}
+                  className={`input pl-8 w-auto min-w-[150px] text-xs font-bold cursor-pointer transition-colors ${
+                    expiryFilter === "active"
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      : expiryFilter === "expiry_soon"
+                        ? "bg-orange-50 text-orange-700 border-orange-200"
+                        : expiryFilter === "expired"
+                          ? "bg-red-50 text-red-700 border-red-200"
+                          : "bg-[var(--color-surface-soft)]"
+                  }`}
+                >
+                  <option value="all">All Sessions</option>
+                  <option value="active">On Going</option>
+                  <option value="expiry_soon">Expiry Soon</option>
+                  <option value="expired">Expired</option>
+                </select>
+              </div>
+
               {/* Plan Filter */}
               <select
                 value={planFilter}
@@ -377,7 +442,10 @@ export default function ActiveParkingSessionsPage() {
                       className="hover:bg-[var(--color-surface-soft)]/50 transition-colors"
                     >
                       <td className="px-6 py-4">
-                        <div className="font-bold text-[var(--color-primary)]" title={row.id}>
+                        <div
+                          className="font-bold text-[var(--color-primary)]"
+                          title={row.id}
+                        >
                           {truncateId(row.id)}
                         </div>
                         {/* <div className="mt-1 text-[10px] text-[var(--color-text-muted)] font-mono">
@@ -400,7 +468,10 @@ export default function ActiveParkingSessionsPage() {
                           {row.parkingLotName || "Unassigned"}
                         </div>
                         {row.parkingLotId ? (
-                          <div className="text-[10px] text-[var(--color-text-muted)] font-mono" title={row.parkingLotId}>
+                          <div
+                            className="text-[10px] text-[var(--color-text-muted)] font-mono"
+                            title={row.parkingLotId}
+                          >
                             {row.parkingLotId}
                           </div>
                         ) : null}
@@ -430,14 +501,25 @@ export default function ActiveParkingSessionsPage() {
                         )}
                       </td>
                       <td className="px-6 py-4">
-                        <div
-                          className={`flex items-center gap-1.5 ${row.urgent ? "text-red-500" : "text-emerald-600"}`}
-                        >
-                          <Clock size={14} />
-                          <span className="font-black text-xs uppercase tracking-tight">
-                            {row.remaining}
-                          </span>
-                        </div>
+                        {(() => {
+                          const cat = getExpiryCategory(row.expiryTime);
+                          return (
+                            <div
+                              className={`flex items-center gap-1.5 ${
+                                cat === "expired"
+                                  ? "text-red-500"
+                                  : cat === "expiry_soon"
+                                    ? "text-orange-500"
+                                    : "text-emerald-600"
+                              }`}
+                            >
+                              <Clock size={14} />
+                              <span className="font-black text-xs uppercase tracking-tight">
+                                {cat === "expired" ? "Expired" : row.remaining}
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="px-6 py-4 text-center">
                         <span

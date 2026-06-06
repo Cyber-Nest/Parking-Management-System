@@ -31,6 +31,7 @@ import toast from "react-hot-toast";
 import {
   planPerformanceService,
   PlanDetails,
+  PlanPerformanceFilters,
 } from "@/services/plan-performance.service";
 
 const SectionTitle = ({
@@ -87,7 +88,14 @@ export const PlanDetailsDrawer = ({
   onClose,
   planId,
   planName,
-}: any) => {
+  filters,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  planId: string | null;
+  planName: string | null;
+  filters?: PlanPerformanceFilters;
+}) => {
   const [loading, setLoading] = useState(true);
   const [details, setDetails] = useState<PlanDetails | null>(null);
 
@@ -96,7 +104,7 @@ export const PlanDetailsDrawer = ({
       const fetchData = async () => {
         try {
           setLoading(true);
-          const data = await planPerformanceService.getPlanDetails(planId);
+          const data = await planPerformanceService.getPlanDetails(planId, filters);
           setDetails(data);
         } catch (error) {
           toast.error("Failed to load plan intelligence");
@@ -106,7 +114,7 @@ export const PlanDetailsDrawer = ({
       };
       fetchData();
     }
-  }, [isOpen, planId]);
+  }, [isOpen, planId, filters]);
 
   if (!planId) return null;
 

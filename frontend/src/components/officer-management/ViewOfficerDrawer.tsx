@@ -293,7 +293,7 @@ export const ViewOfficerDrawer = ({
               )}
 
               {/* Activity Timeline */}
-              <div className="space-y-4 pt-4 pb-8">
+              {/* <div className="space-y-4 pt-4 pb-8">
                 <div className="flex items-center gap-2 text-[var(--color-text-secondary)]">
                   <Activity size={16} strokeWidth={2.5} />
                   <h3 className="text-xs font-black uppercase tracking-widest">
@@ -331,7 +331,7 @@ export const ViewOfficerDrawer = ({
                     </div>
                   )}
                 </div>
-              </div>
+              </div> */}
             </div>
 
             {/* Footer */}

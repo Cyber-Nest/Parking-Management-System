@@ -102,7 +102,7 @@ export const PaymentDetailsDrawer = ({ isOpen, onClose, payment }: PaymentDetail
                   <InfoCard title="Payment Date & Time" value={`${payment.date} at ${payment.time}`} icon={Calendar} />
                 </div>
                 <InfoCard title="Payment ID" value={payment.id} icon={Hash} />
-                <InfoCard title="Session ID" value={payment.sessionId || "N/A"} icon={Landmark} />
+                {/* <InfoCard title="Session ID" value={payment.sessionId || "N/A"} icon={Landmark} /> */}
               </div>
 
               {/* Refund Information Section */}

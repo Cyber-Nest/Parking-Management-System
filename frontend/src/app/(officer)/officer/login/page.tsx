@@ -24,12 +24,12 @@ export default function OfficerLoginPage() {
       const refreshToken = data?.data?.refreshToken;
 
       if (accessToken) {
-        document.cookie = `token=${encodeURIComponent(accessToken)}; path=/; samesite=lax`;
-        window.localStorage.setItem("token", accessToken);
+        document.cookie = `officer_token=${encodeURIComponent(accessToken)}; path=/; samesite=lax`;
+        window.localStorage.setItem("officer_token", accessToken);
       }
       if (refreshToken) {
-        document.cookie = `refreshToken=${encodeURIComponent(refreshToken)}; path=/; samesite=lax`;
-        window.localStorage.setItem("refreshToken", refreshToken);
+        document.cookie = `officer_refreshToken=${encodeURIComponent(refreshToken)}; path=/; samesite=lax`;
+        window.localStorage.setItem("officer_refreshToken", refreshToken);
       }
 
       const officer = data?.data?.officer;

@@ -334,7 +334,7 @@ export const PenaltyDetailsDrawer = ({
                     )}
 
                     {/* Notes Section */}
-                    {details.notes && details.notes.length > 0 && (
+                    {/* {details.notes && details.notes.length > 0 && (
                       <>
                         <SectionTitle
                           icon={<FileText />}
@@ -361,7 +361,7 @@ export const PenaltyDetailsDrawer = ({
                           ))}
                         </div>
                       </>
-                    )}
+                    )} */}
                   </motion.div>
                 )
               )}

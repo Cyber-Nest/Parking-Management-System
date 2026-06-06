@@ -264,7 +264,7 @@ export const SessionDetailsDrawer = ({
               )}
 
               {/* Dynamic Lists */}
-              <Section title="Extensions" icon={Clock}>
+              {/* <Section title="Extensions" icon={Clock}>
                 {session.extensions.length === 0 ? (
                   <p className="text-xs text-[var(--color-text-muted)] italic">
                     No extensions recorded.
@@ -279,9 +279,9 @@ export const SessionDetailsDrawer = ({
                     />
                   ))
                 )}
-              </Section>
+              </Section> */}
 
-              <Section title="Violations & Penalties" icon={AlertCircle}>
+              {/* <Section title="Violations & Penalties" icon={AlertCircle}>
                 {[...session.issues, ...session.penalties].length === 0 ? (
                   <p className="text-xs text-[var(--color-text-muted)] italic">
                     Clean record. No issues found.
@@ -308,7 +308,7 @@ export const SessionDetailsDrawer = ({
                     ))}
                   </>
                 )}
-              </Section>
+              </Section> */}
             </div>
           </motion.div>
         </>

@@ -114,7 +114,7 @@ export const dashboardService = {
       {
         id: 3,
         label: "Expired Session",
-        value: "12",
+        value: safeNum(sessionSummary?.expiredCount ?? 0),
         icon: "TimerReset",
         color: "#64748B",
         bg: "#E2E8F0",
@@ -138,7 +138,7 @@ export const dashboardService = {
       {
         id: 6,
         label: "Paid Penalty",
-        value: usd(revenueToday),
+        value: usd(paymentSummary?.penaltyRevenue ?? 0),
         icon: "BadgeCheck",
         color: "#10B981",
         bg: "#DCFCE7",
@@ -146,7 +146,7 @@ export const dashboardService = {
       {
         id: 7,
         label: "Pending Enforcement",
-        value: "4",
+        value: safeNum(ticketSummary?.disputedCount ?? 0),
         icon: "ShieldAlert",
         color: "#DC2626",
         bg: "#FEE2E2",
@@ -154,7 +154,7 @@ export const dashboardService = {
       {
         id: 8,
         label: "Total Revenue",
-        value: usd(revenueToday),
+        value: usd(safeNum(paymentSummary?.parkingRevenue ?? 0) + safeNum(paymentSummary?.penaltyRevenue ?? 0)),
         icon: "Landmark",
         color: "#0D9488",
         bg: "#CCFBF1",

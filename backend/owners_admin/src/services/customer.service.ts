@@ -37,7 +37,7 @@ export class CustomerService {
     }
 
     const zonesResponse = await parkingZoneRepo.listByLot(lotId, 1, 100);
-    const zones = zonesResponse?.items || [];
+    const zones = (zonesResponse?.items || []).filter((z: any) => !z.status || z.status === 'active');
 
     return {
       lot_id: lot.id,

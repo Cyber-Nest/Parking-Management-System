@@ -617,7 +617,7 @@ export default function OfficerPerformanceReport() {
                 <th className="px-4 sm:px-6 py-4 text-right">
                   Penalty Revenue
                 </th>
-                <th className="px-4 sm:px-6 py-4 text-center">Avg/Day</th>
+                {/* <th className="px-4 sm:px-6 py-4 text-center">Avg/Day</th> */}
                 {/* <th className="px-4 sm:px-6 py-4 text-center">Actions</th> */}
               </tr>
             </thead>
@@ -682,9 +682,9 @@ export default function OfficerPerformanceReport() {
                     <td className="px-4 sm:px-6 py-4 text-right font-black text-[var(--color-text-primary)]">
                       ${row.revenue.toLocaleString()}
                     </td>
-                    <td className="px-4 sm:px-6 py-4 text-center font-bold text-blue-600">
+                    {/* <td className="px-4 sm:px-6 py-4 text-center font-bold text-blue-600">
                       {row.avgPerDay}
-                    </td>
+                    </td> */}
                     {/* <td className="px-4 sm:px-6 py-4 text-center">
                       <button
                         onClick={() => handleViewDetails(row)}
