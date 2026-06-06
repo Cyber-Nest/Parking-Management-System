@@ -94,7 +94,7 @@ export default function ActiveParkingSessionsPage() {
   const [isDetailsDrawerOpen, setIsDetailsDrawerOpen] = useState(false);
   const [planFilter, setPlanFilter] = useState("All Plans");
   const [statusFilter, setStatusFilter] = useState("All Status");
-  const [expiryFilter, setExpiryFilter] = useState<ExpiryFilter>("active");
+  const [expiryFilter, setExpiryFilter] = useState<ExpiryFilter>("all");
   const [parkingLots, setParkingLots] = useState<ParkingLotRecord[]>([]);
   const [parkingLotId, setParkingLotId] = useState("");
 

@@ -196,15 +196,30 @@ export class EnforcementService {
 
     try {
       const userRows = await queryRows<{ email: string }>(
-        `SELECT u.email 
-         FROM users u 
-         JOIN vehicles v ON v.user_id = u.id 
-         WHERE v.license_plate = ? 
+        `SELECT customer_email AS email
+         FROM bookings 
+         WHERE REPLACE(REPLACE(UPPER(vehicle_plate_number), ' ', ''), '-', '') = REPLACE(REPLACE(UPPER(?), ' ', ''), '-', '')
+         ORDER BY created_at DESC 
          LIMIT 1`,
         [ticket.license_plate]
       );
       
-      const customerEmail = userRows[0]?.email;
+      let customerEmail = userRows[0]?.email;
+
+      if (!customerEmail) {
+        const sessionUserRows = await queryRows<{ email: string }>(
+          `SELECT u.email
+           FROM parking_sessions ps
+           JOIN users u ON u.id = ps.user_id
+           WHERE REPLACE(REPLACE(UPPER(ps.license_plate), ' ', ''), '-', '') = REPLACE(REPLACE(UPPER(?), ' ', ''), '-', '')
+             AND u.email IS NOT NULL
+           ORDER BY ps.start_time DESC
+           LIMIT 1`,
+           [ticket.license_plate]
+        );
+        customerEmail = sessionUserRows[0]?.email;
+      }
+      
       if (customerEmail) {
         await sendEmail({
           to: customerEmail,
