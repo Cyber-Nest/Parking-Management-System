@@ -16,6 +16,8 @@ export interface ParkingSession {
   amount: string;
   parkingLotId?: string | null;
   parkingLotName?: string | null;
+  subzoneId?: string | null;
+  subzoneName?: string | null;
   remaining: string;
   extensions: Array<{
     id?: string;
@@ -86,6 +88,8 @@ export const parkingService = {
         amount,
         parkingLotId: s.parking_lot_id ?? s.parkingLotId ?? null,
         parkingLotName: s.parking_lot_name ?? s.parkingLotName ?? null,
+        subzoneId: s.subzone_id ?? s.subzoneId ?? null,
+        subzoneName: s.subzone_name ?? s.subzoneName ?? null,
         remaining,
         extensions: [],
         sessionStatus: "active",
@@ -113,4 +117,3 @@ export const parkingService = {
     return cancelSession(id, reason);
   },
 };
-

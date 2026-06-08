@@ -33,7 +33,11 @@ interface ParkingPlanAndRulesFormDrawerProps {
   planForm: PlanFormData;
   ruleForm: RuleFormData;
   parkingLots?: Array<{ id: string; lot_name: string }>;
-  parkingZones?: Array<{ id: string; parking_lot_id?: string | null; parking_name: string }>;
+  parkingZones?: Array<{
+    id: string;
+    parking_lot_id?: string | null;
+    parking_name: string;
+  }>;
   onPlanChange: (data: PlanFormData) => void;
   onRuleChange: (data: RuleFormData) => void;
 }
@@ -146,13 +150,19 @@ export const ParkingPlanAndRulesFormDrawer = ({
                       className="input"
                       value={planForm.parkingZoneId ?? ""}
                       onChange={(e) =>
-                        onPlanChange({ ...planForm, parkingZoneId: e.target.value || undefined })
+                        onPlanChange({
+                          ...planForm,
+                          parkingZoneId: e.target.value || undefined,
+                        })
                       }
                       disabled={!planForm.parkingLotId}
                     >
                       <option value="">Select zone</option>
                       {parkingZones
-                        ?.filter((zone) => zone.parking_lot_id === planForm.parkingLotId)
+                        ?.filter(
+                          (zone) =>
+                            zone.parking_lot_id === planForm.parkingLotId,
+                        )
                         .map((zone) => (
                           <option key={zone.id} value={zone.id}>
                             {zone.parking_name}
@@ -161,7 +171,13 @@ export const ParkingPlanAndRulesFormDrawer = ({
                     </select>
                     <input
                       type="number"
-                      placeholder="Duration (minutes)"
+                      placeholder={
+                        planForm.type === "Daily"
+                          ? "Duration (days)"
+                          : planForm.type === "Monthly"
+                            ? "Duration (months)"
+                            : "Duration (minutes)"
+                      }
                       className="input"
                       value={planForm.duration}
                       onChange={(e) =>

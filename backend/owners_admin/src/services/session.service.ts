@@ -32,6 +32,8 @@ export class SessionService {
       created_at: s.created_at,
       parking_lot_id: s.parking_lot_id,
       parking_lot_name: s.parking_lot_name,
+      subzone_id: s.subzone_id,
+      subzone_name: s.subzone_name,
     }));
 
     return {

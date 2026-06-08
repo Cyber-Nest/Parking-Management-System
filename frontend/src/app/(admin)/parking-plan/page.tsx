@@ -28,8 +28,14 @@ import {
   parkingPlanAndRulesService,
   PenaltyRule,
 } from "@/services/parkingPlanAndRules.service";
-import { listParkingLots, ParkingLotRecord } from "@/services/parking-lots.service";
-import { listParkingZones, ParkingZoneRecord } from "@/services/parking-zones.service";
+import {
+  listParkingLots,
+  ParkingLotRecord,
+} from "@/services/parking-lots.service";
+import {
+  listParkingZones,
+  ParkingZoneRecord,
+} from "@/services/parking-zones.service";
 import { TableSkeleton } from "@/components/common/TableSkeleton";
 import { ActionButton } from "@/components/common/ActionButton";
 import toast from "react-hot-toast";
@@ -187,23 +193,44 @@ export default function ParkingPlanAndRulesPage() {
   };
 
   // Submit Handler
+  // Submit Handler
   const handleSubmit = async () => {
     if (activeTab === "plans") {
-      if (!planForm.name || !planForm.price || !planForm.duration || !planForm.parkingLotId || !planForm.parkingZoneId) {
+      if (
+        !planForm.name ||
+        !planForm.price ||
+        !planForm.duration ||
+        !planForm.parkingLotId ||
+        !planForm.parkingZoneId
+      ) {
         toast.error("Please fill name, lot, zone, price, and duration");
         return;
       }
+
       try {
+        let durationInMinutes = Number(planForm.duration);
+
+        // Daily -> Days to Minutes
+        if (planForm.type === "Daily") {
+          durationInMinutes *= 1440;
+        }
+
+        // Monthly -> Months to Minutes (30 days)
+        if (planForm.type === "Monthly") {
+          durationInMinutes *= 43200;
+        }
+
         const payload = {
           name: planForm.name,
           price: Number(planForm.price),
-          duration: Number(planForm.duration),
+          duration: durationInMinutes,
           plan_type: planForm.type,
           tax_percent: Number(planForm.tax) || 0,
           status: planForm.status,
           parking_lot_id: planForm.parkingLotId || null,
           parking_zone_id: planForm.parkingZoneId || null,
         };
+
         if (editingItem) {
           await parkingPlanAndRulesService.updatePlan(editingItem.id, payload);
           toast.success("Plan updated");
@@ -211,12 +238,14 @@ export default function ParkingPlanAndRulesPage() {
           await parkingPlanAndRulesService.createPlan(payload);
           toast.success("Plan created");
         }
+
         await loadData();
         resetForm();
       } catch (e) {
         console.error(e);
         toast.error("Could not save plan");
       }
+
       return;
     }
 
@@ -224,9 +253,11 @@ export default function ParkingPlanAndRulesPage() {
       toast.error("Please fill violation and amount");
       return;
     }
+
     const code =
       ruleForm.code?.trim() ||
       `RULE-${Date.now()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+
     try {
       const payload = {
         violation: ruleForm.violation,
@@ -236,13 +267,17 @@ export default function ParkingPlanAndRulesPage() {
         description: ruleForm.description,
         status: ruleForm.status,
       };
+
       if (editingItem) {
         await parkingPlanAndRulesService.updateRule(editingItem.id, payload);
         toast.success("Rule updated");
       } else {
-        await parkingPlanAndRulesService.createRule(payload as Omit<PenaltyRule, "id" | "created_at" | "updated_at">);
+        await parkingPlanAndRulesService.createRule(
+          payload as Omit<PenaltyRule, "id" | "created_at" | "updated_at">,
+        );
         toast.success("Rule created");
       }
+
       await loadData();
       resetForm();
     } catch (e) {
@@ -258,7 +293,13 @@ export default function ParkingPlanAndRulesPage() {
       setPlanForm({
         name: item.name,
         type: item.plan_type ?? item.type ?? "Hourly",
-        duration: String(item.duration ?? ""),
+        duration: String(
+          (item.plan_type ?? item.type) === "Daily"
+            ? Number(item.duration ?? 0) / 1440
+            : (item.plan_type ?? item.type) === "Monthly"
+              ? Number(item.duration ?? 0) / 43200
+              : Number(item.duration ?? 0),
+        ),
         price: String(item.price ?? ""),
         tax: String(item.tax_percent ?? item.tax ?? "0"),
         status: item.status ?? "Active",
@@ -404,10 +445,11 @@ export default function ParkingPlanAndRulesPage() {
                 setCurrentPage(1);
                 setSearch("");
               }}
-              className={`px-5 py-2 text-xs font-semibold rounded-[var(--radius-sm)] transition-all ${activeTab === "plans"
+              className={`px-5 py-2 text-xs font-semibold rounded-[var(--radius-sm)] transition-all ${
+                activeTab === "plans"
                   ? "bg-white text-[var(--color-primary)] shadow-sm"
                   : "text-[var(--color-text-secondary)]"
-                }`}
+              }`}
             >
               Parking Plans
             </button>
@@ -417,10 +459,11 @@ export default function ParkingPlanAndRulesPage() {
                 setCurrentPage(1);
                 setSearch("");
               }}
-              className={`px-5 py-2 text-xs font-semibold rounded-[var(--radius-sm)] transition-all ${activeTab === "rules"
+              className={`px-5 py-2 text-xs font-semibold rounded-[var(--radius-sm)] transition-all ${
+                activeTab === "rules"
                   ? "bg-white text-[var(--color-primary)] shadow-sm"
                   : "text-[var(--color-text-secondary)]"
-                }`}
+              }`}
             >
               Penalty Rules
             </button>
@@ -494,7 +537,10 @@ export default function ParkingPlanAndRulesPage() {
                     key={idx}
                     className="hover:bg-[var(--color-surface-soft)]/50 transition-colors"
                   >
-                    <td className="px-6 py-4 font-bold text-[var(--color-primary)]" title={item.id}>
+                    <td
+                      className="px-6 py-4 font-bold text-[var(--color-primary)]"
+                      title={item.id}
+                    >
                       {truncateId(item.id)}
                     </td>
                     <td className="px-6 py-4">
@@ -509,12 +555,12 @@ export default function ParkingPlanAndRulesPage() {
                     </td>
                     <td className="px-6 py-4 text-slate-700">
                       {activeTab === "plans"
-                        ? item.parking_lot_name ?? "-"
+                        ? (item.parking_lot_name ?? "-")
                         : "—"}
                     </td>
                     <td className="px-6 py-4 text-slate-700">
                       {activeTab === "plans"
-                        ? item.parking_zone_name ?? "-"
+                        ? (item.parking_zone_name ?? "-")
                         : "—"}
                     </td>
                     <td className="px-6 py-4 font-medium">
@@ -532,10 +578,11 @@ export default function ParkingPlanAndRulesPage() {
                     <td className="px-6 py-4">
                       <button
                         onClick={() => handleToggleStatus(item.id)}
-                        className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${item.status === "Active"
+                        className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
+                          item.status === "Active"
                             ? "bg-emerald-100 text-emerald-600"
                             : "bg-orange-100 text-orange-600"
-                          }`}
+                        }`}
                       >
                         {item.status}
                       </button>
@@ -589,10 +636,11 @@ export default function ParkingPlanAndRulesPage() {
                 <button
                   key={page}
                   onClick={() => setCurrentPage(page)}
-                  className={`w-9 h-9 rounded-full text-xs font-bold transition-all ${currentPage === page
+                  className={`w-9 h-9 rounded-full text-xs font-bold transition-all ${
+                    currentPage === page
                       ? "bg-[var(--color-primary)] text-white"
                       : "hover:bg-white"
-                    }`}
+                  }`}
                 >
                   {page}
                 </button>
