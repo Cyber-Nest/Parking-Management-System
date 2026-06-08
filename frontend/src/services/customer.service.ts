@@ -319,10 +319,7 @@ class CustomerService {
     const endDate = new Date(
       now.getTime() + payload.selectedDuration.minutes * 60 * 1000,
     );
-    // Calculate subtotal from parking plan / zone hourly rate when available
-    const hourlyRate =
-      payload.parkingDetails?.hourlyRate ?? payload.selectedDuration.price;
-    const subtotal = (payload.selectedDuration.minutes / 60) * hourlyRate;
+    const subtotal = payload.selectedDuration.price;
     const serviceFee = 0;
     const total = subtotal;
 
@@ -491,10 +488,7 @@ class CustomerService {
     payload: CompleteBookingPayload,
     stripePaymentIntentId: string,
   ): Promise<BookingResponse> {
-    const price = payload.parkingDetails.hourlyRate
-      ? (payload.selectedDuration.minutes / 60) *
-        payload.parkingDetails.hourlyRate
-      : payload.selectedDuration.price;
+    const price = payload.selectedDuration.price;
 
     const response = await axiosInstance.post(API_ENDPOINTS.CUSTOMER.BOOKINGS, {
       zoneId: payload.parkingDetails.zoneId,

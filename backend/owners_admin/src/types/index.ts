@@ -74,6 +74,8 @@ export interface SessionPublic {
   created_at: Date;
   parking_lot_id?: string | null;
   parking_lot_name?: string | null;
+  subzone_id?: string | null;
+  subzone_name?: string | null;
 }
 
 export interface CreateSessionBody {

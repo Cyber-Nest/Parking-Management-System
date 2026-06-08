@@ -30,6 +30,8 @@ export interface SessionRow {
   created_at: Date;
   parking_lot_id?: string | null;
   parking_lot_name?: string | null;
+  subzone_id?: string | null;
+  subzone_name?: string | null;
 }
 
 interface CountRow {
@@ -82,7 +84,9 @@ export class SessionRepository {
         COALESCE((SELECT SUM(amount) FROM payments p WHERE p.session_id = ps.id AND p.status = 'success'), 0) AS amount,
         ps.created_by_officer, ps.created_at,
         COALESCE(z.parking_lot_id, z_id.parking_lot_id, pp.parking_lot_id, o.parking_lot_id, pl_direct.id, (SELECT id FROM parking_lots ORDER BY created_at ASC LIMIT 1)) AS parking_lot_id,
-        COALESCE(pl.lot_name, pl_by_officer.lot_name, pl_direct.lot_name, (SELECT lot_name FROM parking_lots ORDER BY created_at ASC LIMIT 1)) AS parking_lot_name
+        COALESCE(pl.lot_name, pl_by_officer.lot_name, pl_direct.lot_name, (SELECT lot_name FROM parking_lots ORDER BY created_at ASC LIMIT 1)) AS parking_lot_name,
+        COALESCE(z.id, z_id.id) AS subzone_id,
+        COALESCE(z.parking_name, z_id.parking_name) AS subzone_name
        FROM parking_sessions ps
        LEFT JOIN parking_zones z ON z.parking_name = ps.location_name
        LEFT JOIN parking_zones z_id ON z_id.id = ps.location_name

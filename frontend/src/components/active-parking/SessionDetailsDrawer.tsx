@@ -194,6 +194,16 @@ export const SessionDetailsDrawer = ({
                   icon={Car}
                 />
                 <InfoCard
+                  title="Parking Lot"
+                  value={session.parkingLotName || "Unassigned"}
+                  icon={Car}
+                />
+                <InfoCard
+                  title="Subzone"
+                  value={session.subzoneName || "Unassigned"}
+                  icon={Hash}
+                />
+                <InfoCard
                   title="Pricing Plan"
                   value={session.plan}
                   icon={CreditCard}

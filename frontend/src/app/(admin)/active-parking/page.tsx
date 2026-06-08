@@ -416,9 +416,10 @@ export default function ActiveParkingSessionsPage() {
                   <th className="px-6 py-5">Session & Plan</th>
                   <th className="px-6 py-5">License Plate</th>
                   <th className="px-6 py-5">Parking Lot</th>
+                  <th className="px-6 py-5">Subzone</th>
                   <th className="px-6 py-5">Time Frame</th>
                   <th className="px-6 py-5">Remaining</th>
-                  <th className="px-6 py-5 text-center">Payment</th>
+                  {/* <th className="px-6 py-5 text-center">Payment</th> */}
                   <th className="px-6 py-5">Amount</th>
                   <th className="px-6 py-5 text-center">Actions</th>
                 </tr>
@@ -477,6 +478,19 @@ export default function ActiveParkingSessionsPage() {
                         ) : null}
                       </td>
                       <td className="px-6 py-4">
+                        <div className="font-bold text-[var(--color-text-primary)]">
+                          {row.subzoneName || "Unassigned"}
+                        </div>
+                        {row.subzoneId ? (
+                          <div
+                            className="text-[10px] text-[var(--color-text-muted)] font-mono"
+                            title={row.subzoneId}
+                          >
+                            {row.subzoneId}
+                          </div>
+                        ) : null}
+                      </td>
+                      <td className="px-6 py-4">
                         {isSameDay(row.startTime, row.expiryTime) ? (
                           <>
                             <div className="text-xs font-semibold text-[var(--color-text-primary)]">
@@ -521,19 +535,21 @@ export default function ActiveParkingSessionsPage() {
                           );
                         })()}
                       </td>
-                      <td className="px-6 py-4 text-center">
-                        <span
-                          className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-tight ${
-                            row.paymentStatus === "Paid"
-                              ? "bg-emerald-100 text-emerald-600"
-                              : "bg-red-100 text-red-600"
-                          }`}
-                        >
-                          {row.paymentStatus}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 font-black text-sm">
-                        {row.amount}
+
+                      <td className="px-6 py-4">
+                        <div className="flex flex-col gap-1">
+                          <div className="font-black text-sm">{row.amount}</div>
+
+                          <span
+                            className={`inline-flex w-fit px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-tight ${
+                              row.paymentStatus === "Paid"
+                                ? "bg-emerald-100 text-emerald-600"
+                                : "bg-red-100 text-red-600"
+                            }`}
+                          >
+                            {row.paymentStatus}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <ActionDropdown
