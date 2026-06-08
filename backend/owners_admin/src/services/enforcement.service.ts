@@ -226,7 +226,9 @@ export class EnforcementService {
            LIMIT 1`,
           [ticket.license_plate]
         );
-        customerEmail = userRows[0]?.email;
+        if (userRows[0]?.email) {
+          customerEmail = userRows[0].email;
+        }
       }
 
       // 3. Fallback to latest app session by plate
@@ -239,9 +241,11 @@ export class EnforcementService {
              AND u.email IS NOT NULL
            ORDER BY ps.start_time DESC
            LIMIT 1`,
-           [ticket.license_plate]
+          [ticket.license_plate]
         );
-        customerEmail = sessionUserRows[0]?.email;
+        if (sessionUserRows[0]?.email) {
+          customerEmail = sessionUserRows[0].email;
+        }
       }
       
       if (customerEmail) {
@@ -255,8 +259,8 @@ export class EnforcementService {
             amount: Number(ticket.amount),
             reason: ticket.reason,
             location: ticket.location_name || 'Unknown Location',
-            issuedAt: ticket.date_issued ? ticket.date_issued.toLocaleString() : new Date().toLocaleString(),
-            dueDate: ticket.due_date ? ticket.due_date.toLocaleDateString() : 'Upon receipt',
+            issuedAt: ticket.date_issued ? new Date(ticket.date_issued).toLocaleString() : new Date().toLocaleString(),
+            dueDate: ticket.due_date ? new Date(ticket.due_date).toLocaleDateString() : 'Upon receipt',
             frontendUrl: process.env.FRONTEND_URL || 'http://localhost:3000'
           }),
           emailType: 'penalty_notice',
