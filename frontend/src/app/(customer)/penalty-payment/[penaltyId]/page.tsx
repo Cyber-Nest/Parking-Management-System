@@ -284,7 +284,7 @@ export default function PenaltyPage() {
                 {/* Parking Location & Vehicle */}
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-xl bg-black/40 border border-white/5 p-3.5">
-                    <div className="flex items-center gap-1.5 mb-1.5 text-[9px] text-[#4B5563] uppercase tracking-wider font-bold">
+                    <div className="flex items-center gap-1.5 mb-1.5 text-[9px] text-white/50 uppercase tracking-wider font-bold">
                       <MapPin size={12} className="text-[#C6F432]" /> Site
                       Location
                     </div>
@@ -299,11 +299,11 @@ export default function PenaltyPage() {
                   </div>
 
                   <div className="rounded-xl bg-black/40 border border-white/5 p-3.5">
-                    <div className="flex items-center gap-1.5 mb-1.5 text-[9px] text-[#4B5563] uppercase tracking-wider font-bold">
+                    <div className="flex items-center gap-1.5 mb-1.5 text-[9px] text-white/50 uppercase tracking-wider font-bold">
                       <Car size={12} className="text-[#C6F432]" /> Vehicle
                       Target
                     </div>
-                    <p className="text-[10px] text-[#4B5563] font-mono font-medium mt-0.5">
+                    <p className="text-[10px] text-white font-mono font-medium mt-0.5">
                       {penalty.vehicleDetails?.plateNumber} •{" "}
                       {/* {penalty.vehicleDetails?.carColor} */}
                     </p>
