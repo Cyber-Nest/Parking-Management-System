@@ -324,7 +324,7 @@ export interface PenaltyNoticeData {
 
 export const penaltyNoticeTemplate = (data: PenaltyNoticeData): string => {
   const paymentUrl = data.frontendUrl
-    ? `${data.frontendUrl}/customer/penalties/${data.ticketNumber}`
+    ? `${data.frontendUrl}/pay`
     : null;
 
   return `
@@ -341,26 +341,26 @@ export const penaltyNoticeTemplate = (data: PenaltyNoticeData): string => {
         <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%">
           <!-- Header -->
           <tr>
-            <td style="background:linear-gradient(135deg, #d32f2f 0%, #c62828 100%);padding:28px 32px;border-radius:10px 10px 0 0;text-align:center">
+            <td style="background:linear-gradient(135deg, #1e293b 0%, #334155 100%);padding:28px 32px;border-radius:10px 10px 0 0;text-align:center">
               <h1 style="color:white;margin:0;font-size:26px;letter-spacing:1px">
-                🅿️ ParkSmart
+                 Parks-Smart
               </h1>
               <p style="color:rgba(255,255,255,0.9);margin:6px 0 0;font-size:14px;font-weight:bold">
-                Parking Violation Notice
+                Parking Citation Notification
               </p>
             </td>
           </tr>
           <!-- Body -->
           <tr>
             <td style="background:white;padding:36px 32px;border:1px solid #e0e0e0">
-              <div style="background:#ffebee;border:1px solid #ffcdd2;border-radius:6px;padding:16px;margin-bottom:24px;text-align:center">
-                <p style="margin:0;color:#c62828;font-size:14px;font-weight:bold">
-                  ⚠️ Parking Violation Issued
+              <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:6px;padding:16px;margin-bottom:24px;text-align:center">
+                <p style="margin:0;color:#334155;font-size:14px;font-weight:bold">
+                  New Citation Issued
                 </p>
               </div>
 
               <h2 style="color:#1a1a2e;margin:0 0 20px;font-size:18px">
-                Violation Details
+                Citation Details
               </h2>
 
               <!-- Violation Info Grid -->
@@ -372,7 +372,7 @@ export const penaltyNoticeTemplate = (data: PenaltyNoticeData): string => {
                   </td>
                   <td style="padding:12px 0 12px 24px;border-bottom:1px solid #e5e5e5">
                     <p style="margin:0;color:#666;font-size:12px;text-transform:uppercase;letter-spacing:0.5px">Amount</p>
-                    <p style="margin:6px 0 0;color:#d32f2f;font-size:16px;font-weight:bold">$${data.amount.toFixed(2)}</p>
+                    <p style="margin:6px 0 0;color:#1a1a2e;font-size:16px;font-weight:bold">$${data.amount.toFixed(2)}</p>
                   </td>
                 </tr>
                 <tr>
@@ -387,7 +387,7 @@ export const penaltyNoticeTemplate = (data: PenaltyNoticeData): string => {
                 </tr>
                 <tr>
                   <td colspan="2" style="padding:12px 0">
-                    <p style="margin:0;color:#666;font-size:12px;text-transform:uppercase;letter-spacing:0.5px">Violation Reason</p>
+                    <p style="margin:0;color:#666;font-size:12px;text-transform:uppercase;letter-spacing:0.5px">Citation Reason</p>
                     <p style="margin:6px 0 0;color:#1a1a2e;font-size:14px">${data.reason}</p>
                   </td>
                 </tr>
@@ -398,7 +398,7 @@ export const penaltyNoticeTemplate = (data: PenaltyNoticeData): string => {
                   </td>
                   <td style="padding:12px 0 12px 24px;border-bottom:1px solid #e5e5e5">
                     <p style="margin:0;color:#666;font-size:12px;text-transform:uppercase;letter-spacing:0.5px">Due Date</p>
-                    <p style="margin:6px 0 0;color:#d32f2f;font-size:14px;font-weight:bold">${data.dueDate}</p>
+                    <p style="margin:6px 0 0;color:#1a1a2e;font-size:14px;font-weight:bold">${data.dueDate}</p>
                   </td>
                 </tr>
               </table>
@@ -407,28 +407,28 @@ export const penaltyNoticeTemplate = (data: PenaltyNoticeData): string => {
               <!-- Payment CTA -->
               <div style="text-align:center;margin:24px 0">
                 <a href="${paymentUrl}"
-                   style="display:inline-block;background:#d32f2f;color:white;
+                   style="display:inline-block;background:#1062ff;color:white;
                           padding:12px 32px;text-decoration:none;border-radius:8px;
                           font-weight:bold;font-size:14px;letter-spacing:0.5px">
-                  View Ticket & Pay
+                   View Ticket & Pay
                 </a>
               </div>
               ` : ''}
 
               <!-- Important Info -->
-              <div style="background:#fff3cd;border-left:4px solid #ffc107;padding:16px;border-radius:4px;margin-bottom:24px">
-                <p style="margin:0 0 8px 0;color:#856404;font-size:13px;font-weight:bold">
-                  ⚠️ Important
+              <div style="background:#f8fafc;border-left:4px solid #64748b;padding:16px;border-radius:4px;margin-bottom:24px">
+                <p style="margin:0 0 8px 0;color:#334155;font-size:13px;font-weight:bold">
+                  Important Information
                 </p>
-                <ul style="margin:8px 0 0;padding-left:20px;color:#856404;font-size:12px;line-height:1.6">
-                  <li>Please pay this violation before the due date to avoid additional penalties</li>
-                  <li>You can dispute this violation if you believe it was issued in error</li>
-                  <li>Visit the link above to view full details and submit payment or dispute</li>
+                <ul style="margin:8px 0 0;padding-left:20px;color:#475569;font-size:12px;line-height:1.6">
+                  <li>Please review this citation and take action before the specified due date.</li>
+                  <li>You can submit a dispute online if you believe this was issued in error.</li>
+                  <li>Use the link above to view full details and submit a payment or dispute.</li>
                 </ul>
               </div>
 
               <p style="color:#999;line-height:1.7;margin:0;font-size:12px">
-                If you have questions about this violation, please contact our support team.
+                If you have questions about this citation, please contact our support team.
               </p>
             </td>
           </tr>
