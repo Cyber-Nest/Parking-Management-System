@@ -303,12 +303,9 @@ export default function PenaltyPage() {
                       <Car size={12} className="text-[#C6F432]" /> Vehicle
                       Target
                     </div>
-                    {/* <p className="text-sm font-bold truncate text-white">
-                      {penalty.vehicleDetails?.vehicleModel || "Unknown"}
-                    </p> */}
                     <p className="text-[10px] text-[#4B5563] font-mono font-medium mt-0.5">
                       {penalty.vehicleDetails?.plateNumber} •{" "}
-                      {penalty.vehicleDetails?.carColor}
+                      {/* {penalty.vehicleDetails?.carColor} */}
                     </p>
                   </div>
                 </div>

@@ -251,7 +251,7 @@ export class EnforcementService {
       if (customerEmail) {
         await sendEmail({
           to: customerEmail,
-          subject: `Parking Violation Notice - ${ticket.ticket_number}`,
+          subject: `Parks-Smart Citation Issued - Ticket #${ticket.ticket_number}`,
           html: penaltyNoticeTemplate({
             customerEmail,
             licensePlate: ticket.license_plate,
