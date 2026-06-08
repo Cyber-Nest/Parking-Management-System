@@ -29,6 +29,7 @@ import {
   listParkingLots,
   ParkingLotRecord,
 } from "@/services/parking-lots.service";
+import { listParkingPlans, ParkingPlan } from "@/services/parkingPlans.service";
 
 // Services
 import {
@@ -97,6 +98,7 @@ export default function ActiveParkingSessionsPage() {
   const [expiryFilter, setExpiryFilter] = useState<ExpiryFilter>("all");
   const [parkingLots, setParkingLots] = useState<ParkingLotRecord[]>([]);
   const [parkingLotId, setParkingLotId] = useState("");
+  const [parkingPlans, setParkingPlans] = useState<ParkingPlan[]>([]);
 
   const itemsPerPage = 10;
 
@@ -135,6 +137,9 @@ export default function ActiveParkingSessionsPage() {
     listParkingLots()
       .then(setParkingLots)
       .catch((error) => console.error("Failed to load parking lots", error));
+    listParkingPlans()
+      .then(setParkingPlans)
+      .catch((error) => console.error("Failed to load parking plans", error));
   }, []);
 
   // Expiry filter helper
@@ -374,11 +379,12 @@ export default function ActiveParkingSessionsPage() {
                 }}
                 className="input w-auto min-w-[130px] text-xs font-bold bg-[var(--color-surface-soft)] cursor-pointer"
               >
-                <option>All Plans</option>
-                <option>Hourly Basic</option>
-                <option>Half Day</option>
-                <option>Weekly Pass</option>
-                <option>Full Day</option>
+                <option value="All Plans">All Plans</option>
+                {parkingPlans.map((p) => (
+                  <option key={p.id} value={p.name}>
+                    {p.name}
+                  </option>
+                ))}
               </select>
 
               <select

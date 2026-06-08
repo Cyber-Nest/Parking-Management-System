@@ -345,11 +345,9 @@ export default function PenaltyTicketsPage() {
 
   // Get unique officers from tickets for filter dropdown
   const uniqueOfficers = useMemo(() => {
-    const officers = new Set(
-      tickets.map((ticket) => officerMap[ticket.officerId as any] || ticket.officer),
-    );
-    return ["All Officers", ...Array.from(officers)];
-  }, [tickets]);
+    const names = Object.values(officerMap);
+    return ["All Officers", ...Array.from(new Set(names))];
+  }, [officerMap]);
 
   return (
     <>

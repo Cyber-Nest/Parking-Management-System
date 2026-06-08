@@ -39,6 +39,7 @@ import {
   HeatmapData,
   HourlyOccupancyData,
 } from "@/services/peak-hours.service";
+import { listParkingPlans } from "@/services/parkingPlans.service";
 
 export default function PeakHoursOccupancyReport() {
   const [loading, setLoading] = useState(true);
@@ -68,6 +69,23 @@ export default function PeakHoursOccupancyReport() {
     endDate: "",
     parkingLotId: "",
   });
+
+  const [planTypeOptions, setPlanTypeOptions] = useState<string[]>(["All Plans"]);
+
+  useEffect(() => {
+    listParkingPlans()
+      .then((plans) => {
+        const types = Array.from(
+          new Set(
+            plans
+              .map((p: any) => p.plan_type || p.type || p.name)
+              .filter(Boolean)
+          )
+        ) as string[];
+        setPlanTypeOptions(["All Plans", ...types]);
+      })
+      .catch((error) => console.error("Failed to load plan types", error));
+  }, []);
 
   // Close export dropdown on click outside
   useEffect(() => {
@@ -257,7 +275,6 @@ export default function PeakHoursOccupancyReport() {
     "Airport",
     "West Side",
   ];
-  const planTypeOptions = ["All Plans", "Hourly", "Daily", "Monthly"];
   const dayTypeOptions = ["All Days", "Weekdays", "Weekends"];
   const groupByOptions = ["Hourly", "Daily", "Weekly"];
 

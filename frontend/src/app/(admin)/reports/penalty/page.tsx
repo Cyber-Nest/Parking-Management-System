@@ -31,6 +31,7 @@ import { ReportParkingLotFilter } from "@/components/reports/ReportParkingLotFil
 import { PenaltyReportCharts } from "@/components/reports/charts/PenaltyReportCharts";
 import { PenaltyDetailsDrawer } from "@/components/reports/drawers/PenaltyDetailsDrawer";
 import { truncateId } from "@/lib/truncateId";
+import { officerService } from "@/services/officer.service";
 
 import {
   penaltyReportService,
@@ -94,6 +95,17 @@ export default function PenaltyReport() {
   const [ticketsData, setTicketsData] = useState<PenaltyTicketData[]>([]);
   const [trendData, setTrendData] = useState<PenaltyTrendData[]>([]);
   const [violationData, setViolationData] = useState<ViolationTypeData[]>([]);
+
+  const [officerOptions, setOfficerOptions] = useState<string[]>(["All Officers"]);
+
+  useEffect(() => {
+    officerService.getOfficers({ limit: 500 })
+      .then((list) => {
+        const names = list.map((o) => o.name || o.full_name || "Officer");
+        setOfficerOptions(["All Officers", ...Array.from(new Set(names))]);
+      })
+      .catch((err) => console.error("Failed to load officers", err));
+  }, []);
 
   // Filters
   const penaltyInitialRange = defaultLast30Range();
@@ -393,16 +405,7 @@ export default function PenaltyReport() {
     return ["All Locations", ...unique];
   }, [ticketsData]);
 
-  const officerOptions = useMemo(() => {
-    const unique = Array.from(
-      new Set(
-        ticketsData
-          .map((row) => row.officerName)
-          .filter((value): value is string => Boolean(value && value !== "—")),
-      ),
-    );
-    return ["All Officers", ...unique];
-  }, [ticketsData]);
+
 
   const violationTypeOptions = useMemo(() => {
     const unique = Array.from(
