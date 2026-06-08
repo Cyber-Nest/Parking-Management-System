@@ -379,7 +379,6 @@ export default function PenaltyTicketsPage() {
             }
             title="Unpaid Tickets"
             value={stats.unpaidTickets}
-            subValue="$1,120.00"
           />
           <StatCard
             icon={
@@ -387,7 +386,6 @@ export default function PenaltyTicketsPage() {
             }
             title="Paid Tickets"
             value={stats.paidTickets}
-            subValue="$720.00"
           />
           <StatCard
             icon={
