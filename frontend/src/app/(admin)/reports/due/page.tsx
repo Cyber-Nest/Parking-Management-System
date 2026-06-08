@@ -34,6 +34,7 @@ import { TableSkeleton } from "@/components/common/TableSkeleton";
 import { ReportParkingLotFilter } from "@/components/reports/ReportParkingLotFilter";
 import { OutstandingDetailsDrawer } from "@/components/reports/drawers/OutstandingDetailsDrawer";
 import { truncateId } from "@/lib/truncateId";
+import { officerService } from "@/services/officer.service";
 
 // Services
 import {
@@ -82,6 +83,17 @@ export default function OutstandingDueReport() {
     endDate: "",
     parkingLotId: "",
   });
+
+  const [officerOptions, setOfficerOptions] = useState<string[]>(["All Officers"]);
+
+  useEffect(() => {
+    officerService.getOfficers({ limit: 500 })
+      .then((list) => {
+        const names = list.map((o) => o.name || o.full_name || "Officer");
+        setOfficerOptions(["All Officers", ...Array.from(new Set(names))]);
+      })
+      .catch((err) => console.error("Failed to load officers", err));
+  }, []);
 
   // Close export dropdown on click outside
   useEffect(() => {
@@ -286,12 +298,7 @@ export default function OutstandingDueReport() {
     "Airport Parking",
     "Residential Area",
   ];
-  const officerOptions = [
-    "All Officers",
-    "John Smith",
-    "Sarah Wright",
-    "Adam Milner",
-  ];
+
   const violationTypeOptions = [
     "All Violation Types",
     "Overtime Parking",

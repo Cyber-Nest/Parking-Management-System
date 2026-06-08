@@ -83,10 +83,10 @@ export class SessionRepository {
         ps.start_time, ps.end_time, ps.duration_minutes, ps.status, ps.notes,
         COALESCE((SELECT SUM(amount) FROM payments p WHERE p.session_id = ps.id AND p.status = 'success'), 0) AS amount,
         ps.created_by_officer, ps.created_at,
-        COALESCE(z.parking_lot_id, z_id.parking_lot_id, pp.parking_lot_id, o.parking_lot_id, pl_direct.id, (SELECT id FROM parking_lots ORDER BY created_at ASC LIMIT 1)) AS parking_lot_id,
-        COALESCE(pl.lot_name, pl_by_officer.lot_name, pl_direct.lot_name, (SELECT lot_name FROM parking_lots ORDER BY created_at ASC LIMIT 1)) AS parking_lot_name,
-        COALESCE(z.id, z_id.id) AS subzone_id,
-        COALESCE(z.parking_name, z_id.parking_name) AS subzone_name
+        MIN(COALESCE(z.parking_lot_id, z_id.parking_lot_id, pp.parking_lot_id, o.parking_lot_id, pl_direct.id, (SELECT id FROM parking_lots ORDER BY created_at ASC LIMIT 1))) AS parking_lot_id,
+        MIN(COALESCE(pl.lot_name, pl_by_officer.lot_name, pl_direct.lot_name, (SELECT lot_name FROM parking_lots ORDER BY created_at ASC LIMIT 1))) AS parking_lot_name,
+        MIN(COALESCE(z.id, z_id.id)) AS subzone_id,
+        MIN(COALESCE(z.parking_name, z_id.parking_name)) AS subzone_name
        FROM parking_sessions ps
        LEFT JOIN parking_zones z ON z.parking_name = ps.location_name
        LEFT JOIN parking_zones z_id ON z_id.id = ps.location_name
@@ -96,6 +96,7 @@ export class SessionRepository {
        LEFT JOIN parking_lots pl_direct ON (pl_direct.lot_name = ps.location_name OR pl_direct.id = ps.location_name)
        LEFT JOIN parking_lots pl ON pl.id = COALESCE(z.parking_lot_id, z_id.parking_lot_id, pp.parking_lot_id)
        ${clause}
+       GROUP BY ps.id
        ORDER BY ps.start_time DESC
        LIMIT ? OFFSET ?`,
       [...values, filters.limit, offset]

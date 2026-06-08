@@ -125,10 +125,10 @@ export class TicketRepository {
     const items = await queryRows<TicketRow>(
       `SELECT t.id, t.ticket_number, t.officer_id, t.officer_name, t.license_plate, t.location_name, t.amount, t.reason, t.status,
               t.date_issued, t.due_date, t.paid_at, t.remarks, t.note, t.dispute_raised, t.created_at, t.session_id, t.payment_id,
-              COALESCE(tz.parking_lot_id, tz_id.parking_lot_id, sz.parking_lot_id, sz_id.parking_lot_id, pp.parking_lot_id, o.parking_lot_id, pl_direct.id, (SELECT id FROM parking_lots ORDER BY created_at ASC LIMIT 1)) AS parking_lot_id,
-              COALESCE(pl.lot_name, pl_by_officer.lot_name, pl_direct.lot_name, (SELECT lot_name FROM parking_lots ORDER BY created_at ASC LIMIT 1)) AS parking_lot_name,
-              ps.start_time, ps.end_time, ps.plan_name,
-              pay.payment_method, pay.transaction_ref
+              MIN(COALESCE(tz.parking_lot_id, tz_id.parking_lot_id, sz.parking_lot_id, sz_id.parking_lot_id, pp.parking_lot_id, o.parking_lot_id, pl_direct.id, (SELECT id FROM parking_lots ORDER BY created_at ASC LIMIT 1))) AS parking_lot_id,
+              MIN(COALESCE(pl.lot_name, pl_by_officer.lot_name, pl_direct.lot_name, (SELECT lot_name FROM parking_lots ORDER BY created_at ASC LIMIT 1))) AS parking_lot_name,
+              MIN(ps.start_time) AS start_time, MIN(ps.end_time) AS end_time, MIN(ps.plan_name) AS plan_name,
+              MIN(pay.payment_method) AS payment_method, MIN(pay.transaction_ref) AS transaction_ref
        FROM penalty_tickets t
        LEFT JOIN parking_zones tz ON tz.parking_name = t.location_name
        LEFT JOIN parking_zones tz_id ON tz_id.id = t.location_name
@@ -142,6 +142,7 @@ export class TicketRepository {
        LEFT JOIN parking_lots pl ON pl.id = COALESCE(tz.parking_lot_id, tz_id.parking_lot_id, sz.parking_lot_id, sz_id.parking_lot_id, pp.parking_lot_id)
        LEFT JOIN payments pay ON pay.id = t.payment_id
        ${clause}
+       GROUP BY t.id
        ORDER BY t.date_issued DESC
        LIMIT ? OFFSET ?`,
       [...values, filters.limit, offset],

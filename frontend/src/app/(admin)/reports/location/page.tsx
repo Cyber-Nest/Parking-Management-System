@@ -43,6 +43,7 @@ import {
   listParkingLots,
   ParkingLotRecord,
 } from "@/services/parking-lots.service";
+import { listParkingPlans } from "@/services/parkingPlans.service";
 
 import {
   locationPerformanceService,
@@ -97,6 +98,23 @@ export default function LocationPerformanceReport() {
     listParkingLots()
       .then(setParkingLots)
       .catch((error) => console.error("Failed to load parking lots", error));
+  }, []);
+
+  const [planTypeOptions, setPlanTypeOptions] = useState<string[]>(["All Plans"]);
+
+  useEffect(() => {
+    listParkingPlans()
+      .then((plans) => {
+        const types = Array.from(
+          new Set(
+            plans
+              .map((p: any) => p.plan_type || p.type || p.name)
+              .filter(Boolean)
+          )
+        ) as string[];
+        setPlanTypeOptions(["All Plans", ...types]);
+      })
+      .catch((error) => console.error("Failed to load plan types", error));
   }, []);
 
   // Close export dropdown on click outside
@@ -292,7 +310,6 @@ export default function LocationPerformanceReport() {
     "Airport Parking",
   ];
   const paymentMethodOptions = ["All Methods", "Card", "Cash", "Wallet"];
-  const planTypeOptions = ["All Plans", "Hourly", "Daily", "Monthly"];
   const statusOptions = ["All Status", "Active", "Completed", "Cancelled"];
 
   return (

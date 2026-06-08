@@ -32,6 +32,7 @@ import {
   RevenueByPaymentMethod,
   RevenueTimeData,
 } from "@/services/reports.service";
+import { listParkingPlans } from "@/services/parkingPlans.service";
 
 export default function RevenueReportsPage() {
   const [loading, setLoading] = useState(true);
@@ -60,6 +61,23 @@ export default function RevenueReportsPage() {
   });
 
   const [chartPeriod, setChartPeriod] = useState("daily");
+
+  const [planTypeOptions, setPlanTypeOptions] = useState<string[]>(["All Plans"]);
+
+  useEffect(() => {
+    listParkingPlans()
+      .then((plans) => {
+        const types = Array.from(
+          new Set(
+            plans
+              .map((p: any) => p.plan_type || p.type || p.name)
+              .filter(Boolean)
+          )
+        ) as string[];
+        setPlanTypeOptions(["All Plans", ...types]);
+      })
+      .catch((error) => console.error("Failed to load plan types", error));
+  }, []);
 
   // Auto-set dates based on selectedDateOption
   useEffect(() => {
@@ -438,10 +456,9 @@ export default function RevenueReportsPage() {
                     }
                     className="w-full bg-[var(--color-surface-soft)] border border-[var(--color-border)] rounded-xl p-2.5 text-sm font-semibold outline-none focus:border-[var(--color-primary)] transition-all"
                   >
-                    <option>All Plans</option>
-                    <option>Hourly</option>
-                    <option>Daily</option>
-                    <option>Monthly</option>
+                    {planTypeOptions.map((opt) => (
+                      <option key={opt}>{opt}</option>
+                    ))}
                   </select>
                 </div>
 

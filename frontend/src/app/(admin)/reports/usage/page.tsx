@@ -42,6 +42,7 @@ import {
   HourlyUsage,
   PlanTypeDistribution,
 } from "@/services/parking-usage.service";
+import { listParkingPlans } from "@/services/parkingPlans.service";
 
 const defaultLast30Range = () => {
   const today = new Date();
@@ -100,6 +101,23 @@ export default function ParkingUsageReport() {
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const [planTypeOptions, setPlanTypeOptions] = useState<string[]>(["All Plans"]);
+
+  useEffect(() => {
+    listParkingPlans()
+      .then((plans) => {
+        const types = Array.from(
+          new Set(
+            plans
+              .map((p: any) => p.plan_type || p.type || p.name)
+              .filter(Boolean)
+          )
+        ) as string[];
+        setPlanTypeOptions(["All Plans", ...types]);
+      })
+      .catch((error) => console.error("Failed to load plan types", error));
   }, []);
 
   // Auto-set dates based on selected date option
@@ -297,7 +315,6 @@ export default function ParkingUsageReport() {
     "Mall",
     "Stadium",
   ];
-  const planTypeOptions = ["All Plans", "Hourly", "Daily", "Monthly", "Event"];
   const paymentMethodOptions = ["All Methods", "Card", "Cash", "Wallet"];
   const statusOptions = [
     "All Statuses",
