@@ -277,7 +277,7 @@ export const PlanDetailsDrawer = ({
                     </div>
 
                     {/* Trend Chart */}
-                    <SectionTitle
+                    {/* <SectionTitle
                       icon={<TrendingUp size={18} />}
                       title="Revenue Momentum"
                     />
@@ -337,7 +337,7 @@ export const PlanDetailsDrawer = ({
                           />
                         </AreaChart>
                       </ResponsiveContainer>
-                    </div>
+                    </div> */}
 
                     {/* Transactions Table */}
                     <SectionTitle
