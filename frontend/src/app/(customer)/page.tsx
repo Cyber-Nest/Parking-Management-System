@@ -275,39 +275,49 @@ export default function LandingPage() {
         } catch (_) {}
       }
 
+      let startConstraint: any = { facingMode: "environment" };
+      try {
+        const devices = await Html5Qrcode.getCameras();
+        if (devices && devices.length > 0) {
+          // Look for back / environment / rear cameras
+          const backCamera = devices.find(
+            (device) =>
+              device.label.toLowerCase().includes("back") ||
+              device.label.toLowerCase().includes("rear") ||
+              device.label.toLowerCase().includes("environment") ||
+              device.label.toLowerCase().includes("triple") ||
+              device.label.toLowerCase().includes("dual"),
+          );
+          if (backCamera) {
+            startConstraint = backCamera.id;
+          } else {
+            startConstraint = devices[0].id;
+          }
+        }
+      } catch (cameraErr) {
+        console.warn(
+          "Failed to retrieve camera list, falling back to facingMode constraint",
+          cameraErr,
+        );
+      }
+
       const scanner = new Html5Qrcode("qr-reader-mount");
       scannerRef.current = scanner;
 
       await scanner.start(
-        { facingMode: "environment" },
+        startConstraint,
         {
-          fps: 10,
-          qrbox: { width: 220, height: 220 },
+          fps: 15, // Increase frames-per-second for faster detection
+          qrbox: (width: number, height: number) => {
+            const size = Math.min(width, height) * 0.75;
+            return { width: size, height: size };
+          },
           aspectRatio: 1.0,
         },
         async (decodedText) => {
-          let scannedId = decodedText.trim();
+          const scannedText = decodedText.trim();
 
-          // Parse scanned URL to extract zoneId/lotId if applicable
-          try {
-            if (
-              scannedId.startsWith("http://") ||
-              scannedId.startsWith("https://")
-            ) {
-              const url = new URL(scannedId);
-              const lotId = url.searchParams.get("lotId");
-              const zoneId = url.searchParams.get("zoneId");
-              if (lotId || zoneId) {
-                scannedId = (lotId || zoneId) as string;
-              }
-            }
-          } catch (e) {
-            console.error("Failed to parse scanned URL", e);
-          }
-
-          setZoneInput(scannedId);
-
-          // Stop scanner and close modal
+          // Stop scanner and close modal immediately for instant feedback
           if (scannerRef.current) {
             try {
               await scannerRef.current.stop();
@@ -318,8 +328,31 @@ export default function LandingPage() {
           }
           setIsScannerOpen(false);
 
-          // Auto trigger lookup
-          await performZoneLookup(scannedId);
+          // Parse scanned URL to extract routing path or target parameters
+          try {
+            if (
+              scannedText.startsWith("http://") ||
+              scannedText.startsWith("https://")
+            ) {
+              const url = new URL(scannedText);
+              if (url.host === window.location.host) {
+                const pathAndSearch = url.pathname + url.search;
+                router.push(pathAndSearch);
+                return;
+              } else {
+                // If it's an external URL, hard redirect
+                window.location.href = scannedText;
+                return;
+              }
+            }
+          } catch (e) {
+            console.error(
+              "Failed to parse scanned URL, falling back to id search",
+              e,
+            );
+          }
+
+          router.push(`/?zoneId=${encodeURIComponent(scannedText)}`);
         },
         () => {
           // Frame errors (silent ignore)
@@ -1384,7 +1417,9 @@ export default function LandingPage() {
               </div>
 
               {/* Camera Scanner Viewport */}
-              <div className="relative w-full aspect-square max-w-[280px] mx-auto bg-[#050505] rounded-2xl overflow-hidden border border-white/5 flex items-center justify-center mb-6">
+              <div
+                className={`relative w-full aspect-square max-w-[280px] mx-auto bg-[#050505] rounded-2xl overflow-hidden border border-white/5 mb-6 ${scannerLoading || cameraError ? "flex items-center justify-center" : "block"}`}
+              >
                 {scannerLoading && (
                   <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-[#0D0D0D] text-xs text-gray-500 font-mono">
                     <div className="w-6 h-6 border-2 border-[#C6F432] border-t-transparent rounded-full animate-spin" />
