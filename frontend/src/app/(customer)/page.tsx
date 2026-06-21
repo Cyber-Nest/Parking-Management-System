@@ -112,7 +112,7 @@ export default function LandingPage() {
   const [activeTab, setActiveTab] = useState<
     "users" | "officers" | "operators"
   >("users");
-  const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [mockTime, setMockTime] = useState("01:24:45");
 
   // QR Scanner States
@@ -275,11 +275,31 @@ export default function LandingPage() {
         } catch (_) {}
       }
 
-
-      const startConstraint: any = {
-        facingMode: "environment",
-        advanced: [{ focusMode: "continuous" }]
-      };
+      let startConstraint: any = { facingMode: "environment" };
+      try {
+        const devices = await Html5Qrcode.getCameras();
+        if (devices && devices.length > 0) {
+          // Look for back / environment / rear cameras
+          const backCamera = devices.find(
+            (device) =>
+              device.label.toLowerCase().includes("back") ||
+              device.label.toLowerCase().includes("rear") ||
+              device.label.toLowerCase().includes("environment") ||
+              device.label.toLowerCase().includes("triple") ||
+              device.label.toLowerCase().includes("dual"),
+          );
+          if (backCamera) {
+            startConstraint = backCamera.id;
+          } else {
+            startConstraint = devices[0].id;
+          }
+        }
+      } catch (cameraErr) {
+        console.warn(
+          "Failed to retrieve camera list, falling back to facingMode constraint",
+          cameraErr,
+        );
+      }
 
       const scanner = new Html5Qrcode("qr-reader-mount");
       scannerRef.current = scanner;
@@ -288,7 +308,11 @@ export default function LandingPage() {
         startConstraint,
         {
           fps: 15, // Increase frames-per-second for faster detection
-          qrbox: { width: 260, height: 260 },
+          qrbox: (width: number, height: number) => {
+            const size = Math.min(width, height) * 0.75;
+            return { width: size, height: size };
+          },
+          aspectRatio: 1.0,
         },
         async (decodedText) => {
           const scannedText = decodedText.trim();
@@ -1115,16 +1139,16 @@ export default function LandingPage() {
                 return (
                   <div
                     key={index}
-                    className="border border-white/5 bg-[#090909] rounded-xl sm:rounded-2xl overflow-hidden"
+                    className="border border-white/5 bg-[#090909] rounded-xl sm:rounded-2xl overflow-hidden transition-all"
                   >
                     <button
                       onClick={() => setOpenFaq(isOpen ? null : index)}
-                      className="w-full py-4 px-5 sm:py-5 sm:px-6 flex justify-between items-start sm:items-center gap-4 text-left text-white hover:text-[#C6F432] transition-colors focus:outline-none font-bold text-xs sm:text-sm md:text-base"
+                      className="w-full py-4 px-5 sm:py-5 sm:px-6 flex justify-between items-center text-left text-white hover:text-[#C6F432] transition-colors focus:outline-none font-bold text-xs sm:text-sm md:text-base"
                     >
-                      <span className="flex-1 pt-0.5 sm:pt-0">{faq.q}</span>
+                      <span>{faq.q}</span>
                       <ChevronDown
                         size={18}
-                        className={`text-gray-500 transition-transform duration-300 flex-shrink-0 ${
+                        className={`text-gray-500 transition-transform duration-300 ${
                           isOpen ? "rotate-180 text-[#C6F432]" : ""
                         }`}
                       />
@@ -1132,10 +1156,10 @@ export default function LandingPage() {
                     <AnimatePresence initial={false}>
                       {isOpen && (
                         <motion.div
-                          initial={{ height: 0, opacity: 0 }}
-                          animate={{ height: "auto", opacity: 1 }}
-                          exit={{ height: 0, opacity: 0 }}
-                          transition={{ duration: 0.3, ease: "easeInOut" }}
+                          initial={{ height: 0 }}
+                          animate={{ height: "auto" }}
+                          exit={{ height: 0 }}
+                          transition={{ duration: 0.3 }}
                           className="overflow-hidden"
                         >
                           <div className="px-5 pb-4 pt-1 sm:px-6 sm:pb-5 sm:pt-1 text-gray-400 text-xs sm:text-sm leading-relaxed border-t border-white/5">
