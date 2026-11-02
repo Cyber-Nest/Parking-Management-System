@@ -2,9 +2,10 @@
 // Nodemailer email sender — logs every send to email_logs table
 
 import nodemailer from 'nodemailer';
-import { execute } from '../config/database';
+import { getMongoDatabase } from '../config/mongodb';
 import { SendEmailOptions } from '../types';
 import { env } from '../config/env';
+import crypto from 'crypto';
 
 const transporter = nodemailer.createTransport({
   host: env.smtp.host,
@@ -46,11 +47,20 @@ export const sendEmail = async (options: SendEmailOptions): Promise<boolean> => 
 
   // Log to DB regardless of success
   try {
-    await execute(
-      `INSERT INTO email_logs (recipient_email, email_type, subject, related_id, status, error_message)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [to, emailType, subject, relatedId ?? null, status, errorMessage]
-    );
+    const id = crypto.randomUUID();
+    const now = new Date();
+    await getMongoDatabase().collection<{ _id: string; [key: string]: unknown }>('email_logs').insertOne({
+      _id: id,
+      id,
+      recipient_email: to,
+      email_type: emailType,
+      subject,
+      related_id: relatedId ?? null,
+      status,
+      error_message: errorMessage,
+      created_at: now,
+      updated_at: now,
+    });
   } catch (dbErr) {
     console.error('[Email] Failed to log email to DB:', dbErr);
   }

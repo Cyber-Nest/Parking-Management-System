@@ -1,872 +1,169 @@
-import { queryRows } from '../config/database';
+import { Document } from "mongodb";
+import { getMongoDatabase } from "../config/mongodb";
+
+type Doc = Document & { _id: string; [key: string]: any };
+const db = () => getMongoDatabase();
+const coll = (name: string) => db().collection<Doc>(name);
+const asDate = (value?: string, end = false) => value ? new Date(`${value.slice(0, 10)}T${end ? "23:59:59.999" : "00:00:00.000"}Z`) : undefined;
+const range = (from?: string, to?: string, field = "paid_at") => {
+  const condition: Record<string, Date> = {};
+  const start = asDate(from); const end = asDate(to, true);
+  if (start) condition.$gte = start;
+  if (end) condition.$lte = end;
+  return Object.keys(condition).length ? { [field]: condition } : {};
+};
+const lotScope = async (lotId?: string) => {
+  if (!lotId?.trim()) return null;
+  const id = lotId.trim();
+  const [zones, plans, officers] = await Promise.all([
+    coll("parking_zones").find({ parking_lot_id: id }).project({ parking_name: 1 }).toArray(),
+    coll("parking_plans").find({ parking_lot_id: id }).project({ _id: 1 }).toArray(),
+    coll("officers").find({ parking_lot_id: id }).project({ _id: 1 }).toArray(),
+  ]);
+  return { zoneNames: zones.map(x => x.parking_name), planIds: plans.map(x => x._id), officerIds: officers.map(x => x._id) };
+};
+const sessionLotOr = (scope: NonNullable<Awaited<ReturnType<typeof lotScope>>>) => [{ location_name: { $in: scope.zoneNames } }, { plan_id: { $in: scope.planIds } }];
+const ticketLotOr = async (scope: NonNullable<Awaited<ReturnType<typeof lotScope>>>) => {
+  const sessions = await coll("parking_sessions").find({ $or: sessionLotOr(scope) }).project({ _id: 1 }).toArray();
+  return [{ location_name: { $in: scope.zoneNames } }, { session_id: { $in: sessions.map(x => x._id) } }, { officer_id: { $in: scope.officerIds } }];
+};
+const paymentLotOr = async (scope: NonNullable<Awaited<ReturnType<typeof lotScope>>>) => {
+  const [sessions, tickets] = await Promise.all([
+    coll("parking_sessions").find({ $or: sessionLotOr(scope) }).project({ _id: 1 }).toArray(),
+    coll("penalty_tickets").find({ location_name: { $in: scope.zoneNames } }).project({ _id: 1 }).toArray(),
+  ]);
+  return [{ session_id: { $in: sessions.map(x => x._id) } }, { ticket_id: { $in: tickets.map(x => x._id) } }];
+};
+const andFilter = (...parts: Array<Record<string, any> | null | undefined>) => {
+  const filters = parts.filter(x => x && Object.keys(x).length) as Record<string, any>[];
+  return filters.length > 1 ? { $and: filters } : filters[0] ?? {};
+};
+const paymentLookup = (from: string, localField: string, as: string) => ({ $lookup: { from, localField, foreignField: "session_id", as } });
+const cmpPlate = (field: string, plate: string) => ({ $eq: [{ $toUpper: { $trim: { input: field } } }, plate.trim().toUpperCase()] });
 
 export class ReportsRepository {
-    private appendCondition(whereClause: string, values: any[], condition?: string, conditionValues: any[] = []) {
-        if (!condition) return { clause: whereClause, values };
-        return {
-            clause: whereClause ? `${whereClause} AND ${condition}` : `WHERE ${condition}`,
-            values: [...values, ...conditionValues],
-        };
-    }
-
-    private sessionLotCondition(alias = ''): string {
-        const p = alias ? `${alias}.` : '';
-        return `(
-            ${p}location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
-            OR ${p}plan_id IN (SELECT id FROM parking_plans WHERE parking_lot_id = ?)
-        )`;
-    }
-
-    private ticketLotCondition(alias = ''): string {
-        const p = alias ? `${alias}.` : '';
-        return `(
-            ${p}location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
-            OR ${p}session_id IN (
-                SELECT id FROM parking_sessions
-                WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
-                   OR plan_id IN (SELECT id FROM parking_plans WHERE parking_lot_id = ?)
-            )
-            OR ${p}officer_id IN (SELECT id FROM officers WHERE parking_lot_id = ?)
-        )`;
-    }
-
-    private paymentLotCondition(alias = ''): string {
-        const p = alias ? `${alias}.` : '';
-        return `(
-            ${p}session_id IN (
-                SELECT id FROM parking_sessions
-                WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
-                   OR plan_id IN (SELECT id FROM parking_plans WHERE parking_lot_id = ?)
-            )
-            OR ${p}ticket_id IN (
-                SELECT id FROM penalty_tickets
-                WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
-            )
-        )`;
-    }
-
-    private lotValues(parkingLotId: string | undefined, count: number): any[] {
-        const lotId = parkingLotId?.trim();
-        return lotId ? Array(count).fill(lotId) : [];
-    }
-
-    private sessionOverlapWhere(from?: string, to?: string, tableAlias = ''): { clause: string; values: any[] } {
-        const p = tableAlias ? `${tableAlias}.` : '';
-        const conditions: string[] = [];
-        const values: any[] = [];
-        if (from) {
-            conditions.push(`${p}end_time >= ?`);
-            values.push(from);
-        }
-        if (to) {
-            conditions.push(`${p}start_time <= ?`);
-            values.push(`${to} 23:59:59`);
-        }
-        return {
-            clause: conditions.length ? `WHERE ${conditions.join(' AND ')}` : '',
-            values,
-        };
-    }
-
-    async getRevenue(from?: string, to?: string, parkingLotId?: string) {
-        const conditions: string[] = [];
-        const values: any[] = [];
-
-        if (from) {
-            conditions.push('p.paid_at >= ?');
-            values.push(from);
-        }
-        if (to) {
-            conditions.push('p.paid_at <= ?');
-            values.push(`${to} 23:59:59`);
-        }
-        if (parkingLotId?.trim()) {
-            conditions.push(this.paymentLotCondition('p'));
-            values.push(...this.lotValues(parkingLotId, 3));
-        }
-
-        const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-
-        const totals = await queryRows<{
-            total_revenue: number;
-            total_transactions: number;
-            successful_transactions: number;
-            failed_transactions: number;
-            refunded_amount: number;
-        }>(
-            `SELECT
-         COALESCE(SUM(amount), 0) AS total_revenue,
-         COUNT(*) AS total_transactions,
-         SUM(status = 'success') AS successful_transactions,
-         SUM(status = 'failed') AS failed_transactions,
-         COALESCE(SUM(CASE WHEN status = 'refunded' THEN amount ELSE 0 END), 0) AS refunded_amount
-       FROM payments p
-       ${whereClause}`,
-            values
-        );
-
-        const daily = await queryRows<{
-            report_date: string;
-            total_amount: number;
-            transaction_count: number;
-        }>(
-            `SELECT
-         DATE(p.paid_at) AS report_date,
-         COALESCE(SUM(amount), 0) AS total_amount,
-         COUNT(*) AS transaction_count
-       FROM payments p
-       ${whereClause}
-       GROUP BY DATE(p.paid_at)
-       ORDER BY report_date DESC
-       LIMIT 14`,
-            values
-        );
-
-        return {
-            totals: totals[0] ?? {
-                total_revenue: 0,
-                total_transactions: 0,
-                successful_transactions: 0,
-                failed_transactions: 0,
-                refunded_amount: 0,
-            },
-            daily,
-        };
-    }
-
-    async getUsage(from?: string, to?: string, parkingLotId?: string) {
-        const base = this.sessionOverlapWhere(from, to, 'ps');
-        const { clause: whereClause, values } = this.appendCondition(
-            base.clause,
-            base.values,
-            parkingLotId?.trim() ? this.sessionLotCondition('ps') : undefined,
-            this.lotValues(parkingLotId, 2),
-        );
-        const basePs = this.sessionOverlapWhere(from, to, 'ps');
-        const { clause: wherePs, values: valuesPs } = this.appendCondition(
-            basePs.clause,
-            basePs.values,
-            parkingLotId?.trim() ? this.sessionLotCondition('ps') : undefined,
-            this.lotValues(parkingLotId, 2),
-        );
-
-        const sessionTotals = await queryRows<{
-            status: string;
-            count: number;
-        }>(
-            `SELECT status, COUNT(*) AS count
-       FROM parking_sessions
-       ps
-       ${whereClause}
-       GROUP BY status`,
-            values
-        );
-
-        const planBreakdown = await queryRows<{
-            plan_name: string;
-            sessions: number;
-            total_duration: number;
-        }>(
-            `SELECT COALESCE(plan_name, 'Unassigned') AS plan_name, COUNT(*) AS sessions, COALESCE(SUM(duration_minutes), 0) AS total_duration
-       FROM parking_sessions
-       ps
-       ${whereClause}
-       GROUP BY plan_name
-       ORDER BY sessions DESC
-       LIMIT 12`,
-            values
-        );
-
-        const dailyBreakdown = await queryRows<{
-            report_date: string;
-            total_sessions: number;
-            completed: number;
-            active: number;
-            expired: number;
-            cancelled: number;
-            avg_duration: number;
-            revenue: number;
-        }>(
-            `SELECT DATE(ps.start_time) AS report_date,
-              COUNT(*) AS total_sessions,
-              SUM(ps.status IN ('expired','extended')) AS completed,
-              SUM(ps.status = 'active') AS active,
-              SUM(ps.status = 'expired') AS expired,
-              SUM(ps.status = 'cancelled') AS cancelled,
-              COALESCE(AVG(ps.duration_minutes), 0) AS avg_duration,
-              COALESCE(SUM(CASE WHEN p.status = 'success' AND p.payment_type IN ('parking','extension') THEN p.amount ELSE 0 END), 0) AS revenue
-            FROM parking_sessions ps
-            LEFT JOIN payments p ON p.session_id = ps.id
-            ${wherePs}
-            GROUP BY DATE(ps.start_time)
-            ORDER BY report_date DESC
-            LIMIT 45`,
-            valuesPs
-        );
-
-        const hourlyHistogram = await queryRows<{ hour: number; session_count: number }>(
-            `SELECT HOUR(start_time) AS hour, COUNT(*) AS session_count
-       FROM parking_sessions ps
-       ${whereClause}
-       GROUP BY HOUR(start_time)
-       ORDER BY hour`,
-            values
-        );
-
-        const heatmapRows = await queryRows<{ weekday: number; hour: number; session_count: number }>(
-            `SELECT WEEKDAY(start_time) AS weekday, HOUR(start_time) AS hour, COUNT(*) AS session_count
-       FROM parking_sessions ps
-       ${whereClause}
-       GROUP BY WEEKDAY(start_time), HOUR(start_time)`,
-            values
-        );
-
-        const heatmapByWeekdayHour: { weekday: number; hours: number[] }[] = [];
-        for (let wd = 0; wd < 7; wd += 1) {
-            const hours = Array(24).fill(0);
-            heatmapRows
-                .filter((r) => Number(r.weekday) === wd)
-                .forEach((r) => {
-                    hours[Number(r.hour)] = Number(r.session_count) || 0;
-                });
-            heatmapByWeekdayHour.push({ weekday: wd, hours });
-        }
-
-        return {
-            sessionTotals,
-            planBreakdown,
-            dailyBreakdown,
-            hourlyHistogram,
-            heatmapByWeekdayHour,
-        };
-    }
-
-    async getPenalty(from?: string, to?: string, parkingLotId?: string) {
-        const conditions: string[] = [];
-        const values: any[] = [];
-
-        if (from) {
-            conditions.push('date_issued >= ?');
-            values.push(from);
-        }
-        if (to) {
-            conditions.push('date_issued <= ?');
-            values.push(`${to} 23:59:59`);
-        }
-        if (parkingLotId?.trim()) {
-            conditions.push(this.ticketLotCondition());
-            values.push(...this.lotValues(parkingLotId, 4));
-        }
-
-        const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-
-        const statusSummary = await queryRows<{
-            status: string;
-            count: number;
-            total_amount: number;
-        }>(
-            `SELECT status, COUNT(*) AS count, COALESCE(SUM(amount), 0) AS total_amount
-       FROM penalty_tickets
-       ${whereClause}
-       GROUP BY status`,
-            values
-        );
-
-        const officerBreakdown = await queryRows<{
-            officer_name: string;
-            count: number;
-            total_amount: number;
-        }>(
-            `SELECT officer_name, COUNT(*) AS count, COALESCE(SUM(amount), 0) AS total_amount
-       FROM penalty_tickets
-       ${whereClause}
-       GROUP BY officer_name
-       ORDER BY count DESC
-       LIMIT 10`,
-            values
-        );
-
-        return {
-            statusSummary,
-            officerBreakdown,
-        };
-    }
-
-    async getPerformance(from?: string, to?: string, parkingLotId?: string) {
-        const joinConditions: string[] = [
-            `(t.officer_id = o.id
-              OR LOWER(TRIM(t.officer_name)) = LOWER(TRIM(o.full_name))
-              OR LOWER(TRIM(t.officer_name)) = LOWER(TRIM(o.email)))`,
-        ];
-        const joinValues: any[] = [];
-
-        if (from) {
-            joinConditions.push('t.date_issued >= ?');
-            joinValues.push(from);
-        }
-        if (to) {
-            joinConditions.push('t.date_issued <= ?');
-            joinValues.push(`${to} 23:59:59`);
-        }
-        if (parkingLotId?.trim()) {
-            joinConditions.push(this.ticketLotCondition('t'));
-            joinValues.push(...this.lotValues(parkingLotId, 4));
-        }
-
-        const officerPerformance = await queryRows<{
-            officer_id: string;
-            officer_name: string;
-            officer_email: string;
-            officer_phone: string | null;
-            officer_role: string;
-            tickets_issued: number;
-            paid_tickets: number;
-            pending_tickets: number;
-            cancelled_tickets: number;
-            total_penalty_amount: number;
-        }>(
-            `SELECT o.id AS officer_id,
-         o.full_name AS officer_name,
-         o.email AS officer_email,
-         o.phone AS officer_phone,
-         o.role AS officer_role,
-         COUNT(t.id) AS tickets_issued,
-         SUM(t.status = 'paid') AS paid_tickets,
-         SUM(t.status IN ('unpaid', 'disputed')) AS pending_tickets,
-         SUM(t.status = 'cancelled') AS cancelled_tickets,
-         COALESCE(SUM(t.amount), 0) AS total_penalty_amount
-       FROM officers o
-       LEFT JOIN penalty_tickets t ON ${joinConditions.join(' AND ')}
-       GROUP BY o.id, o.full_name, o.email, o.phone, o.role
-       ORDER BY tickets_issued DESC, o.full_name ASC`,
-            joinValues
-        );
-
-        return { officerPerformance };
-    }
-
-    async getPaymentReconciliation(from?: string, to?: string, parkingLotId?: string) {
-        const conditions: string[] = [];
-        const values: any[] = [];
-
-        if (from) {
-            conditions.push('p.paid_at >= ?');
-            values.push(from);
-        }
-        if (to) {
-            conditions.push('p.paid_at <= ?');
-            values.push(`${to} 23:59:59`);
-        }
-        if (parkingLotId?.trim()) {
-            conditions.push(this.paymentLotCondition('p'));
-            values.push(...this.lotValues(parkingLotId, 3));
-        }
-
-        const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-
-        const reconciliation = await queryRows<{
-            payment_type: string;
-            status: string;
-            count: number;
-            total_amount: number;
-        }>(
-            `SELECT payment_type, status, COUNT(*) AS count, COALESCE(SUM(amount), 0) AS total_amount
-       FROM payments
-       p
-       ${whereClause}
-       GROUP BY payment_type, status`,
-            values
-        );
-
-        return { reconciliation };
-    }
-
-    async getDue(from?: string, to?: string, parkingLotId?: string) {
-        const conditions: string[] = ['status = \'unpaid\''];
-        const values: any[] = [];
-
-        if (from) {
-            conditions.push('date_issued >= ?');
-            values.push(from);
-        }
-        if (to) {
-            conditions.push('date_issued <= ?');
-            values.push(`${to} 23:59:59`);
-        }
-        if (parkingLotId?.trim()) {
-            conditions.push(this.ticketLotCondition());
-            values.push(...this.lotValues(parkingLotId, 4));
-        }
-
-        const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-
-        const dueTickets = await queryRows<{
-            id: string;
-            ticket_number: string;
-            license_plate: string;
-            amount: number;
-            due_date: Date | null;
-            officer_name: string;
-            date_issued: Date;
-            location_name: string | null;
-            reason: string;
-        }>(
-            `SELECT id, ticket_number, license_plate, amount, due_date, officer_name, date_issued,
-              location_name, reason
-       FROM penalty_tickets
-       ${whereClause}
-       ORDER BY due_date ASC
-       LIMIT 100`,
-            values
-        );
-
-        return { dueTickets };
-    }
-
-    async getLocationPerformance(from?: string, to?: string, parkingLotId?: string) {
-        const { clause: whereClause, values } = this.sessionOverlapWhere(from, to, 'ps');
-        const lotId = parkingLotId?.trim();
-        const lotCondition = lotId
-            ? `(
-                ps.location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
-                OR ps.plan_id IN (SELECT id FROM parking_plans WHERE parking_lot_id = ?)
-              )`
-            : '';
-        const finalWhere = lotCondition
-            ? whereClause
-                ? `${whereClause} AND ${lotCondition}`
-                : `WHERE ${lotCondition}`
-            : whereClause;
-        const finalValues = lotId ? [...values, lotId, lotId] : values;
-
-        const locationData = await queryRows<{
-            location_key: string;
-            sessions: number;
-            total_duration: number;
-            revenue: number;
-        }>(
-            `SELECT COALESCE(NULLIF(TRIM(location_name), ''), plan_name, 'Unassigned') AS location_key,
-         COUNT(*) AS sessions,
-         COALESCE(SUM(duration_minutes), 0) AS total_duration,
-         COALESCE(SUM(CASE WHEN p.status = 'success' THEN p.amount ELSE 0 END), 0) AS revenue
-       FROM parking_sessions ps
-       LEFT JOIN payments p ON p.session_id = ps.id
-       ${finalWhere}
-       GROUP BY COALESCE(NULLIF(TRIM(location_name), ''), plan_name, 'Unassigned')
-       ORDER BY sessions DESC
-       LIMIT 20`,
-            finalValues
-        );
-
-        return { locationData };
-    }
-
-    async getOccupancy(from?: string, to?: string, parkingLotId?: string) {
-        const base = this.sessionOverlapWhere(from, to, 'ps');
-        const { clause: whereClause, values } = this.appendCondition(
-            base.clause,
-            base.values,
-            parkingLotId?.trim() ? this.sessionLotCondition('ps') : undefined,
-            this.lotValues(parkingLotId, 2),
-        );
-
-        const occupancy = await queryRows<{
-            status: string;
-            count: number;
-        }>(
-            `SELECT status, COUNT(*) AS count
-       FROM parking_sessions
-       ps
-       ${whereClause}
-       GROUP BY status`,
-            values
-        );
-
-        const averageDuration = await queryRows<{
-            average_duration: number;
-        }>(
-            `SELECT COALESCE(AVG(duration_minutes), 0) AS average_duration
-       FROM parking_sessions
-       ps
-       ${whereClause}`,
-            values
-        );
-
-        return {
-            occupancy,
-            averageDuration: averageDuration[0]?.average_duration ?? 0,
-        };
-    }
-
-    async getPlanPerformance(from?: string, to?: string, parkingLotId?: string) {
-        const base = this.sessionOverlapWhere(from, to, 'ps');
-        const { clause: whereClause, values } = this.appendCondition(
-            base.clause,
-            base.values,
-            parkingLotId?.trim() ? this.sessionLotCondition('ps') : undefined,
-            this.lotValues(parkingLotId, 2),
-        );
-
-        const planData = await queryRows<{
-            plan_id: string | null;
-            plan_name: string;
-            sessions_count: number;
-            average_duration: number;
-            revenue: number;
-            plan_price: number | null;
-        }>(
-            `SELECT ps.plan_id, COALESCE(NULLIF(TRIM(ps.plan_name), ''), 'Unassigned') AS plan_name,
-         COUNT(*) AS sessions_count,
-         COALESCE(AVG(ps.duration_minutes), 0) AS average_duration,
-         COALESCE(SUM(CASE WHEN p.status = 'success' AND p.payment_type IN ('parking','extension') THEN p.amount ELSE 0 END), 0) AS revenue,
-         MAX(pl.price) AS plan_price
-       FROM parking_sessions ps
-       LEFT JOIN payments p ON p.session_id = ps.id
-       LEFT JOIN parking_plans pl ON pl.id = ps.plan_id
-       ${whereClause}
-       GROUP BY ps.plan_id, COALESCE(NULLIF(TRIM(ps.plan_name), ''), 'Unassigned')
-       ORDER BY sessions_count DESC
-       LIMIT 20`,
-            values
-        );
-
-        return { planData };
-    }
-
-    async getAuditReport(limit = 50, from?: string, to?: string) {
-        const conditions: string[] = [];
-        const values: any[] = [];
-        if (from) {
-            conditions.push('created_at >= ?');
-            values.push(from);
-        }
-        if (to) {
-            conditions.push('created_at <= ?');
-            values.push(`${to} 23:59:59`);
-        }
-
-        const whereClause = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-
-        const summary = await queryRows<{
-            total_logs: number;
-            success_count: number;
-            failure_count: number;
-        }>(
-            `SELECT
-         COUNT(*) AS total_logs,
-         SUM(status = 'success') AS success_count,
-         SUM(status = 'failure') AS failure_count
-       FROM audit_logs
-       ${whereClause}`,
-            values
-        );
-
-        const recentActivity = await queryRows<{
-            id: string;
-            user_id: string;
-            user_name: string;
-            action: string;
-            module: string;
-            resource_id: string | null;
-            resource_name: string | null;
-            details: string | null;
-            old_value: string | null;
-            new_value: string | null;
-            ip_address: string | null;
-            user_agent: string | null;
-            status: string;
-            created_at: Date;
-        }>(
-            `SELECT id, user_id, user_name, action, module, resource_id, resource_name, details,
-               old_value, new_value, ip_address, user_agent, status, created_at
-       FROM audit_logs
-       ${whereClause}
-       ORDER BY created_at DESC
-       LIMIT ?`,
-            [...values, limit]
-        );
-
-        return { summary: summary[0] ?? { total_logs: 0, success_count: 0, failure_count: 0 }, recentActivity };
-    }
-
-    async getVehicleHistory(licensePlate: string, from?: string, to?: string, location?: string, parkingLotId?: string) {
-        const plate = licensePlate.trim();
-        if (!plate) {
-            return {
-                history: [],
-                parking_sessions: [],
-                payments: [],
-                refunds: [],
-                summary: {
-                    total_sessions: 0,
-                    total_payments_amount: 0,
-                    total_penalties: 0,
-                    total_penalty_amount: 0,
-                    refunds_amount: 0,
-                },
-                vehicle: null as {
-                    first_seen: Date | null;
-                    last_seen: Date | null;
-                    total_duration_minutes: number;
-                    favorite_location: string | null;
-                } | null,
-            };
-        }
-
-        const dateParts = (alias: string, col: string): { sql: string; vals: any[] } => {
-            const parts: string[] = [];
-            const vals: any[] = [];
-            if (from) {
-                parts.push(`DATE(${alias}.${col}) >= DATE(?)`);
-                vals.push(from);
-            }
-            if (to) {
-                parts.push(`DATE(${alias}.${col}) <= DATE(?)`);
-                vals.push(to);
-            }
-            return { sql: parts.length ? ` AND ${parts.join(' AND ')}` : '', vals };
-        };
-
-        const locSql = (alias: string): { sql: string; vals: any[] } => {
-            if (!location || location === 'All Locations' || !location.trim()) return { sql: '', vals: [] };
-            return { sql: ` AND ${alias}.location_name LIKE ?`, vals: [`%${location.trim()}%`] };
-        };
-
-        const lotTicketSql = parkingLotId?.trim()
-            ? { sql: ` AND ${this.ticketLotCondition('t')}`, vals: this.lotValues(parkingLotId, 4) }
-            : { sql: '', vals: [] };
-        const lotSessionSql = parkingLotId?.trim()
-            ? { sql: ` AND ${this.sessionLotCondition('ps')}`, vals: this.lotValues(parkingLotId, 2) }
-            : { sql: '', vals: [] };
-        const lotPaymentSql = parkingLotId?.trim()
-            ? { sql: ` AND ${this.paymentLotCondition('p')}`, vals: this.lotValues(parkingLotId, 3) }
-            : { sql: '', vals: [] };
-
-        const dTicket = dateParts('t', 'date_issued');
-        const lTicket = locSql('t');
-        const history = await queryRows<{
-            id: string;
-            ticket_number: string;
-            officer_name: string;
-            license_plate: string;
-            amount: number;
-            reason: string;
-            status: string;
-            date_issued: Date;
-            due_date: Date | null;
-            paid_at: Date | null;
-            remarks: string | null;
-            location_name: string | null;
-            receipt_number: string | null;
-        }>(
-            `SELECT t.id, t.ticket_number, t.officer_name, t.license_plate, t.amount, t.reason, t.status,
-              t.date_issued, t.due_date, t.paid_at, t.remarks, t.location_name,
-              p.receipt_number
-       FROM penalty_tickets t
-       LEFT JOIN payments p ON p.id = t.payment_id
-       WHERE LOWER(TRIM(t.license_plate)) = LOWER(TRIM(?))
-       ${dTicket.sql}${lTicket.sql}${lotTicketSql.sql}
-       ORDER BY t.date_issued DESC
-       LIMIT 200`,
-            [plate, ...dTicket.vals, ...lTicket.vals, ...lotTicketSql.vals]
-        );
-
-        const dPs = dateParts('ps', 'start_time');
-        const lPs = locSql('ps');
-        const parking_sessions = await queryRows<{
-            id: string;
-            start_time: Date;
-            end_time: Date | null;
-            location_name: string | null;
-            plan_name: string | null;
-            duration_minutes: number | null;
-            status: string;
-            amount_paid: number;
-            payment_method: string | null;
-            receipt_number: string | null;
-        }>(
-            `SELECT ps.id, ps.start_time, ps.end_time, ps.location_name, ps.plan_name, ps.duration_minutes, ps.status,
-        COALESCE((
-          SELECT SUM(p2.amount) FROM payments p2
-          WHERE p2.session_id = ps.id AND p2.status = 'success'
-        ), 0) AS amount_paid,
-        (SELECT p2.payment_method FROM payments p2 WHERE p2.session_id = ps.id AND p2.status = 'success' ORDER BY p2.paid_at DESC LIMIT 1) AS payment_method,
-        (SELECT p2.receipt_number FROM payments p2 WHERE p2.session_id = ps.id ORDER BY p2.paid_at DESC LIMIT 1) AS receipt_number
-       FROM parking_sessions ps
-       WHERE LOWER(TRIM(ps.license_plate)) = LOWER(TRIM(?))
-       ${dPs.sql}${lPs.sql}${lotSessionSql.sql}
-       ORDER BY ps.start_time DESC
-       LIMIT 200`,
-            [plate, ...dPs.vals, ...lPs.vals, ...lotSessionSql.vals]
-        );
-
-        const dPay = dateParts('p', 'paid_at');
-        const payments = await queryRows<{
-            id: string;
-            session_id: string | null;
-            ticket_id: string | null;
-            license_plate: string;
-            amount: number;
-            payment_method: string;
-            payment_type: string;
-            status: string;
-            transaction_ref: string | null;
-            paid_at: Date | null;
-            receipt_number: string | null;
-        }>(
-            `SELECT p.id, p.session_id, p.ticket_id, p.license_plate, p.amount, p.payment_method, p.payment_type,
-              p.status, p.transaction_ref, p.paid_at, p.receipt_number
-       FROM payments p
-       WHERE LOWER(TRIM(p.license_plate)) = LOWER(TRIM(?))
-         AND p.status <> 'refunded'
-       ${dPay.sql}${lotPaymentSql.sql}
-       ORDER BY p.paid_at DESC
-       LIMIT 200`,
-            [plate, ...dPay.vals, ...lotPaymentSql.vals]
-        );
-
-        const dRefund = dateParts('p', 'paid_at');
-        const refunds = await queryRows<{
-            id: string;
-            session_id: string | null;
-            ticket_id: string | null;
-            license_plate: string;
-            amount: number;
-            payment_method: string;
-            payment_type: string;
-            status: string;
-            transaction_ref: string | null;
-            paid_at: Date | null;
-            receipt_number: string | null;
-        }>(
-            `SELECT p.id, p.session_id, p.ticket_id, p.license_plate, p.amount, p.payment_method, p.payment_type,
-              p.status, p.transaction_ref, p.paid_at, p.receipt_number
-       FROM payments p
-       WHERE LOWER(TRIM(p.license_plate)) = LOWER(TRIM(?))
-         AND p.status = 'refunded'
-       ${dRefund.sql}${lotPaymentSql.sql}
-       ORDER BY p.paid_at DESC
-       LIMIT 200`,
-            [plate, ...dRefund.vals, ...lotPaymentSql.vals]
-        );
-
-        const total_penalty_amount = history.reduce((s, r) => s + (Number(r.amount) || 0), 0);
-        const total_payments_amount = payments
-            .filter((p) => p.status === 'success')
-            .reduce((s, p) => s + (Number(p.amount) || 0), 0);
-        const refunds_amount = refunds.reduce((s, p) => s + (Number(p.amount) || 0), 0);
-
-        const vRow = await queryRows<{
-            first_seen: Date | null;
-            last_seen: Date | null;
-            total_duration_minutes: number | null;
-        }>(
-            `SELECT MIN(ps.start_time) AS first_seen,
-              MAX(GREATEST(COALESCE(ps.end_time, ps.start_time), ps.start_time)) AS last_seen,
-              COALESCE(SUM(ps.duration_minutes), 0) AS total_duration_minutes
-       FROM parking_sessions ps
-       WHERE LOWER(TRIM(ps.license_plate)) = LOWER(TRIM(?))
-       ${dPs.sql}${lPs.sql}${lotSessionSql.sql}`,
-            [plate, ...dPs.vals, ...lPs.vals, ...lotSessionSql.vals]
-        );
-
-        const fav = await queryRows<{ location_name: string | null; c: number }>(
-            `SELECT ps.location_name, COUNT(*) AS c
-       FROM parking_sessions ps
-       WHERE LOWER(TRIM(ps.license_plate)) = LOWER(TRIM(?))
-       ${dPs.sql}${lPs.sql}${lotSessionSql.sql}
-       GROUP BY ps.location_name
-       ORDER BY c DESC
-       LIMIT 1`,
-            [plate, ...dPs.vals, ...lPs.vals, ...lotSessionSql.vals]
-        );
-
-        let vehicle =
-            vRow[0]?.first_seen || vRow[0]?.last_seen
-                ? {
-                      first_seen: vRow[0].first_seen,
-                      last_seen: vRow[0].last_seen,
-                      total_duration_minutes: Number(vRow[0].total_duration_minutes) || 0,
-                      favorite_location: fav[0]?.location_name ?? null,
-                  }
-                : null;
-
-        if (!vehicle && history.length) {
-            const times = history
-                .map((h) => new Date(h.date_issued).getTime())
-                .filter((t) => !Number.isNaN(t));
-            if (times.length) {
-                vehicle = {
-                    first_seen: new Date(Math.min(...times)),
-                    last_seen: new Date(Math.max(...times)),
-                    total_duration_minutes: 0,
-                    favorite_location: history[0].location_name ?? null,
-                };
-            }
-        }
-
-        return {
-            history,
-            parking_sessions,
-            payments,
-            refunds,
-            summary: {
-                total_sessions: parking_sessions.length,
-                total_payments_amount,
-                total_penalties: history.length,
-                total_penalty_amount,
-                refunds_amount,
-            },
-            vehicle,
-        };
-    }
-
-    async getRefunds(limit = 50, from?: string, to?: string, parkingLotId?: string) {
-        const conditions: string[] = [`p.status = 'refunded'`];
-        const values: any[] = [];
-        if (from) {
-            conditions.push('p.paid_at >= ?');
-            values.push(from);
-        }
-        if (to) {
-            conditions.push('p.paid_at <= ?');
-            values.push(`${to} 23:59:59`);
-        }
-        if (parkingLotId?.trim()) {
-            conditions.push(this.paymentLotCondition('p'));
-            values.push(...this.lotValues(parkingLotId, 3));
-        }
-        const whereClause = `WHERE ${conditions.join(' AND ')}`;
-
-        const summary = await queryRows<{
-            refund_count: number;
-            total_refunded: number;
-        }>(
-            `SELECT COUNT(*) AS refund_count, COALESCE(SUM(amount), 0) AS total_refunded
-       FROM payments p
-       ${whereClause}`,
-            values
-        );
-
-        const records = await queryRows<{
-            id: string;
-            ticket_id: string | null;
-            session_id: string | null;
-            license_plate: string;
-            amount: number;
-            payment_method: string;
-            transaction_ref: string | null;
-            paid_at: Date | null;
-            status: string;
-        }>(
-            `SELECT id, ticket_id, session_id, license_plate, amount, payment_method, transaction_ref, paid_at, status
-       FROM payments p
-       ${whereClause}
-       ORDER BY paid_at DESC
-       LIMIT ?`,
-            [...values, limit]
-        );
-
-        return { summary: summary[0] ?? { refund_count: 0, total_refunded: 0 }, records };
-    }
+  async getRevenue(from?: string, to?: string, parkingLotId?: string) {
+    const scope = await lotScope(parkingLotId);
+    const lot = scope ? { $or: await paymentLotOr(scope) } : null;
+    const filter = andFilter(range(from, to), lot);
+    const [totalsRows, daily] = await Promise.all([
+      coll("payments").aggregate([{ $match: filter }, { $group: { _id: null, total_revenue: { $sum: "$amount" }, total_transactions: { $sum: 1 }, successful_transactions: { $sum: { $cond: [{ $eq: ["$status", "success"] }, 1, 0] } }, failed_transactions: { $sum: { $cond: [{ $eq: ["$status", "failed"] }, 1, 0] } }, refunded_amount: { $sum: { $cond: [{ $eq: ["$status", "refunded"] }, "$amount", 0] } } } }, { $project: { _id: 0 } }]).toArray(),
+      coll("payments").aggregate([{ $match: filter }, { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$paid_at" } }, total_amount: { $sum: "$amount" }, transaction_count: { $sum: 1 } } }, { $project: { _id: 0, report_date: "$_id", total_amount: 1, transaction_count: 1 } }, { $sort: { report_date: -1 } }, { $limit: 14 }]).toArray(),
+    ]);
+    return { totals: totalsRows[0] ?? { total_revenue: 0, total_transactions: 0, successful_transactions: 0, failed_transactions: 0, refunded_amount: 0 }, daily };
+  }
+
+  private async sessionFilter(from?: string, to?: string, lotId?: string) {
+    const scope = await lotScope(lotId);
+    const overlap: Record<string, any> = {};
+    if (from) overlap.end_time = { $gte: asDate(from) };
+    if (to) overlap.start_time = { ...(overlap.start_time ?? {}), $lte: asDate(to, true) };
+    return andFilter(overlap, scope ? { $or: sessionLotOr(scope) } : null);
+  }
+  private async ticketFilter(from?: string, to?: string, lotId?: string) {
+    const scope = await lotScope(lotId);
+    return andFilter(range(from, to, "date_issued"), scope ? { $or: await ticketLotOr(scope) } : null);
+  }
+  private async paymentFilter(from?: string, to?: string, lotId?: string) {
+    const scope = await lotScope(lotId);
+    return andFilter(range(from, to), scope ? { $or: await paymentLotOr(scope) } : null);
+  }
+
+  async getUsage(from?: string, to?: string, parkingLotId?: string) {
+    const filter = await this.sessionFilter(from, to, parkingLotId);
+    const [sessionTotals, planBreakdown, dailyBreakdown, hourly, heat] = await Promise.all([
+      coll("parking_sessions").aggregate([{ $match: filter }, { $group: { _id: "$status", count: { $sum: 1 } } }, { $project: { _id: 0, status: "$_id", count: 1 } }]).toArray(),
+      coll("parking_sessions").aggregate([{ $match: filter }, { $group: { _id: "$plan_name", sessions: { $sum: 1 }, total_duration: { $sum: { $ifNull: ["$duration_minutes", 0] } } } }, { $project: { _id: 0, plan_name: { $ifNull: ["$_id", "Unassigned"] }, sessions: 1, total_duration: 1 } }, { $sort: { sessions: -1 } }, { $limit: 12 }]).toArray(),
+      coll("parking_sessions").aggregate([{ $match: filter }, paymentLookup("payments", "_id", "payments") , { $unwind: { path: "$payments", preserveNullAndEmptyArrays: true } }, { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$start_time" } }, total_sessions: { $sum: 1 }, completed: { $sum: { $cond: [{ $in: ["$status", ["expired", "extended"]] }, 1, 0] } }, active: { $sum: { $cond: [{ $eq: ["$status", "active"] }, 1, 0] } }, expired: { $sum: { $cond: [{ $eq: ["$status", "expired"] }, 1, 0] } }, cancelled: { $sum: { $cond: [{ $eq: ["$status", "cancelled"] }, 1, 0] } }, avg_duration: { $avg: "$duration_minutes" }, revenue: { $sum: { $cond: [{ $and: [{ $eq: ["$payments.status", "success"] }, { $in: ["$payments.payment_type", ["parking", "extension"]] }] }, "$payments.amount", 0] } } } }, { $project: { _id: 0, report_date: "$_id", total_sessions: 1, completed: 1, active: 1, expired: 1, cancelled: 1, avg_duration: { $ifNull: ["$avg_duration", 0] }, revenue: 1 } }, { $sort: { report_date: -1 } }, { $limit: 45 }]).toArray(),
+      coll("parking_sessions").aggregate([{ $match: filter }, { $group: { _id: { $hour: "$start_time" }, session_count: { $sum: 1 } } }, { $project: { _id: 0, hour: "$_id", session_count: 1 } }, { $sort: { hour: 1 } }]).toArray(),
+      coll("parking_sessions").aggregate([{ $match: filter }, { $group: { _id: { weekday: { $subtract: [{ $dayOfWeek: "$start_time" }, 2] }, hour: { $hour: "$start_time" } }, session_count: { $sum: 1 } } }, { $project: { _id: 0, weekday: { $mod: [{ $add: ["$_id.weekday", 7] }, 7] }, hour: "$_id.hour", session_count: 1 } }]).toArray(),
+    ]);
+    const heatmapByWeekdayHour = Array.from({ length: 7 }, (_, weekday) => ({ weekday, hours: Array(24).fill(0) }));
+    for (const row of heat) heatmapByWeekdayHour[row.weekday].hours[row.hour] = row.session_count;
+    return { sessionTotals, planBreakdown, dailyBreakdown, hourlyHistogram: hourly, heatmapByWeekdayHour };
+  }
+
+  async getPenalty(from?: string, to?: string, parkingLotId?: string) {
+    const filter = await this.ticketFilter(from, to, parkingLotId);
+    const [statusSummary, officerBreakdown] = await Promise.all([
+      coll("penalty_tickets").aggregate([{ $match: filter }, { $group: { _id: "$status", count: { $sum: 1 }, total_amount: { $sum: "$amount" } } }, { $project: { _id: 0, status: "$_id", count: 1, total_amount: 1 } }]).toArray(),
+      coll("penalty_tickets").aggregate([{ $match: filter }, { $group: { _id: "$officer_name", count: { $sum: 1 }, total_amount: { $sum: "$amount" } } }, { $project: { _id: 0, officer_name: "$_id", count: 1, total_amount: 1 } }, { $sort: { count: -1 } }, { $limit: 10 }]).toArray(),
+    ]);
+    return { statusSummary, officerBreakdown };
+  }
+
+  async getPerformance(from?: string, to?: string, parkingLotId?: string) {
+    const officers = await coll("officers").find().toArray();
+    const ticketFilter = await this.ticketFilter(from, to, parkingLotId);
+    const allTickets = await coll("penalty_tickets").find(ticketFilter).toArray();
+    const officerPerformance = officers.map(officer => {
+      const matches = allTickets.filter(ticket => String(ticket.officer_id ?? "") === officer._id || String(ticket.officer_name ?? "").trim().toLowerCase() === String(officer.full_name ?? "").trim().toLowerCase() || String(ticket.officer_name ?? "").trim().toLowerCase() === String(officer.email ?? "").trim().toLowerCase());
+      return { officer_id: officer._id, officer_name: officer.full_name, officer_email: officer.email, officer_phone: officer.phone ?? null, officer_role: officer.role, tickets_issued: matches.length, paid_tickets: matches.filter(x => x.status === "paid").length, pending_tickets: matches.filter(x => ["unpaid", "disputed"].includes(x.status)).length, cancelled_tickets: matches.filter(x => x.status === "cancelled").length, total_penalty_amount: matches.reduce((sum, x) => sum + Number(x.amount ?? 0), 0) };
+    }).sort((a, b) => b.tickets_issued - a.tickets_issued || String(a.officer_name).localeCompare(String(b.officer_name)));
+    return { officerPerformance };
+  }
+
+  async getPaymentReconciliation(from?: string, to?: string, parkingLotId?: string) {
+    const reconciliation = await coll("payments").aggregate([{ $match: await this.paymentFilter(from, to, parkingLotId) }, { $group: { _id: { payment_type: "$payment_type", status: "$status" }, count: { $sum: 1 }, total_amount: { $sum: "$amount" } } }, { $project: { _id: 0, payment_type: "$_id.payment_type", status: "$_id.status", count: 1, total_amount: 1 } }]).toArray();
+    return { reconciliation };
+  }
+
+  async getDue(from?: string, to?: string, parkingLotId?: string) {
+    const dueTickets = await coll("penalty_tickets").find(andFilter(await this.ticketFilter(from, to, parkingLotId), { status: "unpaid" }), { projection: { _id: 0, id: 1, ticket_number: 1, license_plate: 1, amount: 1, due_date: 1, officer_name: 1, date_issued: 1, location_name: 1, reason: 1 } }).sort({ due_date: 1 }).limit(100).toArray();
+    return { dueTickets };
+  }
+
+  async getLocationPerformance(from?: string, to?: string, parkingLotId?: string) {
+    const locationData = await coll("parking_sessions").aggregate([{ $match: await this.sessionFilter(from, to, parkingLotId) }, paymentLookup("payments", "_id", "payments"), { $unwind: { path: "$payments", preserveNullAndEmptyArrays: true } }, { $group: { _id: { $ifNull: [{ $cond: [{ $eq: [{ $trim: { input: { $ifNull: ["$location_name", ""] } } }, ""] }, "$plan_name", "$location_name"] }, "Unassigned"] }, sessions: { $sum: 1 }, total_duration: { $sum: { $ifNull: ["$duration_minutes", 0] } }, revenue: { $sum: { $cond: [{ $eq: ["$payments.status", "success"] }, "$payments.amount", 0] } } } }, { $project: { _id: 0, location_key: "$_id", sessions: 1, total_duration: 1, revenue: 1 } }, { $sort: { sessions: -1 } }, { $limit: 20 }]).toArray();
+    return { locationData };
+  }
+
+  async getOccupancy(from?: string, to?: string, parkingLotId?: string) {
+    const filter = await this.sessionFilter(from, to, parkingLotId);
+    const [occupancy, average] = await Promise.all([coll("parking_sessions").aggregate([{ $match: filter }, { $group: { _id: "$status", count: { $sum: 1 } } }, { $project: { _id: 0, status: "$_id", count: 1 } }]).toArray(), coll("parking_sessions").aggregate([{ $match: filter }, { $group: { _id: null, average_duration: { $avg: "$duration_minutes" } } }]).toArray()]);
+    return { occupancy, averageDuration: average[0]?.average_duration ?? 0 };
+  }
+
+  async getPlanPerformance(from?: string, to?: string, parkingLotId?: string) {
+    const planData = await coll("parking_sessions").aggregate([{ $match: await this.sessionFilter(from, to, parkingLotId) }, paymentLookup("payments", "_id", "payments"), { $unwind: { path: "$payments", preserveNullAndEmptyArrays: true } }, { $lookup: { from: "parking_plans", localField: "plan_id", foreignField: "_id", as: "plan" } }, { $unwind: { path: "$plan", preserveNullAndEmptyArrays: true } }, { $group: { _id: { id: "$plan_id", name: "$plan_name" }, sessions_count: { $sum: 1 }, average_duration: { $avg: "$duration_minutes" }, revenue: { $sum: { $cond: [{ $and: [{ $eq: ["$payments.status", "success"] }, { $in: ["$payments.payment_type", ["parking", "extension"]] }] }, "$payments.amount", 0] } }, plan_price: { $max: "$plan.price" } } }, { $project: { _id: 0, plan_id: "$_id.id", plan_name: { $ifNull: [{ $cond: [{ $eq: [{ $trim: { input: { $ifNull: ["$_id.name", ""] } } }, ""] }, "Unassigned", "$_id.name"] }, "Unassigned"] }, sessions_count: 1, average_duration: { $ifNull: ["$average_duration", 0] }, revenue: 1, plan_price: { $ifNull: ["$plan_price", null] } } }, { $sort: { sessions_count: -1 } }, { $limit: 20 }]).toArray();
+    return { planData };
+  }
+
+  async getAuditReport(limit = 50, from?: string, to?: string) {
+    const filter = range(from, to, "created_at");
+    const [summaryRows, recentActivity] = await Promise.all([coll("audit_logs").aggregate([{ $match: filter }, { $group: { _id: null, total_logs: { $sum: 1 }, success_count: { $sum: { $cond: [{ $eq: ["$status", "success"] }, 1, 0] } }, failure_count: { $sum: { $cond: [{ $eq: ["$status", "failure"] }, 1, 0] } } } }, { $project: { _id: 0 } }]).toArray(), coll("audit_logs").find(filter, { projection: { _id: 0, id: 1, user_id: 1, user_name: 1, action: 1, module: 1, resource_id: 1, resource_name: 1, details: 1, old_value: 1, new_value: 1, ip_address: 1, user_agent: 1, status: 1, created_at: 1 } }).sort({ created_at: -1 }).limit(Math.max(1, limit)).toArray()]);
+    return { summary: summaryRows[0] ?? { total_logs: 0, success_count: 0, failure_count: 0 }, recentActivity };
+  }
+
+  async getVehicleHistory(licensePlate: string, from?: string, to?: string, location?: string, parkingLotId?: string) {
+    const plate = licensePlate.trim();
+    const empty = { history: [], parking_sessions: [], payments: [], refunds: [], summary: { total_sessions: 0, total_payments_amount: 0, total_penalties: 0, total_penalty_amount: 0, refunds_amount: 0 }, vehicle: null };
+    if (!plate) return empty;
+    const scope = await lotScope(parkingLotId);
+    const locationFilter = location && location !== "All Locations" ? { location_name: { $regex: location.trim(), $options: "i" } } : null;
+    const plates = (field: string) => ({ $expr: cmpPlate(field, plate) });
+    const sessionsFilter = andFilter(plates("$license_plate"), range(from, to, "start_time"), locationFilter, scope ? { $or: sessionLotOr(scope) } : null);
+    const ticketFilter = andFilter(plates("$license_plate"), range(from, to, "date_issued"), locationFilter, scope ? { $or: await ticketLotOr(scope) } : null);
+    const paymentsFilter = andFilter(plates("$license_plate"), range(from, to), scope ? { $or: await paymentLotOr(scope) } : null);
+    const [history, sessionRows, paymentRows, refundRows] = await Promise.all([
+      coll("penalty_tickets").aggregate([{ $match: ticketFilter }, { $lookup: { from: "payments", localField: "payment_id", foreignField: "_id", as: "receipt" } }, { $unwind: { path: "$receipt", preserveNullAndEmptyArrays: true } }, { $project: { _id: 0, id: "$_id", ticket_number: 1, officer_name: 1, license_plate: 1, amount: 1, reason: 1, status: 1, date_issued: 1, due_date: 1, paid_at: 1, remarks: 1, location_name: 1, receipt_number: "$receipt.receipt_number" } }, { $sort: { date_issued: -1 } }, { $limit: 200 }]).toArray(),
+      coll("parking_sessions").aggregate([{ $match: sessionsFilter }, paymentLookup("payments", "_id", "payments"), { $project: { _id: 0, id: "$_id", start_time: 1, end_time: 1, location_name: 1, plan_name: 1, duration_minutes: 1, status: 1, amount_paid: { $sum: { $map: { input: { $filter: { input: "$payments", as: "p", cond: { $eq: ["$$p.status", "success"] } } }, as: "p", in: "$$p.amount" } } }, payment_method: { $arrayElemAt: ["$payments.payment_method", -1] }, receipt_number: { $arrayElemAt: ["$payments.receipt_number", -1] } } }, { $sort: { start_time: -1 } }, { $limit: 200 }]).toArray(),
+      coll("payments").find(andFilter(paymentsFilter, { status: { $ne: "refunded" } }), { projection: { session_id: 1, ticket_id: 1, license_plate: 1, amount: 1, payment_method: 1, payment_type: 1, status: 1, transaction_ref: 1, paid_at: 1, receipt_number: 1 } }).sort({ paid_at: -1 }).limit(200).toArray().then(rows => rows.map(({ _id, ...row }) => ({ ...row, id: _id })) as Array<Record<string, any>>),
+      coll("payments").find(andFilter(paymentsFilter, { status: "refunded" }), { projection: { session_id: 1, ticket_id: 1, license_plate: 1, amount: 1, payment_method: 1, payment_type: 1, status: 1, transaction_ref: 1, paid_at: 1, receipt_number: 1 } }).sort({ paid_at: -1 }).limit(200).toArray().then(rows => rows.map(({ _id, ...row }) => ({ ...row, id: _id })) as Array<Record<string, any>>),
+    ]);
+    const totalPenalty = history.reduce((sum, row) => sum + Number(row.amount ?? 0), 0);
+    const totalPayments = paymentRows.filter(row => row.status === "success").reduce((sum, row) => sum + Number(row.amount ?? 0), 0);
+    const refundsAmount = refundRows.reduce((sum, row) => sum + Number(row.amount ?? 0), 0);
+    const times = sessionRows.map(row => new Date(row.start_time).getTime()).filter(Number.isFinite);
+    const locationCounts = sessionRows.reduce((counts: Record<string, number>, row) => { const key = row.location_name ?? ""; counts[key] = (counts[key] ?? 0) + 1; return counts; }, {});
+    const vehicle = times.length ? { first_seen: new Date(Math.min(...times)), last_seen: new Date(Math.max(...times)), total_duration_minutes: sessionRows.reduce((sum, row) => sum + Number(row.duration_minutes ?? 0), 0), favorite_location: Object.entries(locationCounts).sort((a,b) => b[1]-a[1])[0]?.[0] || null } : history.length ? { first_seen: new Date(Math.min(...history.map(x => +new Date(x.date_issued)))), last_seen: new Date(Math.max(...history.map(x => +new Date(x.date_issued)))), total_duration_minutes: 0, favorite_location: history[0].location_name ?? null } : null;
+    return { history, parking_sessions: sessionRows, payments: paymentRows, refunds: refundRows, summary: { total_sessions: sessionRows.length, total_payments_amount: totalPayments, total_penalties: history.length, total_penalty_amount: totalPenalty, refunds_amount: refundsAmount }, vehicle };
+  }
+
+  async getRefunds(limit = 50, from?: string, to?: string, parkingLotId?: string) {
+    const filter = andFilter(await this.paymentFilter(from, to, parkingLotId), { status: "refunded" });
+    const [summaryRows, recordDocs] = await Promise.all([coll("payments").aggregate([{ $match: filter }, { $group: { _id: null, refund_count: { $sum: 1 }, total_refunded: { $sum: "$amount" } } }, { $project: { _id: 0 } }]).toArray(), coll("payments").find(filter, { projection: { ticket_id: 1, session_id: 1, license_plate: 1, amount: 1, payment_method: 1, transaction_ref: 1, paid_at: 1, status: 1 } }).sort({ paid_at: -1 }).limit(Math.max(1, limit)).toArray()]);
+    const records = recordDocs.map(({ _id, ...row }) => ({ ...row, id: _id }));
+    return { summary: summaryRows[0] ?? { refund_count: 0, total_refunded: 0 }, records };
+  }
 }

@@ -1,61 +1,57 @@
-/**
- * Insert default owner admin into admins table.
- * Usage: node scripts/insert-admin.js
- */
 require('dotenv').config();
+
 const bcrypt = require('bcryptjs');
-const mysql = require('mysql2/promise');
+const { MongoClient } = require('mongodb');
 const { randomUUID } = require('crypto');
 
-const ADMIN_EMAIL = 'admin@parksmart.com';
-const ADMIN_PASSWORD = 'Admin@123456';
-const ADMIN_NAME = 'John Doe';
+const required = (key) => {
+  const value = process.env[key];
+  if (!value) throw new Error(`[Config] Missing required env var: ${key}`);
+  return value;
+};
 
-(async () => {
-  const conn = await mysql.createConnection({
-    host: process.env.DB_HOST || 'localhost',
-    port: Number(process.env.DB_PORT || 3306),
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || '',
-    database: process.env.DB_NAME || 'parksmart',
-  });
+async function main() {
+  const email = required('ADMIN_EMAIL').trim().toLowerCase();
+  const password = required('ADMIN_PASSWORD');
+  const fullName = process.env.ADMIN_NAME?.trim() || 'ParkSmart Owner';
+  const client = new MongoClient(required('MONGODB_URI'), { appName: 'ParkSmart-Admin-Seed' });
 
-  const [[role]] = await conn.query(
-    `SELECT id FROM roles WHERE name = 'owner' LIMIT 1`,
-  );
-  if (!role?.id) {
-    console.error('Owner role not found. Run: npm run db:init');
-    process.exit(1);
+  try {
+    await client.connect();
+    const dbName = process.env.MONGODB_DATABASE || decodeURIComponent(new URL(process.env.MONGODB_URI).pathname.replace(/^\//, ''));
+    if (!dbName) throw new Error('[Config] MONGODB_URI must include a database name or set MONGODB_DATABASE');
+    const db = client.db(dbName);
+    await db.command({ ping: 1 });
+    const indexDefinitions = require('../src/config/mongodb-index-definitions.json');
+    for (const [collectionName, definitions] of Object.entries(indexDefinitions)) {
+      await db.collection(collectionName).createIndexes(definitions);
+    }
+    const roles = db.collection('roles');
+    await roles.updateOne({ name: 'owner' }, { $setOnInsert: { _id: 'ROLE-owner', name: 'owner', created_at: new Date(), updated_at: new Date() } }, { upsert: true });
+    const role = await roles.findOne({ name: 'owner' });
+    if (!role) throw new Error('Could not initialize the owner role');
+
+    const admins = db.collection('admins');
+    const passwordHash = await bcrypt.hash(password, Number(process.env.BCRYPT_SALT_ROUNDS || 12));
+    const now = new Date();
+    const id = randomUUID();
+    const result = await admins.updateOne(
+      { email },
+      {
+        $set: { email, password_hash: passwordHash, full_name: fullName, role_id: String(role._id), is_active: true, updated_at: now },
+        $setOnInsert: { _id: id, id, reset_token: null, reset_token_expires_at: null, last_login_at: null, created_at: now },
+      },
+      { upsert: true },
+    );
+    const admin = await admins.findOne({ email }, { projection: { _id: 1, email: 1, full_name: 1, is_active: 1 } });
+    console.log(`[Seed] Owner admin ${result.upsertedCount ? 'created' : 'updated'}: ${admin.email} (${admin._id})`);
+    console.log('[Seed] Password read from ADMIN_PASSWORD; it was not printed.');
+  } finally {
+    await client.close();
   }
+}
 
-  const passwordHash = await bcrypt.hash(ADMIN_PASSWORD, 12);
-  const adminId = randomUUID();
-
-  const [result] = await conn.query(
-    `INSERT INTO admins (id, email, password_hash, full_name, role_id, is_active)
-     VALUES (?, ?, ?, ?, ?, 1)
-     ON DUPLICATE KEY UPDATE
-       password_hash = VALUES(password_hash),
-       full_name = VALUES(full_name),
-       role_id = VALUES(role_id),
-       is_active = 1`,
-    [adminId, ADMIN_EMAIL.toLowerCase(), passwordHash, ADMIN_NAME, role.id],
-  );
-
-  const [[row]] = await conn.query(
-    `SELECT id, email, full_name, is_active FROM admins WHERE email = ?`,
-    [ADMIN_EMAIL.toLowerCase()],
-  );
-
-  await conn.end();
-
-  console.log('\nAdmin ready for login:\n');
-  console.log('  ID       :', row.id);
-  console.log('  Email    :', row.email);
-  console.log('  Password :', ADMIN_PASSWORD);
-  console.log('  Name     :', row.full_name);
-  console.log('\nLogin at: http://localhost:3000/login (or :3001)\n');
-})().catch((err) => {
-  console.error('Failed:', err.message);
-  process.exit(1);
+main().catch((error) => {
+  console.error(`[Seed] Failed: ${error instanceof Error ? error.message : 'unknown error'}`);
+  process.exitCode = 1;
 });

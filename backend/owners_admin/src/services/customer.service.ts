@@ -342,6 +342,7 @@ export class CustomerService {
       totalPrice: totalAmount,
       spotId: zone.spot_id,
     });
+    if (!booking) throw new Error('Booking was saved but could not be loaded');
 
     await bookingService.updateBooking(booking.id, {
       stripe_payment_intent_id: payload.stripePaymentIntentId,

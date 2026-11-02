@@ -1,4 +1,4 @@
-import { queryRows } from '../config/database';
+import { getMongoDatabase } from '../config/mongodb';
 
 const MIN_TICKET_NUMBER = 10000;
 const MAX_TICKET_NUMBER = 99999;
@@ -18,19 +18,12 @@ export const nextNumericTicketNumber = async (): Promise<string> => {
       Math.floor(Math.random() * (MAX_TICKET_NUMBER - MIN_TICKET_NUMBER + 1)) +
         MIN_TICKET_NUMBER,
     );
-    const rows = await queryRows<{ total: number }>(
-      `SELECT COUNT(*) AS total FROM penalty_tickets WHERE ticket_number = ?`,
-      [candidate],
-    );
-    if (Number(rows[0]?.total ?? 0) === 0) return candidate;
+    const existing = await getMongoDatabase().collection('penalty_tickets').findOne({ ticket_number: candidate }, { projection: { _id: 1 } });
+    if (!existing) return candidate;
   }
 
-  const rows = await queryRows<{ ticket_number: string }>(
-    `SELECT ticket_number
-     FROM penalty_tickets
-     WHERE ticket_number REGEXP '^[0-9]{5}$'
-     ORDER BY ticket_number ASC`,
-  );
+  const rows = await getMongoDatabase().collection<{ ticket_number: string }>('penalty_tickets')
+    .find({ ticket_number: { $regex: '^\\d{5}$' } }).project<{ ticket_number: string }>({ ticket_number: 1 }).sort({ ticket_number: 1 }).toArray();
   const used = new Set(rows.map((row) => row.ticket_number));
   for (let n = MIN_TICKET_NUMBER; n <= MAX_TICKET_NUMBER; n += 1) {
     const candidate = String(n);

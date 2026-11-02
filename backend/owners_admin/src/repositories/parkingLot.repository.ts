@@ -1,5 +1,5 @@
-import { execute, queryRows } from '../config/database';
-import { ParkingLotRow } from '../types';
+import { getMongoDatabase } from "../config/mongodb";
+import { ParkingLotRow } from "../types";
 
 export interface ParkingLotListFilters {
   page?: number;
@@ -7,43 +7,31 @@ export interface ParkingLotListFilters {
   q?: string;
 }
 
+type ParkingLotDocument = ParkingLotRow & { _id: string; created_at: Date; updated_at?: Date };
+const collection = () => getMongoDatabase().collection<ParkingLotDocument>("parking_lots");
+const escapeRegex = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const fromDocument = (document: ParkingLotDocument): ParkingLotRow => {
+  const { _id, ...lot } = document;
+  return { ...lot, id: _id };
+};
+
 export class ParkingLotRepository {
   async list(filters: ParkingLotListFilters = {}): Promise<{ items: ParkingLotRow[]; total: number }> {
-    const page = filters.page ?? 1;
-    const limit = filters.limit ?? 100;
-    const offset = (page - 1) * limit;
-    const values: unknown[] = [];
-    let where = '';
-
-    if (filters.q?.trim()) {
-      where = 'WHERE lot_name LIKE ? OR id LIKE ? OR address LIKE ?';
-      const term = `%${filters.q.trim()}%`;
-      values.push(term, term, term);
-    }
-
-    const items = await queryRows<ParkingLotRow>(
-      `SELECT id, owner_id, lot_name, address, image_url, qr_code_url
-       FROM parking_lots
-       ${where}
-       ORDER BY lot_name ASC
-       LIMIT ? OFFSET ?`,
-      [...values, limit, offset],
-    );
-
-    const countRows = await queryRows<{ total: number }>(
-      `SELECT COUNT(*) AS total FROM parking_lots ${where}`,
-      values,
-    );
-
-    return { items, total: Number(countRows[0]?.total ?? 0) };
+    const page = Math.max(1, filters.page ?? 1);
+    const limit = Math.max(1, Math.min(500, filters.limit ?? 100));
+    const q = filters.q?.trim();
+    const search = q ? { $regex: escapeRegex(q), $options: "i" } : undefined;
+    const filter = search ? { $or: [{ lot_name: search }, { _id: search }, { address: search }] } : {};
+    const [documents, total] = await Promise.all([
+      collection().find(filter).sort({ lot_name: 1, _id: 1 }).skip((page - 1) * limit).limit(limit).toArray(),
+      collection().countDocuments(filter),
+    ]);
+    return { items: documents.map(fromDocument), total };
   }
 
   async findById(id: string): Promise<ParkingLotRow | null> {
-    const rows = await queryRows<ParkingLotRow>(
-      `SELECT id, owner_id, lot_name, address, image_url, qr_code_url FROM parking_lots WHERE id = ? LIMIT 1`,
-      [id],
-    );
-    return rows[0] ?? null;
+    const document = await collection().findOne({ _id: id });
+    return document ? fromDocument(document) : null;
   }
 
   async create(params: {
@@ -55,48 +43,37 @@ export class ParkingLotRepository {
     qr_code_url?: string | null;
   }): Promise<string> {
     const id = params.id ?? `LOT-${Date.now()}`;
-    await execute(
-      `INSERT INTO parking_lots (id, owner_id, lot_name, address, image_url, qr_code_url) VALUES (?, ?, ?, ?, ?, ?)`,
-      [id, params.owner_id ?? null, params.lot_name.trim(), params.address ?? '', params.image_url ?? null, params.qr_code_url ?? null],
-    );
+    const now = new Date();
+    await collection().insertOne({
+      _id: id,
+      id,
+      owner_id: params.owner_id ?? null,
+      lot_name: params.lot_name.trim(),
+      address: params.address ?? "",
+      image_url: params.image_url ?? null,
+      qr_code_url: params.qr_code_url ?? null,
+      created_at: now,
+      updated_at: now,
+    });
     return id;
   }
 
   async update(id: string, params: Partial<{ owner_id: string | null; lot_name: string; address: string; image_url: string | null; qr_code_url: string | null }>): Promise<number> {
-    const updates: string[] = [];
-    const values: unknown[] = [];
-
-    if (params.owner_id !== undefined) {
-      updates.push('owner_id = ?');
-      values.push(params.owner_id);
-    }
-    if (params.lot_name !== undefined) {
-      updates.push('lot_name = ?');
-      values.push(params.lot_name.trim());
-    }
-    if (params.address !== undefined) {
-      updates.push('address = ?');
-      values.push(params.address.trim());
-    }
-    if (params.image_url !== undefined) {
-      updates.push('image_url = ?');
-      values.push(params.image_url);
-    }
-    if (params.qr_code_url !== undefined) {
-      updates.push('qr_code_url = ?');
-      values.push(params.qr_code_url);
-    }
-
-    if (updates.length === 0) return 0;
-
-    values.push(id);
-    const result = await execute(`UPDATE parking_lots SET ${updates.join(', ')}, updated_at = NOW() WHERE id = ?`, values);
-    return result.affectedRows;
+    const fields: Record<string, unknown> = {};
+    if (params.owner_id !== undefined) fields.owner_id = params.owner_id;
+    if (params.lot_name !== undefined) fields.lot_name = params.lot_name.trim();
+    if (params.address !== undefined) fields.address = params.address.trim();
+    if (params.image_url !== undefined) fields.image_url = params.image_url;
+    if (params.qr_code_url !== undefined) fields.qr_code_url = params.qr_code_url;
+    if (Object.keys(fields).length === 0) return 0;
+    fields.updated_at = new Date();
+    const result = await collection().updateOne({ _id: id }, { $set: fields });
+    return result.matchedCount;
   }
 
   async remove(id: string): Promise<number> {
-    const result = await execute('DELETE FROM parking_lots WHERE id = ?', [id]);
-    return result.affectedRows;
+    const result = await collection().deleteOne({ _id: id });
+    return result.deletedCount;
   }
 }
 

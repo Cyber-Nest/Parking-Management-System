@@ -1,4 +1,6 @@
-import { queryRows, execute } from '../config/database';
+import { getMongoDatabase } from '../config/mongodb';
+
+type SettingsDocument = { _id: string; [key: string]: unknown };
 
 export interface SystemSettingsPublic {
     timezone: string;
@@ -30,13 +32,10 @@ export class SettingsRepository {
 
     async getSystemSettings(): Promise<SystemSettingsPublic | null> {
         try {
-            const rows = await queryRows<SystemSettingsPublic>(
-                `SELECT timezone, language, date_format, time_format, week_starts_on, currency, session_expiry_display,
-              tax_rate_percent, service_fee, rounding_rule, prices_include_tax, refund_allowed, refund_approval_required
-              FROM system_settings WHERE id = ?`,
-                [this.settingsId]
-            );
-            return rows[0] ?? this.getDefaultSystemSettings();
+            const settings = await getMongoDatabase().collection<SettingsDocument & SystemSettingsPublic>('system_settings').findOne({ _id: this.settingsId });
+            if (!settings) return this.getDefaultSystemSettings();
+            const { _id, ...fields } = settings;
+            return fields;
         } catch (err) {
             console.error('[SettingsRepository] getSystemSettings DB error:', (err as Error).message);
             return this.getDefaultSystemSettings();
@@ -44,8 +43,6 @@ export class SettingsRepository {
     }
 
     async updateSystemSettings(settings: SystemSettingsPublic): Promise<SystemSettingsPublic> {
-        const existing = await queryRows<any>('SELECT id FROM system_settings WHERE id = ?', [this.settingsId]);
-
         const tax = settings.tax_rate_percent ?? 5;
         const fee = settings.service_fee ?? 0;
         const roundRule = settings.rounding_rule ?? 'nearest_cent';
@@ -53,61 +50,22 @@ export class SettingsRepository {
         const ra = settings.refund_allowed ?? 1;
         const rar = settings.refund_approval_required ?? 1;
 
-        if (existing.length === 0) {
-            await execute(
-                `INSERT INTO system_settings (id, timezone, language, date_format, time_format, week_starts_on, currency, session_expiry_display,
-                 tax_rate_percent, service_fee, rounding_rule, prices_include_tax, refund_allowed, refund_approval_required)
-                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                [
-                    this.settingsId,
-                    settings.timezone,
-                    settings.language,
-                    settings.date_format,
-                    settings.time_format,
-                    settings.week_starts_on,
-                    settings.currency,
-                    settings.session_expiry_display,
-                    tax,
-                    fee,
-                    roundRule,
-                    pit,
-                    ra,
-                    rar,
-                ]
-            );
-        } else {
-            await execute(
-                `UPDATE system_settings SET timezone = ?, language = ?, date_format = ?, time_format = ?, week_starts_on = ?, currency = ?, session_expiry_display = ?,
-                 tax_rate_percent = ?, service_fee = ?, rounding_rule = ?, prices_include_tax = ?, refund_allowed = ?, refund_approval_required = ? WHERE id = ?`,
-                [
-                    settings.timezone,
-                    settings.language,
-                    settings.date_format,
-                    settings.time_format,
-                    settings.week_starts_on,
-                    settings.currency,
-                    settings.session_expiry_display,
-                    tax,
-                    fee,
-                    roundRule,
-                    pit,
-                    ra,
-                    rar,
-                    this.settingsId,
-                ]
-            );
-        }
+        const now = new Date();
+        await getMongoDatabase().collection<SettingsDocument>('system_settings').updateOne(
+            { _id: this.settingsId },
+            { $set: { ...settings, tax_rate_percent: tax, service_fee: fee, rounding_rule: roundRule, prices_include_tax: pit, refund_allowed: ra, refund_approval_required: rar, updated_at: now }, $setOnInsert: { created_at: now } },
+            { upsert: true },
+        );
 
         return settings;
     }
 
     async getBrandingSettings(): Promise<BrandingSettingsPublic | null> {
         try {
-            const rows = await queryRows<BrandingSettingsPublic>(
-                'SELECT system_name, theme_color, dark_mode, logo_url, favicon_url, sidebar_collapsed FROM branding_settings WHERE id = ?',
-                [this.settingsId]
-            );
-            return rows[0] ?? this.getDefaultBrandingSettings();
+            const settings = await getMongoDatabase().collection<SettingsDocument & BrandingSettingsPublic>('branding_settings').findOne({ _id: this.settingsId });
+            if (!settings) return this.getDefaultBrandingSettings();
+            const { _id, ...fields } = settings;
+            return fields;
         } catch (err) {
             console.error('[SettingsRepository] getBrandingSettings DB error:', (err as Error).message);
             return this.getDefaultBrandingSettings();
@@ -115,19 +73,12 @@ export class SettingsRepository {
     }
 
     async updateBrandingSettings(settings: BrandingSettingsPublic): Promise<BrandingSettingsPublic> {
-        const existing = await queryRows<any>('SELECT id FROM branding_settings WHERE id = ?', [this.settingsId]);
-
-        if (existing.length === 0) {
-            await execute(
-                'INSERT INTO branding_settings (id, system_name, theme_color, dark_mode, logo_url, favicon_url, sidebar_collapsed) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                [this.settingsId, settings.system_name, settings.theme_color, settings.dark_mode, settings.logo_url ?? null, settings.favicon_url ?? null, settings.sidebar_collapsed ? 1 : 0]
-            );
-        } else {
-            await execute(
-                'UPDATE branding_settings SET system_name = ?, theme_color = ?, dark_mode = ?, logo_url = ?, favicon_url = ?, sidebar_collapsed = ? WHERE id = ?',
-                [settings.system_name, settings.theme_color, settings.dark_mode, settings.logo_url ?? null, settings.favicon_url ?? null, settings.sidebar_collapsed ? 1 : 0, this.settingsId]
-            );
-        }
+        const now = new Date();
+        await getMongoDatabase().collection<SettingsDocument>('branding_settings').updateOne(
+            { _id: this.settingsId },
+            { $set: { ...settings, logo_url: settings.logo_url ?? null, favicon_url: settings.favicon_url ?? null, sidebar_collapsed: Boolean(settings.sidebar_collapsed), updated_at: now }, $setOnInsert: { created_at: now } },
+            { upsert: true },
+        );
 
         return settings;
     }
@@ -143,17 +94,11 @@ export class SettingsRepository {
     }> {
         try {
             if (parkingLotId) {
-                // Try to get parking lot specific tax pricing
-                const rows = await queryRows<any>(
-                    `SELECT tax_rate_percent, currency, service_fee, rounding_rule, prices_include_tax, refund_allowed, refund_approval_required
-                     FROM system_settings WHERE parking_lot_id = ? LIMIT 1`,
-                    [parkingLotId]
-                );
-                if (rows.length > 0) {
-                    const row = rows[0];
+                const row = await getMongoDatabase().collection<SettingsDocument>('system_settings').findOne({ parking_lot_id: parkingLotId });
+                if (row) {
                     return {
                         tax_rate_percent: Number(row.tax_rate_percent ?? 5),
-                        currency: row.currency || 'CAD',
+                        currency: String(row.currency || 'CAD'),
                         service_fee: Number(row.service_fee ?? 0),
                         rounding_rule: String(row.rounding_rule ?? 'nearest_cent'),
                         prices_include_tax: Number(row.prices_include_tax ?? 1),
@@ -197,62 +142,31 @@ export class SettingsRepository {
         refund_approval_required?: number;
     }, parkingLotId?: string): Promise<void> {
         if (parkingLotId) {
-            // Update or insert parking lot specific settings
-            const existing = await queryRows<any>(
-                'SELECT id FROM system_settings WHERE parking_lot_id = ?',
-                [parkingLotId]
-            );
-
-            if (existing.length === 0) {
-                // Insert new parking lot settings
-                const current = await this.getTaxPricing(); // Get defaults
-                const merged = { ...current, ...patch };
-                const settingsId = parkingLotId + '-' + Date.now();
-
-                await execute(
-                    `INSERT INTO system_settings (id, timezone, language, date_format, time_format, week_starts_on, currency, session_expiry_display,
-                     tax_rate_percent, service_fee, rounding_rule, prices_include_tax, refund_allowed, refund_approval_required, parking_lot_id)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                    [
-                        settingsId,
-                        'UTC',
-                        'en',
-                        'YYYY-MM-DD',
-                        '24h',
-                        'monday',
-                        merged.currency,
-                        3600,
-                        merged.tax_rate_percent,
-                        merged.service_fee,
-                        merged.rounding_rule,
-                        merged.prices_include_tax,
-                        merged.refund_allowed,
-                        merged.refund_approval_required,
-                        parkingLotId,
-                    ]
-                );
-            } else {
-                // Update existing parking lot settings
-                await execute(
-                    `UPDATE system_settings SET 
-                     tax_rate_percent = COALESCE(?, tax_rate_percent),
-                     service_fee = COALESCE(?, service_fee),
-                     rounding_rule = COALESCE(?, rounding_rule),
-                     prices_include_tax = COALESCE(?, prices_include_tax),
-                     refund_allowed = COALESCE(?, refund_allowed),
-                     refund_approval_required = COALESCE(?, refund_approval_required)
-                     WHERE parking_lot_id = ?`,
-                    [
-                        patch.tax_rate_percent,
-                        patch.service_fee,
-                        patch.rounding_rule,
-                        patch.prices_include_tax,
-                        patch.refund_allowed,
-                        patch.refund_approval_required,
-                        parkingLotId,
-                    ]
-                );
+            const defaults = await this.getTaxPricing();
+            const now = new Date();
+            const set: Record<string, unknown> = { updated_at: now };
+            for (const key of ["tax_rate_percent", "service_fee", "rounding_rule", "prices_include_tax", "refund_allowed", "refund_approval_required"] as const) {
+                if (patch[key] !== undefined) set[key] = patch[key];
             }
+            await getMongoDatabase().collection<SettingsDocument>('system_settings').updateOne(
+                { parking_lot_id: parkingLotId },
+                {
+                    $set: set,
+                    $setOnInsert: {
+                        _id: `${parkingLotId}-${Date.now()}`, parking_lot_id: parkingLotId,
+                        timezone: "UTC", language: "en", date_format: "YYYY-MM-DD", time_format: "24h",
+                        week_starts_on: "monday", currency: defaults.currency, session_expiry_display: 3600,
+                        tax_rate_percent: patch.tax_rate_percent ?? defaults.tax_rate_percent,
+                        service_fee: patch.service_fee ?? defaults.service_fee,
+                        rounding_rule: patch.rounding_rule ?? defaults.rounding_rule,
+                        prices_include_tax: patch.prices_include_tax ?? defaults.prices_include_tax,
+                        refund_allowed: patch.refund_allowed ?? defaults.refund_allowed,
+                        refund_approval_required: patch.refund_approval_required ?? defaults.refund_approval_required,
+                        created_at: now,
+                    },
+                },
+                { upsert: true },
+            );
         } else {
             // Update global settings
             const current = (await this.getSystemSettings()) as SystemSettingsPublic & Record<string, unknown>;
@@ -272,45 +186,35 @@ export class SettingsRepository {
             created_at: Date;
         }[]
     > {
-        return queryRows(
-            `SELECT a.id, a.email, a.full_name, r.name AS role_name, a.is_active, a.last_login_at, a.created_at
-       FROM admins a
-       JOIN roles r ON r.id = a.role_id
-       ORDER BY a.created_at DESC`
-        );
+        const db = getMongoDatabase();
+        const [admins, roles] = await Promise.all([
+            db.collection<{ _id: string; email: string; full_name: string; role_id: string; is_active: boolean; last_login_at: Date | null; created_at: Date }>('admins').find().sort({ created_at: -1, _id: 1 }).toArray(),
+            db.collection<{ _id: string; name: string }>('roles').find().toArray(),
+        ]);
+        const roleNames = new Map(roles.map((role) => [role._id, role.name]));
+        return admins.flatMap((admin) => {
+            const role_name = roleNames.get(admin.role_id);
+            return role_name ? [{ id: admin._id, email: admin.email, full_name: admin.full_name, role_name, is_active: admin.is_active ? 1 : 0, last_login_at: admin.last_login_at, created_at: admin.created_at }] : [];
+        });
     }
 
     async findRoleIdByName(name: string): Promise<string | null> {
-        const rows = await queryRows<{ id: string }>(`SELECT id FROM roles WHERE name = ? LIMIT 1`, [name]);
-        return rows[0]?.id ?? null;
+        const role = await getMongoDatabase().collection<{ _id: string; name: string }>('roles').findOne({ name });
+        return role?._id ?? null;
     }
 
     async updateAdmin(
         id: string,
         patch: { full_name?: string; email?: string; role_id?: string; is_active?: number }
     ): Promise<number> {
-        const updates: string[] = [];
-        const values: any[] = [];
-        if (patch.full_name !== undefined) {
-            updates.push('full_name = ?');
-            values.push(patch.full_name);
-        }
-        if (patch.email !== undefined) {
-            updates.push('email = ?');
-            values.push(patch.email.toLowerCase().trim());
-        }
-        if (patch.role_id !== undefined) {
-            updates.push('role_id = ?');
-            values.push(patch.role_id);
-        }
-        if (patch.is_active !== undefined) {
-            updates.push('is_active = ?');
-            values.push(patch.is_active);
-        }
-        if (!updates.length) return 0;
-        values.push(id);
-        const result = await execute(`UPDATE admins SET ${updates.join(', ')}, updated_at = NOW() WHERE id = ?`, values);
-        return result.affectedRows;
+        const fields: Record<string, unknown> = {};
+        if (patch.full_name !== undefined) fields.full_name = patch.full_name;
+        if (patch.email !== undefined) fields.email = patch.email.toLowerCase().trim();
+        if (patch.role_id !== undefined) fields.role_id = patch.role_id;
+        if (patch.is_active !== undefined) fields.is_active = Boolean(patch.is_active);
+        if (!Object.keys(fields).length) return 0;
+        fields.updated_at = new Date();
+        return (await getMongoDatabase().collection<{ _id: string } & Record<string, unknown>>('admins').updateOne({ _id: id }, { $set: fields })).matchedCount;
     }
 
     async listAdminsPaginated(params: {
@@ -331,74 +235,46 @@ export class SettingsRepository {
         }[];
         total: number;
     }> {
-        const offset = (params.page - 1) * params.limit;
+        const db = getMongoDatabase();
         const q = params.q?.trim();
-        let whereClause = '1=1';
-        const filterValues: unknown[] = [];
-        if (q) {
-            whereClause += ' AND (a.email LIKE ? OR a.full_name LIKE ?)';
-            filterValues.push(`%${q}%`, `%${q}%`);
-        }
-        const countRows = await queryRows<{ c: number }>(
-            `SELECT COUNT(*) AS c FROM admins a WHERE ${whereClause}`,
-            filterValues
-        );
-        const total = Number(countRows[0]?.c ?? 0);
-        const items = await queryRows<{
-            id: string;
-            email: string;
-            full_name: string;
-            role_id: string;
-            role_name: string;
-            is_active: number;
-            last_login_at: Date | null;
-            created_at: Date;
-            updated_at: Date;
-        }>(
-            `SELECT a.id, a.email, a.full_name, a.role_id, r.name AS role_name, a.is_active, a.last_login_at, a.created_at, a.updated_at
-       FROM admins a
-       JOIN roles r ON r.id = a.role_id
-       WHERE ${whereClause}
-       ORDER BY a.created_at DESC
-       LIMIT ? OFFSET ?`,
-            [...filterValues, params.limit, offset]
-        );
+        const escaped = q?.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const filter = escaped ? { $or: [{ email: { $regex: escaped, $options: 'i' } }, { full_name: { $regex: escaped, $options: 'i' } }] } : {};
+        const [admins, roles, total] = await Promise.all([
+            db.collection<{ _id: string; email: string; full_name: string; role_id: string; is_active: boolean; last_login_at: Date | null; created_at: Date; updated_at: Date }>('admins').find(filter).sort({ created_at: -1, _id: 1 }).skip((params.page - 1) * params.limit).limit(params.limit).toArray(),
+            db.collection<{ _id: string; name: string }>('roles').find().toArray(),
+            db.collection('admins').countDocuments(filter),
+        ]);
+        const roleNames = new Map(roles.map((role) => [role._id, role.name]));
+        const items = admins.flatMap((admin) => {
+            const role_name = roleNames.get(admin.role_id);
+            return role_name ? [{ id: admin._id, email: admin.email, full_name: admin.full_name, role_id: admin.role_id, role_name, is_active: admin.is_active ? 1 : 0, last_login_at: admin.last_login_at, created_at: admin.created_at, updated_at: admin.updated_at }] : [];
+        });
         return { items, total };
     }
 
     async countAdmins(): Promise<number> {
-        const rows = await queryRows<{ c: number }>('SELECT COUNT(*) AS c FROM admins');
-        return Number(rows[0]?.c ?? 0);
+        return getMongoDatabase().collection('admins').countDocuments();
     }
 
     async deleteAdmin(id: string): Promise<number> {
-        const result = await execute('DELETE FROM admins WHERE id = ?', [id]);
-        return result.affectedRows;
+        return (await getMongoDatabase().collection<{ _id: string }>('admins').deleteOne({ _id: id })).deletedCount;
     }
 
     async listRolesWithPermissions(): Promise<{ id: string; name: string; permissions: string | null }[]> {
-        return queryRows(
-            `SELECT r.id, r.name, p.permissions
-       FROM roles r
-       LEFT JOIN admin_roles_permissions p ON p.role_id = r.id`
-        );
+        const db = getMongoDatabase();
+        const roles = await db.collection<{ _id: string; name: string }>('roles').find().toArray();
+        const permissions = await db.collection<{ role_id: string; permissions: string }>('admin_roles_permissions')
+            .find({ role_id: { $in: roles.map((role) => role._id) } }).toArray();
+        const byRole = new Map(permissions.map((item) => [item.role_id, item.permissions]));
+        return roles.map((role) => ({ id: role._id, name: role.name, permissions: byRole.get(role._id) ?? null }));
     }
 
     async upsertRolePermissions(roleId: string, permissionsJson: string): Promise<void> {
-        const existing = await queryRows<{ id: string }>(
-            `SELECT id FROM admin_roles_permissions WHERE role_id = ? LIMIT 1`,
-            [roleId]
-        );
-        if (existing.length === 0) {
-            await execute(`INSERT INTO admin_roles_permissions (id, role_id, permissions) VALUES (UUID(), ?, ?)`, [
-                roleId,
-                permissionsJson,
-            ]);
-        } else {
-            await execute(`UPDATE admin_roles_permissions SET permissions = ?, updated_at = NOW() WHERE role_id = ?`, [
-                permissionsJson,
-                roleId,
-            ]);
+        const now = new Date();
+        const collection = getMongoDatabase().collection<{ _id: string; role_id: string; permissions: string; created_at: Date; updated_at: Date }>('admin_roles_permissions');
+        const updated = await collection.updateMany({ role_id: roleId }, { $set: { permissions: permissionsJson, updated_at: now } });
+        if (updated.matchedCount === 0) {
+            await collection.insertOne({ _id: crypto.randomUUID(), role_id: roleId, permissions: permissionsJson, created_at: now, updated_at: now });
         }
     }
 
@@ -410,33 +286,17 @@ export class SettingsRepository {
         items: { id: string; name: string; permissions: string | null; created_at: Date | null; updated_at: Date | null }[];
         total: number;
     }> {
-        const offset = (params.page - 1) * params.limit;
+        const db = getMongoDatabase();
         const q = params.q?.trim();
-        let where = '1=1';
-        const filterVals: unknown[] = [];
-        if (q) {
-            where += ' AND r.name LIKE ?';
-            filterVals.push(`%${q}%`);
-        }
-        const countRows = await queryRows<{ c: number }>(
-            `SELECT COUNT(*) AS c FROM roles r WHERE ${where}`,
-            filterVals
-        );
-        const total = Number(countRows[0]?.c ?? 0);
-
-        const items = await queryRows<{
-            id: string;
-            name: string;
-            permissions: string | null;
-        }>(
-            `SELECT r.id, r.name, p.permissions
-       FROM roles r
-       LEFT JOIN admin_roles_permissions p ON p.role_id = r.id
-       WHERE ${where}
-       ORDER BY r.name ASC
-       LIMIT ? OFFSET ?`,
-            [...filterVals, params.limit, offset]
-        );
+        const escaped = q?.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const filter = escaped ? { name: { $regex: escaped, $options: 'i' } } : {};
+        const total = await db.collection('roles').countDocuments(filter);
+        const roles = await db.collection<{ _id: string; name: string; created_at?: Date; updated_at?: Date }>('roles')
+            .find(filter).sort({ name: 1 }).skip((params.page - 1) * params.limit).limit(params.limit).toArray();
+        const permissions = await db.collection<{ role_id: string; permissions: string }>('admin_roles_permissions')
+            .find({ role_id: { $in: roles.map((role) => role._id) } }).toArray();
+        const byRole = new Map(permissions.map((item) => [item.role_id, item.permissions]));
+        const items = roles.map((role) => ({ id: role._id, name: role.name, permissions: byRole.get(role._id) ?? null, created_at: role.created_at ?? null, updated_at: role.updated_at ?? null }));
         return {
             items: items.map((row) => ({
                 ...row,
@@ -448,31 +308,31 @@ export class SettingsRepository {
     }
 
     async findRoleById(id: string): Promise<{ id: string; name: string } | null> {
-        const rows = await queryRows<{ id: string; name: string }>(`SELECT id, name FROM roles WHERE id = ? LIMIT 1`, [id]);
-        return rows[0] ?? null;
+        const role = await getMongoDatabase().collection<{ _id: string; name: string }>('roles').findOne({ _id: id });
+        return role ? { id: role._id, name: role.name } : null;
     }
 
     async insertRoleRow(id: string, name: string): Promise<void> {
-        await execute(`INSERT INTO roles (id, name) VALUES (?, ?)`, [id, name]);
+        const now = new Date();
+        await getMongoDatabase().collection<{ _id: string; name: string; created_at: Date; updated_at: Date }>('roles').insertOne({ _id: id, name, created_at: now, updated_at: now });
     }
 
     async updateRoleName(id: string, name: string): Promise<number> {
-        const result = await execute(`UPDATE roles SET name = ? WHERE id = ?`, [name, id]);
-        return result.affectedRows;
+        const result = await getMongoDatabase().collection<{ _id: string; name: string; updated_at?: Date }>('roles').updateOne({ _id: id }, { $set: { name, updated_at: new Date() } });
+        return result.matchedCount;
     }
 
     async countAdminsByRoleId(roleId: string): Promise<number> {
-        const rows = await queryRows<{ c: number }>(`SELECT COUNT(*) AS c FROM admins WHERE role_id = ?`, [roleId]);
-        return Number(rows[0]?.c ?? 0);
+        return getMongoDatabase().collection('admins').countDocuments({ role_id: roleId });
     }
 
     async deleteRolePermissions(roleId: string): Promise<void> {
-        await execute(`DELETE FROM admin_roles_permissions WHERE role_id = ?`, [roleId]);
+        await getMongoDatabase().collection('admin_roles_permissions').deleteMany({ role_id: roleId });
     }
 
     async deleteRoleRow(id: string): Promise<number> {
-        const result = await execute(`DELETE FROM roles WHERE id = ?`, [id]);
-        return result.affectedRows;
+        const result = await getMongoDatabase().collection<{ _id: string }>('roles').deleteOne({ _id: id });
+        return result.deletedCount;
     }
 
     private getDefaultSystemSettings(): SystemSettingsPublic {

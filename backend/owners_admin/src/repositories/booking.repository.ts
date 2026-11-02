@@ -1,242 +1,139 @@
-import crypto from 'crypto';
-import { execute, queryRows } from '../config/database';
+import crypto from "crypto";
+import { getMongoDatabase } from "../config/mongodb";
 
-export interface BookingFilters {
-  page?: number;
-  limit?: number;
-  email?: string;
-  status?: string;
-  from?: string;
-  to?: string;
-  plate?: string;
-}
-
+export interface BookingFilters { page?: number; limit?: number; email?: string; status?: string; from?: string; to?: string; plate?: string }
 export interface BookingRow {
-  id: string;
-  booking_reference: string;
-  parking_lot_id?: string | null;
-  customer_email: string;
-  vehicle_plate_number: string;
-  vehicle_model: string;
-  vehicle_color?: string | null;
-  parking_name: string;
-  parking_location?: string | null;
-  start_time: Date;
-  end_time: Date;
-  duration_minutes: number;
-  duration_label?: string | null;
-  total_price: number;
-  booking_status: string;
-  payment_status: string;
-  allow_extension?: number;
-  total_extensions?: number;
+  id: string; booking_reference: string; parking_lot_id?: string | null; customer_email: string;
+  vehicle_plate_number: string; vehicle_model: string; vehicle_color?: string | null; parking_name: string;
+  parking_location?: string | null; start_time: Date; end_time: Date; duration_minutes: number;
+  duration_label?: string | null; total_price: number; booking_status: string; payment_status: string;
+  allow_extension?: number; total_extensions?: number;
 }
+type BookingDocument = { _id: string; id: string; start_time: Date; end_time: Date; booking_status: string; customer_email: string; vehicle_plate_number: string; total_price: number; created_at: Date; updated_at: Date; [key: string]: unknown };
+const collection = () => getMongoDatabase().collection<BookingDocument>("bookings");
+const toRow = (document: BookingDocument) => {
+  const { _id, ...fields } = document;
+  return { ...fields, id: _id } as unknown as BookingRow & Record<string, unknown>;
+};
+const pageBounds = (limit: number, offset: number) => ({ skip: Math.max(0, offset), limit: Math.max(1, Math.min(500, limit)) });
 
 export class BookingRepository {
   async createBooking(data: Record<string, unknown>) {
     const id = crypto.randomUUID();
-    const {
-      booking_reference,
-      parking_lot_id,
-      parking_zone_id,
-      parking_name,
-      parking_location,
-      customer_email,
-      vehicle_model,
-      vehicle_plate_number,
-      vehicle_color,
-      start_time,
-      end_time,
-      duration_minutes,
-      duration_label,
-      parking_plan_id,
-      hourly_rate,
-      base_price,
-      tax_amount,
-      service_fee,
-      total_price,
-      currency,
-      spot_id,
-      zone_name,
-      grace_period_minutes,
-      metadata,
-      stripe_payment_intent_id,
-    } = data;
-
-    await execute(
-      `INSERT INTO bookings (
-        id, booking_reference, parking_lot_id, parking_zone_id, parking_name, parking_location,
-        customer_email, vehicle_model, vehicle_plate_number, vehicle_color,
-        start_time, end_time, duration_minutes, duration_label, parking_plan_id, hourly_rate,
-        base_price, tax_amount, service_fee, total_price, currency, spot_id,
-        zone_name, booking_status, payment_status, grace_period_minutes,
-        stripe_payment_intent_id, metadata
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', 'unpaid', ?, ?, ?)`,
-      [
-        id,
-        booking_reference,
-        parking_lot_id ?? null,
-        parking_zone_id,
-        parking_name,
-        parking_location ?? null,
-        customer_email,
-        vehicle_model,
-        vehicle_plate_number,
-        vehicle_color ?? null,
-        start_time,
-        end_time,
-        duration_minutes,
-        duration_label ?? null,
-        parking_plan_id ?? null,
-        hourly_rate,
-        base_price,
-        tax_amount ?? 0,
-        service_fee ?? 0,
-        total_price,
-        currency ?? 'CAD',
-        spot_id ?? null,
-        zone_name ?? null,
-        grace_period_minutes ?? 15,
-        stripe_payment_intent_id ?? null,
-        JSON.stringify(metadata ?? {}),
-      ],
-    );
-
+    const now = new Date();
+    const document = {
+      ...data,
+      _id: id,
+      id,
+      parking_lot_id: data.parking_lot_id ?? null,
+      parking_location: data.parking_location ?? null,
+      vehicle_color: data.vehicle_color ?? null,
+      duration_label: data.duration_label ?? null,
+      parking_plan_id: data.parking_plan_id ?? null,
+      tax_amount: data.tax_amount ?? 0,
+      service_fee: data.service_fee ?? 0,
+      currency: data.currency ?? "CAD",
+      spot_id: data.spot_id ?? null,
+      zone_name: data.zone_name ?? null,
+      booking_status: "pending",
+      payment_status: "unpaid",
+      grace_period_minutes: data.grace_period_minutes ?? 15,
+      stripe_payment_intent_id: data.stripe_payment_intent_id ?? null,
+      metadata: data.metadata ?? {},
+      created_at: now,
+      updated_at: now,
+    } as unknown as BookingDocument;
+    await collection().insertOne(document);
     return this.findBookingById(id);
   }
 
   async findBookingById(id: string) {
-    const rows = await queryRows<BookingRow>('SELECT * FROM bookings WHERE id = ? LIMIT 1', [id]);
-    return rows[0] ?? null;
+    const document = await collection().findOne({ _id: id });
+    return document ? toRow(document) : null;
   }
 
   async findByReference(reference: string) {
-    const rows = await queryRows<BookingRow>(
-      'SELECT * FROM bookings WHERE booking_reference = ? LIMIT 1',
-      [reference],
-    );
-    return rows[0] ?? null;
+    const document = await collection().findOne({ booking_reference: reference });
+    return document ? toRow(document) : null;
   }
 
   async findByEmail(email: string, limit = 50, offset = 0) {
-    const countRows = await queryRows<{ total: number }>(
-      'SELECT COUNT(*) AS total FROM bookings WHERE customer_email = ?',
-      [email],
-    );
-    const rows = await queryRows(
-      `SELECT * FROM bookings WHERE customer_email = ?
-       ORDER BY start_time DESC LIMIT ? OFFSET ?`,
-      [email, limit, offset],
-    );
-
-    return {
-      count: Number(countRows[0]?.total ?? 0),
-      rows,
-    };
+    const [count, documents] = await Promise.all([
+      collection().countDocuments({ customer_email: email }),
+      collection().find({ customer_email: email }).sort({ start_time: -1, _id: 1 }).skip(pageBounds(limit, offset).skip).limit(pageBounds(limit, offset).limit).toArray(),
+    ]);
+    return { count, rows: documents.map(toRow) };
   }
 
   async findByPlateNumber(plate: string) {
-    return queryRows('SELECT * FROM bookings WHERE vehicle_plate_number = ? ORDER BY start_time DESC', [
-      plate,
-    ]);
+    const documents = await collection().find({ vehicle_plate_number: plate }).sort({ start_time: -1, _id: 1 }).toArray();
+    return documents.map(toRow);
   }
 
   async findByStatus(status: string, limit = 50, offset = 0) {
-    const countRows = await queryRows<{ total: number }>(
-      'SELECT COUNT(*) AS total FROM bookings WHERE booking_status = ?',
-      [status],
-    );
-    const rows = await queryRows(
-      `SELECT * FROM bookings WHERE booking_status = ?
-       ORDER BY start_time DESC LIMIT ? OFFSET ?`,
-      [status, limit, offset],
-    );
-
-    return {
-      count: Number(countRows[0]?.total ?? 0),
-      rows,
-    };
+    const [count, documents] = await Promise.all([
+      collection().countDocuments({ booking_status: status }),
+      collection().find({ booking_status: status }).sort({ start_time: -1, _id: 1 }).skip(pageBounds(limit, offset).skip).limit(pageBounds(limit, offset).limit).toArray(),
+    ]);
+    return { count, rows: documents.map(toRow) };
   }
 
   async findActiveBookings() {
-    return queryRows(
-      `SELECT * FROM bookings
-       WHERE booking_status = 'active' AND end_time > NOW()
-       ORDER BY start_time DESC`,
-    );
+    const documents = await collection().find({ booking_status: "active", end_time: { $gt: new Date() } }).sort({ start_time: -1, _id: 1 }).toArray();
+    return documents.map(toRow);
   }
 
   async findByDateRange(startDate: Date, endDate: Date, limit = 50, offset = 0) {
-    const countRows = await queryRows<{ total: number }>(
-      'SELECT COUNT(*) AS total FROM bookings WHERE start_time BETWEEN ? AND ?',
-      [startDate, endDate],
-    );
-    const rows = await queryRows(
-      `SELECT * FROM bookings WHERE start_time BETWEEN ? AND ?
-       ORDER BY start_time DESC LIMIT ? OFFSET ?`,
-      [startDate, endDate, limit, offset],
-    );
-
-    return {
-      count: Number(countRows[0]?.total ?? 0),
-      rows,
-    };
+    const filter = { start_time: { $gte: startDate, $lte: endDate } };
+    const [count, documents] = await Promise.all([
+      collection().countDocuments(filter),
+      collection().find(filter).sort({ start_time: -1, _id: 1 }).skip(pageBounds(limit, offset).skip).limit(pageBounds(limit, offset).limit).toArray(),
+    ]);
+    return { count, rows: documents.map(toRow) };
   }
 
   async updateBooking(id: string, data: Record<string, unknown>) {
-    if (Object.keys(data).length === 0) {
-      return this.findBookingById(id);
-    }
-
-    const fields = Object.keys(data).map((key) => `${key} = ?`).join(', ');
-    const values = [...Object.values(data), id];
-    await execute(`UPDATE bookings SET ${fields}, updated_at = NOW() WHERE id = ?`, values);
+    const fields = Object.fromEntries(Object.entries(data).filter(([key]) => key !== "_id" && key !== "id"));
+    if (Object.keys(fields).length) await collection().updateOne({ _id: id }, { $set: { ...fields, updated_at: new Date() } });
     return this.findBookingById(id);
   }
 
   async confirmBooking(id: string, paymentId: string) {
-    await execute(
-      `UPDATE bookings
-       SET booking_status = 'confirmed', payment_status = 'paid', payment_id = ?, updated_at = NOW()
-       WHERE id = ?`,
-      [paymentId, id],
-    );
+    await collection().updateOne({ _id: id }, { $set: { booking_status: "confirmed", payment_status: "paid", payment_id: paymentId, updated_at: new Date() } });
     return this.findBookingById(id);
   }
 
   async markAsActive(id: string) {
-    await execute(
-      `UPDATE bookings SET booking_status = 'active', updated_at = NOW() WHERE id = ?`,
-      [id],
-    );
+    await collection().updateOne({ _id: id }, { $set: { booking_status: "active", updated_at: new Date() } });
     return this.findBookingById(id);
   }
 
   async markAsCompleted(id: string) {
-    await execute(
-      `UPDATE bookings SET booking_status = 'completed', updated_at = NOW() WHERE id = ?`,
-      [id],
-    );
+    await collection().updateOne({ _id: id }, { $set: { booking_status: "completed", updated_at: new Date() } });
     return this.findBookingById(id);
   }
 
   async getBookingStats() {
-    return queryRows(
-      `SELECT booking_status, COUNT(*) AS count, SUM(total_price) AS total_revenue
-       FROM bookings GROUP BY booking_status`,
-    );
+    return collection().aggregate([
+      { $group: { _id: "$booking_status", count: { $sum: 1 }, total_revenue: { $sum: "$total_price" } } },
+      { $project: { _id: 0, booking_status: "$_id", count: 1, total_revenue: 1 } },
+    ]).toArray();
   }
 
   async getTodayBookings() {
-    const rows = await queryRows<{ booking_count: number; total_revenue: number }>(
-      `SELECT COUNT(*) AS booking_count, COALESCE(SUM(total_price), 0) AS total_revenue
-       FROM bookings WHERE DATE(start_time) = CURDATE()`,
-    );
-    return rows[0] ?? { booking_count: 0, total_revenue: 0 };
+    const now = new Date();
+    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+    const result = await collection().aggregate([
+      { $match: { start_time: { $gte: start, $lt: end } } },
+      { $group: { _id: null, booking_count: { $sum: 1 }, total_revenue: { $sum: "$total_price" } } },
+      { $project: { _id: 0, booking_count: 1, total_revenue: 1 } },
+    ]).toArray();
+    return result[0] ?? { booking_count: 0, total_revenue: 0 };
   }
 
   async deleteBooking(id: string) {
-    return execute('DELETE FROM bookings WHERE id = ?', [id]);
+    return { affectedRows: (await collection().deleteOne({ _id: id })).deletedCount };
   }
 }
 

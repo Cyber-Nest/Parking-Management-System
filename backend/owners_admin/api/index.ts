@@ -1,11 +1,13 @@
 import app from "../src/app";
-import { connectDatabase } from "../src/config/database";
+import { connectMongoDatabase } from "../src/config/mongodb";
+import { ensureMongoIndexes } from "../src/config/mongodb-indexes";
 
 let isDbConnected = false;
 
 module.exports = async (req: any, res: any) => {
   if (!isDbConnected) {
-    await connectDatabase();
+    const db = await connectMongoDatabase();
+    await ensureMongoIndexes(db);
     isDbConnected = true;
   }
 

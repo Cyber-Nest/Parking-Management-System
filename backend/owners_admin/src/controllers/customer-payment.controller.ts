@@ -112,6 +112,7 @@ export class CustomerPaymentController {
         serviceFee: 0,
         totalPrice: price
       });
+      if (!booking) throw new Error('Booking was saved but could not be loaded');
 
       // Create invoice
       const invoice = await invoiceService.createInvoice({
@@ -131,6 +132,7 @@ export class CustomerPaymentController {
         transactionId: transaction.id,
         durationMinutes
       });
+      if (!invoice) throw new Error('Invoice was saved but could not be loaded');
 
       // Mark transaction as completed
       await transactionService.completeTransaction(transaction.id);
