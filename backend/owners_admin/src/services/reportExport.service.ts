@@ -1,7 +1,7 @@
 import ExcelJS from 'exceljs';
 import PDFDocument from 'pdfkit';
 import { BadRequestError } from './commonErrors';
-import { queryRows } from '../config/database';
+import { getMongoDatabase } from '../config/mongodb';
 
 type ExportFormat = 'pdf' | 'excel';
 type PdfDoc = InstanceType<typeof PDFDocument>;
@@ -47,27 +47,21 @@ interface ReportBusinessHeader {
 }
 
 const getReportBusinessHeader = async (parkingLotId?: string): Promise<ReportBusinessHeader> => {
-    const brandingRows = await queryRows<{ system_name?: string | null }>(
-        'SELECT system_name FROM branding_settings ORDER BY updated_at DESC LIMIT 1'
-    );
-    const lotRows = parkingLotId
-        ? await queryRows<{ lot_name?: string | null; address?: string | null }>(
-            'SELECT lot_name, address FROM parking_lots WHERE id = ? LIMIT 1',
-            [parkingLotId]
-        )
-        : [];
-    const adminRows = await queryRows<{ email?: string | null }>(
-        'SELECT email FROM admins ORDER BY created_at ASC LIMIT 1'
-    );
-    const operatingName = brandingRows[0]?.system_name?.trim() || 'ParkSmart';
+    const db = getMongoDatabase();
+    const [branding, lot, admin] = await Promise.all([
+        db.collection<{ system_name?: string }>('branding_settings').find().sort({ updated_at: -1 }).limit(1).next(),
+        parkingLotId ? db.collection<{ _id: string; lot_name?: string; address?: string }>('parking_lots').findOne({ _id: parkingLotId }) : null,
+        db.collection<{ email?: string }>('admins').find().sort({ created_at: 1 }).limit(1).next(),
+    ]);
+    const operatingName = branding?.system_name?.trim() || 'ParkSmart';
 
     return {
         legalName: operatingName,
-        parkingLot: lotRows[0]?.lot_name?.trim() || 'All parking lots',
+        parkingLot: lot?.lot_name?.trim() || 'All parking lots',
         operatingName,
-        address: lotRows[0]?.address?.trim() || '',
+        address: lot?.address?.trim() || '',
         phone: '',
-        email: adminRows[0]?.email?.trim() || '',
+        email: admin?.email?.trim() || '',
     };
 };
 

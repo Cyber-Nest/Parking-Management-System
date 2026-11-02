@@ -17,13 +17,7 @@ export const env = {
   port: parseInt(optional("PORT", "5000"), 10),
   nodeEnv: optional("NODE_ENV", "development"),
 
-  db: {
-    host: optional("DB_HOST", "localhost"),
-    port: parseInt(optional("DB_PORT", "3306"), 10),
-    name: optional("DB_NAME", "parksmart"),
-    user: optional("DB_USER", "root"),
-    password: required("DB_PASSWORD"),
-  },
+  mongoUri: optional("MONGODB_URI", ""),
 
   jwt: {
     accessSecret: required("JWT_ACCESS_SECRET"),

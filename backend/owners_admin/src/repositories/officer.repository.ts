@@ -1,280 +1,164 @@
-import crypto from 'crypto';
-import { execute, queryRows } from '../config/database';
-import { OfficerRole } from '../types';
+import crypto from "crypto";
+import { getMongoDatabase } from "../config/mongodb";
+import { OfficerRole } from "../types";
 
-export type UiOfficerStatus = 'ACTIVE' | 'DISABLED';
-
-export interface OfficerListFilters {
-  page: number;
-  limit: number;
-  q?: string;
-  status?: UiOfficerStatus;
-  role?: OfficerRole;
-  parkingLotId?: string;
-}
-
+export type UiOfficerStatus = "ACTIVE" | "DISABLED";
+export interface OfficerListFilters { page: number; limit: number; q?: string; status?: UiOfficerStatus; role?: OfficerRole; parkingLotId?: string }
 export interface OfficerRow {
-  id: string;
-  full_name: string;
-  email: string;
-  phone: string | null;
-  badge_number: string | null;
-  role: OfficerRole;
-  status: 'active' | 'inactive' | 'suspended';
-  last_login_at: Date | null;
-  created_at: Date;
-  tickets_issued?: number;
-  parking_lot_id?: string | null;
+  id: string; full_name: string; email: string; phone: string | null; badge_number: string | null;
+  role: OfficerRole; status: "active" | "inactive" | "suspended"; last_login_at: Date | null;
+  created_at: Date; tickets_issued?: number; parking_lot_id?: string | null;
 }
-
-interface CountRow {
-  total: number;
-}
+type OfficerDocument = { _id: string; id: string; email: string; full_name: string; password_hash: string; role: OfficerRole; status: string; created_at: Date; updated_at: Date; [key: string]: unknown };
+const collection = () => getMongoDatabase().collection<OfficerDocument>("officers");
+const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const toOfficer = (document: OfficerDocument): OfficerRow => ({
+  id: document._id,
+  full_name: document.full_name,
+  email: document.email,
+  phone: (document.phone as string | null | undefined) ?? null,
+  badge_number: (document.badge_number as string | null | undefined) ?? null,
+  role: document.role,
+  status: document.status as OfficerRow["status"],
+  last_login_at: (document.last_login_at as Date | null | undefined) ?? null,
+  created_at: document.created_at,
+  parking_lot_id: (document.parking_lot_id as string | null | undefined) ?? null,
+});
+const utcDayStart = () => {
+  const now = new Date();
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+};
 
 export class OfficerRepository {
-  private buildWhere(filters: OfficerListFilters): { clause: string; values: any[] } {
-    const conditions: string[] = [];
-    const values: any[] = [];
+  private async lotScope(lotId: string) {
+    const db = getMongoDatabase();
+    const [zones, plans] = await Promise.all([
+      db.collection<{ parking_name: string }>("parking_zones").find({ parking_lot_id: lotId }).project<{ parking_name: string }>({ parking_name: 1 }).toArray(),
+      db.collection<{ _id: string }>("parking_plans").find({ parking_lot_id: lotId }).project<{ _id: string }>({ _id: 1 }).toArray(),
+    ]);
+    const zoneNames = zones.map((zone) => zone.parking_name);
+    const planIds = plans.map((plan) => plan._id);
+    const sessions = await db.collection<{ _id: string }>("parking_sessions").find({
+      $or: [{ location_name: { $in: zoneNames } }, { plan_id: { $in: planIds } }],
+    }).project<{ _id: string }>({ _id: 1 }).toArray();
+    return { zoneNames, planIds, sessionIds: sessions.map((session) => session._id) };
+  }
 
-    if (filters.q) {
-      conditions.push('(full_name LIKE ? OR email LIKE ? OR badge_number LIKE ?)');
-      values.push(`%${filters.q}%`, `%${filters.q}%`, `%${filters.q}%`);
-    }
+  private async officerIdsWithLotTickets(lotId: string): Promise<string[]> {
+    const { zoneNames, sessionIds } = await this.lotScope(lotId);
+    const tickets = await getMongoDatabase().collection<{ officer_id?: string | null }>("penalty_tickets").find({
+      $or: [{ location_name: { $in: zoneNames } }, { session_id: { $in: sessionIds } }],
+    }).project<{ officer_id?: string | null }>({ officer_id: 1 }).toArray();
+    return [...new Set(tickets.map((ticket) => ticket.officer_id).filter((id): id is string => Boolean(id)))];
+  }
 
-    if (filters.role) {
-      conditions.push('role = ?');
-      values.push(filters.role);
+  private async listFilter(filters: OfficerListFilters, includeDirectLot: boolean) {
+    const clauses: Record<string, unknown>[] = [];
+    if (filters.q?.trim()) {
+      const term = { $regex: escapeRegex(filters.q.trim()), $options: "i" };
+      clauses.push({ $or: [{ full_name: term }, { email: term }, { badge_number: term }] });
     }
-
-    if (filters.status) {
-      if (filters.status === 'ACTIVE') {
-        conditions.push(`status = 'active'`);
-      } else {
-        conditions.push(`status <> 'active'`);
-      }
-    }
+    if (filters.role) clauses.push({ role: filters.role });
+    if (filters.status === "ACTIVE") clauses.push({ status: "active" });
+    if (filters.status === "DISABLED") clauses.push({ status: { $exists: true, $ne: "active" } });
     if (filters.parkingLotId) {
-      conditions.push(`(
-        o.parking_lot_id = ?
-        OR o.id IN (
-          SELECT DISTINCT officer_id FROM penalty_tickets
-          WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
-             OR session_id IN (
-              SELECT id FROM parking_sessions
-              WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
-                 OR plan_id IN (SELECT id FROM parking_plans WHERE parking_lot_id = ?)
-            )
-        )
-      )`);
-      values.push(filters.parkingLotId, filters.parkingLotId, filters.parkingLotId, filters.parkingLotId);
+      const ticketOfficerIds = await this.officerIdsWithLotTickets(filters.parkingLotId);
+      const lotOr: Record<string, unknown>[] = [{ _id: { $in: ticketOfficerIds } }];
+      if (includeDirectLot) lotOr.unshift({ parking_lot_id: filters.parkingLotId });
+      clauses.push({ $or: lotOr });
     }
-
-    return {
-      clause: conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '',
-      values,
-    };
+    return clauses.length ? { $and: clauses } : {};
   }
 
   async list(filters: OfficerListFilters): Promise<{ items: OfficerRow[]; total: number }> {
-    const { clause, values } = this.buildWhere(filters);
-    const offset = (filters.page - 1) * filters.limit;
-
-    const items = await queryRows<OfficerRow>(
-      `SELECT
-          o.id, o.full_name, o.email, o.phone, o.badge_number, o.role, o.status, o.last_login_at, o.created_at, o.parking_lot_id,
-          COALESCE(t.tickets_issued, 0) AS tickets_issued
-       FROM officers o
-       LEFT JOIN (
-         SELECT officer_id, COUNT(*) AS tickets_issued
-         FROM penalty_tickets
-         GROUP BY officer_id
-       ) t ON t.officer_id = o.id
-       ${clause}
-       ORDER BY o.created_at DESC
-       LIMIT ? OFFSET ?`,
-      [...values, filters.limit, offset]
-    );
-
-    const countRows = await queryRows<CountRow>(
-      `SELECT COUNT(*) AS total
-       FROM officers o
-       ${clause}`,
-      values
-    );
-
-    return { items, total: countRows[0]?.total ?? 0 };
+    const filter = await this.listFilter(filters, true);
+    const page = Math.max(1, filters.page);
+    const limit = Math.max(1, Math.min(500, filters.limit));
+    const [officers, total] = await Promise.all([
+      collection().find(filter).sort({ created_at: -1, _id: 1 }).skip((page - 1) * limit).limit(limit).toArray(),
+      collection().countDocuments(filter),
+    ]);
+    const tickets = await getMongoDatabase().collection<{ officer_id: string }>("penalty_tickets").aggregate([
+      { $match: { officer_id: { $in: officers.map((officer) => officer._id) } } },
+      { $group: { _id: "$officer_id", tickets_issued: { $sum: 1 } } },
+    ]).toArray();
+    const ticketCounts = new Map(tickets.map((ticket) => [String(ticket._id), ticket.tickets_issued as number]));
+    return { items: officers.map((officer) => ({ ...toOfficer(officer), tickets_issued: ticketCounts.get(officer._id) ?? 0 })), total };
   }
 
   async findById(id: string): Promise<OfficerRow | null> {
-    const rows = await queryRows<OfficerRow>(
-      `SELECT
-          o.id, o.full_name, o.email, o.phone, o.badge_number, o.role, o.status, o.last_login_at, o.created_at, o.parking_lot_id,
-          COALESCE(t.tickets_issued, 0) AS tickets_issued
-       FROM officers o
-       LEFT JOIN (
-         SELECT officer_id, COUNT(*) AS tickets_issued
-         FROM penalty_tickets
-         GROUP BY officer_id
-       ) t ON t.officer_id = o.id
-       WHERE o.id = ?
-       LIMIT 1`,
-      [id]
-    );
-    return rows[0] ?? null;
+    const officer = await collection().findOne({ _id: id });
+    if (!officer) return null;
+    const tickets_issued = await getMongoDatabase().collection("penalty_tickets").countDocuments({ officer_id: id });
+    return { ...toOfficer(officer), tickets_issued };
   }
 
   async findByEmail(email: string): Promise<{ id: string; full_name: string; email: string; password_hash: string; status?: string } | null> {
-    const rows = await queryRows<any>(
-      `SELECT id, full_name, email, password_hash, status FROM officers WHERE email = ? LIMIT 1`,
-      [email.toLowerCase().trim()]
-    );
-
-    console.log('findByEmail result:', rows[0]); // Debug log
-    return rows[0] ?? null;
+    const officer = await collection().findOne({ email: email.toLowerCase().trim() });
+    if (!officer) return null;
+    return { id: officer._id, full_name: officer.full_name, email: officer.email, password_hash: officer.password_hash, status: officer.status };
   }
 
   async saveResetToken(id: string, tokenHash: string, expiresAt: Date): Promise<void> {
-    await execute(
-      `UPDATE officers SET reset_token = ?, reset_token_expires_at = ? WHERE id = ?`,
-      [tokenHash, expiresAt, id]
-    );
+    await collection().updateOne({ _id: id }, { $set: { reset_token: tokenHash, reset_token_expires_at: expiresAt, updated_at: new Date() } });
   }
 
   async findByResetToken(tokenHash: string, officerId: string): Promise<{ id: string } | null> {
-    const rows = await queryRows<any>(
-      `SELECT id FROM officers WHERE id = ? AND reset_token = ? AND reset_token_expires_at > NOW() LIMIT 1`,
-      [officerId, tokenHash]
-    );
-    return rows[0] ?? null;
+    const officer = await collection().findOne({ _id: officerId, reset_token: tokenHash, reset_token_expires_at: { $gt: new Date() } });
+    return officer ? { id: officer._id } : null;
   }
 
   async updatePassword(id: string, passwordHash: string): Promise<void> {
-    await execute(`UPDATE officers SET password_hash = ?, reset_token = NULL, reset_token_expires_at = NULL WHERE id = ?`, [passwordHash, id]);
+    await collection().updateOne({ _id: id }, { $set: { password_hash: passwordHash, reset_token: null, reset_token_expires_at: null, updated_at: new Date() } });
   }
 
   async updateLastLogin(id: string): Promise<void> {
-    await execute(`UPDATE officers SET last_login_at = NOW() WHERE id = ?`, [id]);
+    await collection().updateOne({ _id: id }, { $set: { last_login_at: new Date(), updated_at: new Date() } });
   }
 
-  async summary(filters: { parkingLotId?: string } = {}): Promise<{
-    totalOfficers: number;
-    activeOfficers: number;
-    disabledOfficers: number;
-    ticketsIssuedToday: number;
-  }> {
-    const lotOfficerClause = filters.parkingLotId
-      ? ` WHERE id IN (
-          SELECT DISTINCT officer_id FROM penalty_tickets
-          WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
-             OR session_id IN (
-              SELECT id FROM parking_sessions
-              WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
-                 OR plan_id IN (SELECT id FROM parking_plans WHERE parking_lot_id = ?)
-            )
-        )`
-      : '';
-    const lotTicketClause = filters.parkingLotId
-      ? ` AND (
-          location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
-          OR session_id IN (
-            SELECT id FROM parking_sessions
-            WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
-               OR plan_id IN (SELECT id FROM parking_plans WHERE parking_lot_id = ?)
-          )
-        )`
-      : '';
-    const lotValues = filters.parkingLotId ? [filters.parkingLotId, filters.parkingLotId, filters.parkingLotId] : [];
-    const [totalRows, activeRows, disabledRows, ticketsTodayRows] = await Promise.all([
-      queryRows<CountRow>(`SELECT COUNT(*) AS total FROM officers${lotOfficerClause}`, lotValues),
-      queryRows<CountRow>(`SELECT COUNT(*) AS total FROM officers${lotOfficerClause ? `${lotOfficerClause} AND status = 'active'` : ` WHERE status = 'active'`}`, lotValues),
-      queryRows<CountRow>(`SELECT COUNT(*) AS total FROM officers${lotOfficerClause ? `${lotOfficerClause} AND status <> 'active'` : ` WHERE status <> 'active'`}`, lotValues),
-      queryRows<CountRow>(`SELECT COUNT(*) AS total FROM penalty_tickets WHERE DATE(date_issued) = CURDATE()${lotTicketClause}`, lotValues),
+  async summary(filters: { parkingLotId?: string } = {}): Promise<{ totalOfficers: number; activeOfficers: number; disabledOfficers: number; ticketsIssuedToday: number }> {
+    const listFilter = await this.listFilter({ page: 1, limit: 1, parkingLotId: filters.parkingLotId }, false);
+    const { zoneNames, sessionIds } = filters.parkingLotId ? await this.lotScope(filters.parkingLotId) : { zoneNames: [], sessionIds: [] };
+    const ticketFilter: Record<string, unknown> = { date_issued: { $gte: utcDayStart(), $lt: new Date(utcDayStart().getTime() + 86400000) } };
+    if (filters.parkingLotId) ticketFilter.$or = [{ location_name: { $in: zoneNames } }, { session_id: { $in: sessionIds } }];
+    const [totalOfficers, activeOfficers, disabledOfficers, ticketsIssuedToday] = await Promise.all([
+      collection().countDocuments(listFilter),
+      collection().countDocuments({ ...listFilter, status: "active" }),
+      collection().countDocuments({ ...listFilter, status: { $exists: true, $ne: "active" } }),
+      getMongoDatabase().collection("penalty_tickets").countDocuments(ticketFilter),
     ]);
-
-    return {
-      totalOfficers: totalRows[0]?.total ?? 0,
-      activeOfficers: activeRows[0]?.total ?? 0,
-      disabledOfficers: disabledRows[0]?.total ?? 0,
-      ticketsIssuedToday: ticketsTodayRows[0]?.total ?? 0,
-    };
+    return { totalOfficers, activeOfficers, disabledOfficers, ticketsIssuedToday };
   }
 
-  async create(params: {
-    createdByAdminId: string;
-    fullName: string;
-    email: string;
-    phone?: string;
-    badgeNumber?: string;
-    role: OfficerRole;
-    passwordHash: string;
-    parkingLotId?: string;
-  }): Promise<string> {
+  async create(params: { createdByAdminId: string; fullName: string; email: string; phone?: string; badgeNumber?: string; role: OfficerRole; passwordHash: string; parkingLotId?: string }): Promise<string> {
     const id = crypto.randomUUID();
-    await execute(
-      `INSERT INTO officers
-      (id, created_by_admin_id, full_name, email, phone, password_hash, badge_number, role, status, parking_lot_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)`,
-      [
-        id,
-        params.createdByAdminId,
-        params.fullName.trim(),
-        params.email.toLowerCase().trim(),
-        params.phone ?? null,
-        params.passwordHash,
-        params.badgeNumber ?? null,
-        params.role,
-        params.parkingLotId ?? null,
-      ]
-    );
+    const now = new Date();
+    await collection().insertOne({
+      _id: id, id, created_by_admin_id: params.createdByAdminId, full_name: params.fullName.trim(),
+      email: params.email.toLowerCase().trim(), phone: params.phone ?? null, password_hash: params.passwordHash,
+      badge_number: params.badgeNumber ?? null, role: params.role, status: "active", parking_lot_id: params.parkingLotId ?? null,
+      reset_token: null, reset_token_expires_at: null, last_login_at: null, created_at: now, updated_at: now,
+    } as OfficerDocument);
     return id;
   }
 
-  async update(
-    id: string,
-    params: { fullName?: string; phone?: string; role?: OfficerRole; badgeNumber?: string; parkingLotId?: string }
-  ): Promise<number> {
-    const updates: string[] = [];
-    const values: any[] = [];
-
-    if (typeof params.fullName === 'string') {
-      updates.push('full_name = ?');
-      values.push(params.fullName.trim());
-    }
-    if (typeof params.phone === 'string') {
-      updates.push('phone = ?');
-      values.push(params.phone.trim());
-    }
-    if (typeof params.badgeNumber === 'string') {
-      updates.push('badge_number = ?');
-      values.push(params.badgeNumber.trim());
-    }
-    if (params.role) {
-      updates.push('role = ?');
-      values.push(params.role);
-    }
-    if (params.parkingLotId !== undefined) {
-      updates.push('parking_lot_id = ?');
-      values.push(params.parkingLotId ?? null);
-    }
-
-    if (updates.length === 0) return 0;
-    values.push(id);
-
-    const result = await execute(
-      `UPDATE officers SET ${updates.join(', ')}, updated_at = NOW() WHERE id = ?`,
-      values
-    );
-    return result.affectedRows;
+  async update(id: string, params: { fullName?: string; phone?: string; role?: OfficerRole; badgeNumber?: string; parkingLotId?: string }): Promise<number> {
+    const fields: Record<string, unknown> = {};
+    if (typeof params.fullName === "string") fields.full_name = params.fullName.trim();
+    if (typeof params.phone === "string") fields.phone = params.phone.trim();
+    if (typeof params.badgeNumber === "string") fields.badge_number = params.badgeNumber.trim();
+    if (params.role) fields.role = params.role;
+    if (params.parkingLotId !== undefined) fields.parking_lot_id = params.parkingLotId ?? null;
+    if (!Object.keys(fields).length) return 0;
+    fields.updated_at = new Date();
+    return (await collection().updateOne({ _id: id }, { $set: fields })).matchedCount;
   }
 
   async setUiStatus(id: string, status: UiOfficerStatus): Promise<number> {
-    const next = status === 'ACTIVE' ? 'active' : 'inactive';
-    const result = await execute(`UPDATE officers SET status = ?, updated_at = NOW() WHERE id = ?`, [next, id]);
-    return result.affectedRows;
+    return (await collection().updateOne({ _id: id }, { $set: { status: status === "ACTIVE" ? "active" : "inactive", updated_at: new Date() } })).matchedCount;
   }
 
   async remove(id: string): Promise<number> {
-    const result = await execute(`DELETE FROM officers WHERE id = ?`, [id]);
-    return result.affectedRows;
+    return (await collection().deleteOne({ _id: id })).deletedCount;
   }
 }

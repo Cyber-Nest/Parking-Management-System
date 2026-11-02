@@ -9,7 +9,7 @@ import { TicketService } from './ticket.service';
 import { NotFoundError, ValidationError } from './commonErrors';
 import { ensureCloudinaryUrl, uploadMediaList } from './cloudinary.service';
 import { sendEmail, penaltyNoticeTemplate } from '../utils/email';
-import { queryRows } from '../config/database';
+import { getMongoDatabase } from '../config/mongodb';
 
 const ticketService = new TicketService();
 
@@ -199,53 +199,51 @@ export class EnforcementService {
 
       // 1. Try to get email from the session if it exists
       if (ticket.session_id) {
-        const sessionRows = await queryRows<{ customer_email: string | null }>(
-          `SELECT COALESCE(u.email, b.customer_email) AS customer_email
-           FROM parking_sessions ps
-           LEFT JOIN users u ON u.id = ps.user_id
-           LEFT JOIN bookings b
-             ON REPLACE(REPLACE(UPPER(b.vehicle_plate_number), ' ', ''), '-', '') = REPLACE(REPLACE(UPPER(ps.license_plate), ' ', ''), '-', '')
-            AND b.start_time <= ps.end_time
-            AND b.end_time >= ps.start_time
-           WHERE ps.id = ?
-           LIMIT 1`,
-          [ticket.session_id]
-        );
-        if (sessionRows[0]?.customer_email) {
-          customerEmail = sessionRows[0].customer_email;
+        const db = getMongoDatabase();
+        const session = await db.collection<{ _id: string; user_id?: string | null; license_plate: string; start_time: Date; end_time: Date }>('parking_sessions').findOne({ _id: ticket.session_id });
+        if (session?.user_id) {
+          const user = await db.collection<{ _id: string; email?: string | null }>('users').findOne({ _id: session.user_id });
+          if (user?.email) customerEmail = user.email;
+        }
+        if (!customerEmail && session) {
+          const normalized = (value: string) => value.toUpperCase().replace(/[ -]/g, '');
+          const plate = normalized(session.license_plate);
+          const bookings = await db.collection<{ customer_email?: string | null }>('bookings').aggregate([
+            { $match: { $expr: { $and: [
+              { $eq: [{ $replaceAll: { input: { $replaceAll: { input: { $toUpper: '$vehicle_plate_number' }, find: ' ', replacement: '' } }, find: '-', replacement: '' } }, plate] },
+              { $lte: ['$start_time', session.end_time] },
+              { $gte: ['$end_time', session.start_time] },
+            ] } } },
+            { $limit: 1 },
+          ]).toArray();
+          if (bookings[0]?.customer_email) customerEmail = String(bookings[0].customer_email);
         }
       }
 
       // 2. Fallback to latest booking by plate
       if (!customerEmail) {
-        const userRows = await queryRows<{ email: string }>(
-          `SELECT customer_email AS email
-           FROM bookings 
-           WHERE REPLACE(REPLACE(UPPER(vehicle_plate_number), ' ', ''), '-', '') = REPLACE(REPLACE(UPPER(?), ' ', ''), '-', '')
-           ORDER BY start_time DESC 
-           LIMIT 1`,
-          [ticket.license_plate]
-        );
-        if (userRows[0]?.email) {
-          customerEmail = userRows[0].email;
-        }
+        const normalizedPlate = ticket.license_plate.toUpperCase().replace(/[ -]/g, '');
+        const bookings = await getMongoDatabase().collection<{ customer_email?: string | null }>('bookings').aggregate([
+          { $match: { $expr: { $eq: [{ $replaceAll: { input: { $replaceAll: { input: { $toUpper: '$vehicle_plate_number' }, find: ' ', replacement: '' } }, find: '-', replacement: '' } }, normalizedPlate] } } },
+          { $sort: { start_time: -1 } },
+          { $limit: 1 },
+        ]).toArray();
+        if (bookings[0]?.customer_email) customerEmail = String(bookings[0].customer_email);
       }
 
       // 3. Fallback to latest app session by plate
       if (!customerEmail) {
-        const sessionUserRows = await queryRows<{ email: string }>(
-          `SELECT u.email
-           FROM parking_sessions ps
-           JOIN users u ON u.id = ps.user_id
-           WHERE REPLACE(REPLACE(UPPER(ps.license_plate), ' ', ''), '-', '') = REPLACE(REPLACE(UPPER(?), ' ', ''), '-', '')
-             AND u.email IS NOT NULL
-           ORDER BY ps.start_time DESC
-           LIMIT 1`,
-          [ticket.license_plate]
-        );
-        if (sessionUserRows[0]?.email) {
-          customerEmail = sessionUserRows[0].email;
-        }
+        const normalizedPlate = ticket.license_plate.toUpperCase().replace(/[ -]/g, '');
+        const sessionUsers = await getMongoDatabase().collection('parking_sessions').aggregate([
+          { $match: { user_id: { $ne: null }, $expr: { $eq: [{ $replaceAll: { input: { $replaceAll: { input: { $toUpper: '$license_plate' }, find: ' ', replacement: '' } }, find: '-', replacement: '' } }, normalizedPlate] } } },
+          { $lookup: { from: 'users', localField: 'user_id', foreignField: '_id', as: 'user' } },
+          { $unwind: '$user' },
+          { $match: { 'user.email': { $ne: null } } },
+          { $sort: { start_time: -1 } },
+          { $limit: 1 },
+          { $project: { _id: 0, email: '$user.email' } },
+        ]).toArray();
+        if (sessionUsers[0]?.email) customerEmail = String(sessionUsers[0].email);
       }
       
       if (customerEmail) {

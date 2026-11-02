@@ -1,434 +1,223 @@
 import crypto from "crypto";
-import { execute, queryRows } from "../config/database";
+import { getMongoDatabase } from "../config/mongodb";
 import { TicketStatus } from "../types";
 import { nextNumericTicketNumber, normalizeTicketNumberLookup } from "../utils/ticketNumber";
 
-export interface TicketListFilters {
-  page: number;
-  limit: number;
-  q?: string;
-  status?: TicketStatus;
-  officerId?: string;
-  from?: string;
-  to?: string;
-  parkingLotId?: string;
-}
-
+export interface TicketListFilters { page: number; limit: number; q?: string; status?: TicketStatus; officerId?: string; from?: string; to?: string; parkingLotId?: string }
 export interface TicketRow {
-  id: string;
-  ticket_number: string;
-  officer_id: string;
-  officer_name: string;
-  license_plate: string;
-  amount: number;
-  reason: string;
-  status: TicketStatus;
-  date_issued: Date;
-  due_date: Date | null;
-  paid_at: Date | null;
-  payment_id?: string | null;
-  remarks: string | null;
-  note: string | null;
-  dispute_raised: number;
-  dispute_message?: string | null;
-  dispute_at?: Date | null;
-  dispute_resolved_at?: Date | null;
-  created_at: Date;
-  session_id?: string | null;
-  location_name?: string | null;
-  start_time?: Date | null;
-  end_time?: Date | null;
-  plan_name?: string | null;
-  notes?: string | null;
-  parking_lot_id?: string | null;
-  parking_lot_name?: string | null;
-  payment_method?: string | null;
-  transaction_ref?: string | null;
-  evidence_photos?: { id: string; image: string }[];
+  id: string; ticket_number: string; officer_id: string; officer_name: string; license_plate: string; amount: number;
+  reason: string; status: TicketStatus; date_issued: Date; due_date: Date | null; paid_at: Date | null;
+  payment_id?: string | null; remarks: string | null; note: string | null; dispute_raised: number;
+  dispute_message?: string | null; dispute_at?: Date | null; dispute_resolved_at?: Date | null; created_at: Date;
+  session_id?: string | null; location_name?: string | null; start_time?: Date | null; end_time?: Date | null;
+  plan_name?: string | null; notes?: string | null; parking_lot_id?: string | null; parking_lot_name?: string | null;
+  payment_method?: string | null; transaction_ref?: string | null; evidence_photos?: { id: string; image: string }[];
 }
-
-interface CountRow {
-  total: number;
-}
-
-interface AmountRow {
-  total_amount: number | null;
-}
+type TicketDocument = { _id: string; id: string; ticket_number: string; officer_id: string; officer_name: string; license_plate: string; amount: number; reason: string; status: TicketStatus; date_issued: Date; created_at: Date; [key: string]: unknown };
+type RelatedZone = { _id: string; parking_name: string; parking_lot_id?: string | null };
+type ParkingLot = { _id: string; lot_name: string; created_at?: Date };
+const tickets = () => getMongoDatabase().collection<TicketDocument>("penalty_tickets");
+const photos = () => getMongoDatabase().collection<{ _id: string; id: string; ticket_id: string; photo_url: string; uploaded_at?: Date }>("ticket_photos");
+const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const parseDate = (value: string) => new Date(value.includes("T") || value.endsWith("Z") ? value : `${value.replace(" ", "T")}Z`);
+const dayStart = () => { const now = new Date(); return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())); };
+const minText = (values: Array<string | null | undefined>) => values.filter((value): value is string => Boolean(value)).sort((a, b) => a.localeCompare(b))[0] ?? null;
 
 export class TicketRepository {
-  private async nextTicketNumber(): Promise<string> {
-    return nextNumericTicketNumber();
+  private async lotScope(lotId: string) {
+    const db = getMongoDatabase();
+    const [zones, plans, officers] = await Promise.all([
+      db.collection<RelatedZone>("parking_zones").find({ parking_lot_id: lotId }).toArray(),
+      db.collection<{ _id: string }>("parking_plans").find({ parking_lot_id: lotId }).project<{ _id: string }>({ _id: 1 }).toArray(),
+      db.collection<{ _id: string }>("officers").find({ parking_lot_id: lotId }).project<{ _id: string }>({ _id: 1 }).toArray(),
+    ]);
+    const zoneNames = zones.map((zone) => zone.parking_name);
+    const planIds = plans.map((plan) => plan._id);
+    const sessions = await db.collection<{ _id: string }>("parking_sessions").find({ $or: [{ location_name: { $in: zoneNames } }, { plan_id: { $in: planIds } }] }).project<{ _id: string }>({ _id: 1 }).toArray();
+    return { zoneNames, planIds, sessionIds: sessions.map((session) => session._id), officerIds: officers.map((officer) => officer._id) };
   }
 
-  private buildWhere(
-    filters: TicketListFilters,
-    ticketAlias = "",
-  ): { clause: string; values: any[] } {
-    const conditions: string[] = [];
-    const values: any[] = [];
-    const col = (name: string) => `${ticketAlias}${name}`;
-
-    if (filters.q) {
-      conditions.push(
-        `(${col("ticket_number")} LIKE ? OR ${col("license_plate")} LIKE ?)`,
-      );
-      values.push(`%${filters.q}%`, `%${filters.q}%`);
+  private async filterFor(filters: TicketListFilters) {
+    const clauses: Record<string, unknown>[] = [];
+    if (filters.q?.trim()) {
+      const term = { $regex: escapeRegex(filters.q.trim()), $options: "i" };
+      clauses.push({ $or: [{ ticket_number: term }, { license_plate: term }] });
     }
-    if (filters.status) {
-      conditions.push(`${col("status")} = ?`);
-      values.push(filters.status);
-    }
-    if (filters.officerId) {
-      conditions.push(`${col("officer_id")} = ?`);
-      values.push(filters.officerId);
-    }
-    if (filters.from) {
-      conditions.push(`${col("date_issued")} >= ?`);
-      values.push(filters.from);
-    }
-    if (filters.to) {
-      conditions.push(`${col("date_issued")} <= ?`);
-      values.push(`${filters.to} 23:59:59`);
-    }
+    if (filters.status) clauses.push({ status: filters.status });
+    if (filters.officerId) clauses.push({ officer_id: filters.officerId });
+    if (filters.from) clauses.push({ date_issued: { $gte: parseDate(filters.from) } });
+    if (filters.to) clauses.push({ date_issued: { $lte: parseDate(`${filters.to} 23:59:59`) } });
     if (filters.parkingLotId) {
-      conditions.push(`(
-        ${col("location_name")} IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
-        OR ${col("session_id")} IN (
-          SELECT id FROM parking_sessions
-          WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
-             OR plan_id IN (SELECT id FROM parking_plans WHERE parking_lot_id = ?)
-        )
-        OR ${col("officer_id")} IN (SELECT id FROM officers WHERE parking_lot_id = ?)
-      )`);
-      values.push(
-        filters.parkingLotId,
-        filters.parkingLotId,
-        filters.parkingLotId,
-        filters.parkingLotId,
-      );
+      const scope = await this.lotScope(filters.parkingLotId);
+      clauses.push({ $or: [
+        { location_name: { $in: scope.zoneNames } },
+        { session_id: { $in: scope.sessionIds } },
+        { officer_id: { $in: scope.officerIds } },
+      ] });
     }
-
-    return {
-      clause: conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "",
-      values,
-    };
+    return clauses.length ? { $and: clauses } : {};
   }
 
-
-
-  async list(
-    filters: TicketListFilters,
-  ): Promise<{ items: TicketRow[]; total: number }> {
-    const { clause, values } = this.buildWhere(filters, "t.");
-    const offset = (filters.page - 1) * filters.limit;
-
-    const items = await queryRows<TicketRow>(
-      `SELECT t.id, t.ticket_number, t.officer_id, t.officer_name, t.license_plate, t.location_name, t.amount, t.reason, t.status,
-              t.date_issued, t.due_date, t.paid_at, t.remarks, t.note, t.dispute_raised, t.created_at, t.session_id, t.payment_id,
-              MIN(COALESCE(tz.parking_lot_id, tz_id.parking_lot_id, sz.parking_lot_id, sz_id.parking_lot_id, pp.parking_lot_id, o.parking_lot_id, pl_direct.id, (SELECT id FROM parking_lots ORDER BY created_at ASC LIMIT 1))) AS parking_lot_id,
-              MIN(COALESCE(pl.lot_name, pl_by_officer.lot_name, pl_direct.lot_name, (SELECT lot_name FROM parking_lots ORDER BY created_at ASC LIMIT 1))) AS parking_lot_name,
-              MIN(ps.start_time) AS start_time, MIN(ps.end_time) AS end_time, MIN(ps.plan_name) AS plan_name,
-              MIN(pay.payment_method) AS payment_method, MIN(pay.transaction_ref) AS transaction_ref
-       FROM penalty_tickets t
-       LEFT JOIN parking_zones tz ON tz.parking_name = t.location_name
-       LEFT JOIN parking_zones tz_id ON tz_id.id = t.location_name
-       LEFT JOIN parking_sessions ps ON ps.id = t.session_id
-       LEFT JOIN parking_zones sz ON sz.parking_name = ps.location_name
-       LEFT JOIN parking_zones sz_id ON sz_id.id = ps.location_name
-       LEFT JOIN parking_plans pp ON pp.id = ps.plan_id
-       LEFT JOIN officers o ON o.id = t.officer_id
-       LEFT JOIN parking_lots pl_by_officer ON pl_by_officer.id = o.parking_lot_id
-       LEFT JOIN parking_lots pl_direct ON (pl_direct.lot_name = t.location_name OR pl_direct.id = t.location_name)
-       LEFT JOIN parking_lots pl ON pl.id = COALESCE(tz.parking_lot_id, tz_id.parking_lot_id, sz.parking_lot_id, sz_id.parking_lot_id, pp.parking_lot_id)
-       LEFT JOIN payments pay ON pay.id = t.payment_id
-       ${clause}
-       GROUP BY t.id
-       ORDER BY t.date_issued DESC
-       LIMIT ? OFFSET ?`,
-      [...values, filters.limit, offset],
-    );
-
-    if (items.length > 0) {
-      const ticketIds = items.map(t => t.id);
-      const placeholders = ticketIds.map(() => '?').join(',');
-      const photosData = await queryRows<{ticket_id: string, photo_url: string, id: string}>(
-        `SELECT id, ticket_id, photo_url FROM ticket_photos WHERE ticket_id IN (${placeholders}) ORDER BY uploaded_at ASC`,
-        ticketIds
-      );
-      
-      const photoMap = new Map<string, {id: string, image: string}[]>();
-      for (const p of photosData) {
-        if (!photoMap.has(p.ticket_id)) photoMap.set(p.ticket_id, []);
-        photoMap.get(p.ticket_id)!.push({ id: p.id, image: p.photo_url });
-      }
-
-      for (const item of items) {
-        item.evidence_photos = photoMap.get(item.id) || [];
+  private async enrich(ticket: TicketDocument, firstLot: ParkingLot | null, includePhotos: boolean, includeLot = true): Promise<TicketRow> {
+    const db = getMongoDatabase();
+    const location = String(ticket.location_name ?? "");
+    const [ticketZones, ticketZoneById, session, officer, directLots, payment, evidence] = await Promise.all([
+      db.collection<RelatedZone>("parking_zones").find({ parking_name: location }).toArray(),
+      db.collection<RelatedZone>("parking_zones").findOne({ _id: location }),
+      ticket.session_id ? db.collection<{ _id: string; location_name?: string; plan_id?: string | null; start_time?: Date; end_time?: Date; plan_name?: string; notes?: string }>("parking_sessions").findOne({ _id: ticket.session_id }) : null,
+      db.collection<{ _id: string; parking_lot_id?: string | null }>("officers").findOne({ _id: ticket.officer_id }),
+      db.collection<ParkingLot>("parking_lots").find({ $or: [{ _id: location }, { lot_name: location }] }).sort({ _id: 1 }).toArray(),
+      ticket.payment_id ? db.collection<{ _id: string; payment_method?: string | null; transaction_ref?: string | null }>("payments").findOne({ _id: String(ticket.payment_id) }) : null,
+      includePhotos ? photos().find({ ticket_id: ticket._id }).sort({ uploaded_at: 1, _id: 1 }).toArray() : [],
+    ]);
+    const sessionLocation = String(session?.location_name ?? "");
+    const [sessionZones, sessionZoneById, plan, officerLot, firstLotNameMatch] = await Promise.all([
+      session ? db.collection<RelatedZone>("parking_zones").find({ parking_name: sessionLocation }).toArray() : [],
+      session ? db.collection<RelatedZone>("parking_zones").findOne({ _id: sessionLocation }) : null,
+      session?.plan_id ? db.collection<{ _id: string; parking_lot_id?: string | null }>("parking_plans").findOne({ _id: session.plan_id }) : null,
+      officer?.parking_lot_id ? db.collection<ParkingLot>("parking_lots").findOne({ _id: officer.parking_lot_id }) : null,
+      db.collection<ParkingLot>("parking_lots").find().sort({ created_at: 1, _id: 1 }).limit(1).next(),
+    ]);
+    const ticketZoneMatches = ticketZones.length ? ticketZones : [null];
+    const sessionZoneMatches = sessionZones.length ? sessionZones : [null];
+    const joinedLotIds: string[] = [];
+    const resolvedLotIds: string[] = [];
+    const resolvedLotNameSets: string[][] = [];
+    for (const ticketZone of ticketZoneMatches) {
+      for (const sessionZone of sessionZoneMatches) {
+        const joinedLotId = ticketZone?.parking_lot_id ?? ticketZoneById?.parking_lot_id
+          ?? sessionZone?.parking_lot_id ?? sessionZoneById?.parking_lot_id ?? plan?.parking_lot_id;
+        if (joinedLotId) joinedLotIds.push(joinedLotId);
+        const fallbackIds = joinedLotId ? [joinedLotId]
+          : officer?.parking_lot_id ? [officer.parking_lot_id]
+          : directLots.length ? directLots.map((lot) => lot._id)
+          : firstLot ? [firstLot._id] : [];
+        resolvedLotIds.push(...fallbackIds);
+        resolvedLotNameSets.push(joinedLotId ? [joinedLotId] : []);
       }
     }
-
-    const countRows = await queryRows<CountRow>(
-      `SELECT COUNT(*) AS total
-       FROM penalty_tickets t
-       ${clause}`,
-      values,
-    );
-
-    return { items, total: countRows[0]?.total ?? 0 };
-  }
-
-  async summary(filters: { parkingLotId?: string } = {}): Promise<{
-    totalToday: number;
-    totalTickets: number;
-    unpaidCount: number;
-    paidCount: number;
-    disputedCount: number;
-    totalPenaltyAmount: number;
-  }> {
-    const lotClause = filters.parkingLotId
-      ? ` AND (
-          location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
-          OR session_id IN (
-            SELECT id FROM parking_sessions
-            WHERE location_name IN (SELECT parking_name FROM parking_zones WHERE parking_lot_id = ?)
-               OR plan_id IN (SELECT id FROM parking_plans WHERE parking_lot_id = ?)
-          )
-          OR officer_id IN (SELECT id FROM officers WHERE parking_lot_id = ?)
-        )`
-      : "";
-    const lotValues = filters.parkingLotId
-      ? [filters.parkingLotId, filters.parkingLotId, filters.parkingLotId, filters.parkingLotId]
+    const joinedLots = joinedLotIds.length
+      ? await db.collection<ParkingLot>("parking_lots").find({ _id: { $in: [...new Set(joinedLotIds)] } }).toArray()
       : [];
-    const totalTodayRows = await queryRows<CountRow>(
-      `SELECT COUNT(*) AS total
-       FROM penalty_tickets
-       WHERE DATE(date_issued) = CURDATE()${lotClause}`,
-      lotValues,
-    );
-    const totalTicketsRows = await queryRows<CountRow>(
-      `SELECT COUNT(*) AS total
-       FROM penalty_tickets
-       WHERE 1=1${lotClause}`,
-      lotValues,
-    );
-    const unpaidRows = await queryRows<CountRow>(
-      `SELECT COUNT(*) AS total
-       FROM penalty_tickets
-       WHERE status = 'unpaid'${lotClause}`,
-      lotValues,
-    );
-    const paidRows = await queryRows<CountRow>(
-      `SELECT COUNT(*) AS total
-       FROM penalty_tickets
-       WHERE status = 'paid'${lotClause}`,
-      lotValues,
-    );
-    const disputedRows = await queryRows<CountRow>(
-      `SELECT COUNT(*) AS total
-       FROM penalty_tickets
-       WHERE status = 'disputed'${lotClause}`,
-      lotValues,
-    );
-    const amountRows = await queryRows<AmountRow>(
-      `SELECT COALESCE(SUM(amount), 0) AS total_amount
-       FROM penalty_tickets
-       WHERE 1=1${lotClause}`,
-      lotValues,
-    );
-
+    const joinedLotNames = new Map(joinedLots.map((lot) => [lot._id, lot.lot_name]));
+    const lotNameCandidates = resolvedLotNameSets.flatMap((ids) => {
+      const fromJoin = ids.map((id) => joinedLotNames.get(id)).filter((name): name is string => Boolean(name));
+      return fromJoin.length ? fromJoin
+        : officerLot?.lot_name ? [officerLot.lot_name]
+        : directLots.length ? directLots.map((lot) => lot.lot_name)
+        : firstLotNameMatch?.lot_name ? [firstLotNameMatch.lot_name] : [];
+    });
+    const { _id, ...fields } = ticket;
     return {
-      totalToday: totalTodayRows[0]?.total ?? 0,
-      // UI commonly expects `totalTickets`/`unpaidTickets`/etc.
-      totalTickets: totalTicketsRows[0]?.total ?? 0,
-      unpaidCount: unpaidRows[0]?.total ?? 0,
-      paidCount: paidRows[0]?.total ?? 0,
-      disputedCount: disputedRows[0]?.total ?? 0,
-      totalPenaltyAmount: Number(amountRows[0]?.total_amount ?? 0),
-    };
+      ...fields,
+      id: _id,
+      start_time: session?.start_time ?? null,
+      end_time: session?.end_time ?? null,
+      plan_name: session?.plan_name ?? null,
+      notes: session?.notes ?? null,
+      ...(includeLot ? { parking_lot_id: minText(resolvedLotIds), parking_lot_name: minText(lotNameCandidates) } : {}),
+      payment_method: payment?.payment_method ?? null,
+      transaction_ref: payment?.transaction_ref ?? null,
+      ...(includePhotos ? { evidence_photos: evidence.map((photo) => ({ id: photo._id, image: photo.photo_url })) } : {}),
+    } as unknown as TicketRow;
   }
 
-  async create(params: {
-    officerId: string;
-    officerName: string;
-    licensePlate: string;
-    amount: number;
-    reason: string;
-    status?: TicketStatus;
-    dueDate?: string;
-    sessionId?: string;
-    remarks?: string;
-  }): Promise<string> {
+  async list(filters: TicketListFilters): Promise<{ items: TicketRow[]; total: number }> {
+    const filter = await this.filterFor(filters);
+    const page = Math.max(1, filters.page);
+    const limit = Math.max(1, Math.min(500, filters.limit));
+    const [documents, total, firstLot] = await Promise.all([
+      tickets().find(filter).sort({ date_issued: -1, _id: 1 }).skip((page - 1) * limit).limit(limit).toArray(),
+      tickets().countDocuments(filter),
+      getMongoDatabase().collection<ParkingLot>("parking_lots").find().sort({ created_at: 1, _id: 1 }).limit(1).next(),
+    ]);
+    const enriched = await Promise.all(documents.map((ticket) => this.enrich(ticket, firstLot, true)));
+    const items = enriched.map((item) => {
+      const { dispute_message, dispute_at, dispute_resolved_at, notes, ...listItem } = item;
+      void dispute_message; void dispute_at; void dispute_resolved_at; void notes;
+      return listItem;
+    });
+    return { items, total };
+  }
+
+  async summary(filters: { parkingLotId?: string } = {}): Promise<{ totalToday: number; totalTickets: number; unpaidCount: number; paidCount: number; disputedCount: number; totalPenaltyAmount: number }> {
+    const scope: Record<string, unknown> = {};
+    if (filters.parkingLotId) {
+      const lot = await this.lotScope(filters.parkingLotId);
+      scope.$or = [{ location_name: { $in: lot.zoneNames } }, { session_id: { $in: lot.sessionIds } }, { officer_id: { $in: lot.officerIds } }];
+    }
+    const start = dayStart();
+    const end = new Date(start.getTime() + 86400000);
+    const [totalToday, totalTickets, unpaidCount, paidCount, disputedCount, aggregate] = await Promise.all([
+      tickets().countDocuments({ ...scope, date_issued: { $gte: start, $lt: end } }),
+      tickets().countDocuments(scope),
+      tickets().countDocuments({ ...scope, status: "unpaid" }),
+      tickets().countDocuments({ ...scope, status: "paid" }),
+      tickets().countDocuments({ ...scope, status: "disputed" }),
+      tickets().aggregate([{ $match: scope }, { $group: { _id: null, total: { $sum: "$amount" } } }]).toArray(),
+    ]);
+    return { totalToday, totalTickets, unpaidCount, paidCount, disputedCount, totalPenaltyAmount: Number(aggregate[0]?.total ?? 0) };
+  }
+
+  async create(params: { officerId: string; officerName: string; licensePlate: string; amount: number; reason: string; status?: TicketStatus; dueDate?: string; sessionId?: string; remarks?: string }): Promise<string> {
     const id = crypto.randomUUID();
-    const ticketNumber = await this.nextTicketNumber();
-
-    await execute(
-      `INSERT INTO penalty_tickets
-      (id, ticket_number, officer_id, officer_name, session_id, license_plate, amount, reason, status, date_issued, due_date, remarks, note)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?, ?)`,
-      [
-        id,
-        ticketNumber,
-        params.officerId,
-        params.officerName,
-        params.sessionId ?? null,
-        params.licensePlate.trim().toUpperCase(),
-        params.amount,
-        params.reason.trim(),
-        params.status ?? "unpaid",
-        params.dueDate ?? null,
-        params.remarks ?? null,
-        null, // note
-      ],
-    );
-
+    const ticketNumber = await nextNumericTicketNumber();
+    const now = new Date();
+    await tickets().insertOne({
+      _id: id, id, ticket_number: ticketNumber, officer_id: params.officerId, officer_name: params.officerName,
+      session_id: params.sessionId ?? null, license_plate: params.licensePlate.trim().toUpperCase(), amount: params.amount,
+      reason: params.reason.trim(), status: params.status ?? "unpaid", date_issued: now,
+      due_date: params.dueDate ? parseDate(params.dueDate) : null, paid_at: null, payment_id: null,
+      location_name: null, remarks: params.remarks ?? null, note: null, dispute_raised: 0,
+      dispute_message: null, dispute_at: null, dispute_resolved_at: null, created_at: now, updated_at: now,
+    });
     return id;
   }
 
+  private async withPhotos(ticket: TicketDocument | null): Promise<TicketRow | null> {
+    if (!ticket) return null;
+    const firstLot = await getMongoDatabase().collection<ParkingLot>("parking_lots").find().sort({ created_at: 1, _id: 1 }).limit(1).next();
+    return this.enrich(ticket, firstLot, true, false);
+  }
+
   async findById(id: string): Promise<TicketRow | null> {
-    const rows = await queryRows<TicketRow>(
-      `SELECT t.id, t.ticket_number, t.officer_id, t.officer_name, t.license_plate, t.location_name, t.amount, t.reason, t.status,
-              t.date_issued, t.due_date, t.paid_at, t.payment_id, t.remarks, t.note, t.dispute_raised, t.dispute_message, t.dispute_at,
-              t.dispute_resolved_at, t.created_at, t.session_id, s.start_time, s.end_time, s.plan_name, s.notes,
-              pay.payment_method, pay.transaction_ref
-       FROM penalty_tickets t
-       LEFT JOIN parking_sessions s ON t.session_id = s.id
-       LEFT JOIN payments pay ON pay.id = t.payment_id
-       WHERE t.id = ? LIMIT 1`,
-      [id],
-    );
-    const row = rows[0] ?? null;
-    if (row) {
-      const photosData = await queryRows<{id: string, photo_url: string}>(
-        `SELECT id, photo_url FROM ticket_photos WHERE ticket_id = ? ORDER BY uploaded_at ASC`,
-        [row.id]
-      );
-      row.evidence_photos = photosData.map(p => ({ id: p.id, image: p.photo_url }));
-    }
-    return row;
+    return this.withPhotos(await tickets().findOne({ _id: id }));
   }
 
   async findByTicketNumber(ticketNumber: string): Promise<TicketRow | null> {
     const candidates = normalizeTicketNumberLookup(ticketNumber);
-    if (candidates.length === 0) return null;
-    const rows = await queryRows<TicketRow>(
-      `SELECT t.id, t.ticket_number, t.officer_id, t.officer_name, t.license_plate, t.location_name, t.amount, t.reason, t.status,
-              t.date_issued, t.due_date, t.paid_at, t.payment_id, t.remarks, t.note, t.dispute_raised, t.dispute_message, t.dispute_at,
-              t.dispute_resolved_at, t.created_at, t.session_id, s.start_time, s.end_time, s.plan_name, s.notes,
-              pay.payment_method, pay.transaction_ref
-       FROM penalty_tickets t
-       LEFT JOIN parking_sessions s ON t.session_id = s.id
-       LEFT JOIN payments pay ON pay.id = t.payment_id
-       WHERE t.ticket_number IN (${candidates.map(() => "?").join(", ")})
-       LIMIT 1`,
-      candidates,
-    );
-    const row = rows[0] ?? null;
-    if (row) {
-      const photosData = await queryRows<{id: string, photo_url: string}>(
-        `SELECT id, photo_url FROM ticket_photos WHERE ticket_id = ? ORDER BY uploaded_at ASC`,
-        [row.id]
-      );
-      row.evidence_photos = photosData.map(p => ({ id: p.id, image: p.photo_url }));
-    }
-    return row;
+    if (!candidates.length) return null;
+    return this.withPhotos(await tickets().findOne({ ticket_number: { $in: candidates } }));
   }
 
   async raiseDispute(id: string, disputeMessage: string): Promise<number> {
-    const result = await execute(
-      `UPDATE penalty_tickets
-       SET dispute_raised = 1,
-           dispute_message = ?,
-           dispute_at = NOW(),
-           status = 'disputed',
-           updated_at = NOW()
-       WHERE id = ?`,
-      [disputeMessage, id],
-    );
-    return result.affectedRows;
+    return (await tickets().updateOne({ _id: id }, { $set: { dispute_raised: 1, dispute_message: disputeMessage, dispute_at: new Date(), status: "disputed", updated_at: new Date() } })).matchedCount;
   }
 
-  async updateTicket(
-    id: string,
-    params: {
-      licensePlate?: string;
-      amount?: number;
-      reason?: string;
-      dueDate?: string | null;
-      locationName?: string | null;
-    },
-  ): Promise<number> {
-    const updates: string[] = [];
-    const values: any[] = [];
-    if (params.licensePlate !== undefined) {
-      updates.push("license_plate = ?");
-      values.push(params.licensePlate.trim().toUpperCase());
-    }
-    if (params.amount !== undefined) {
-      updates.push("amount = ?");
-      values.push(params.amount);
-    }
-    if (params.reason !== undefined) {
-      updates.push("reason = ?");
-      values.push(params.reason.trim());
-    }
-    if (params.dueDate !== undefined) {
-      updates.push("due_date = ?");
-      values.push(params.dueDate);
-    }
-    if (params.locationName !== undefined) {
-      updates.push("location_name = ?");
-      values.push(params.locationName);
-    }
-    if (updates.length === 0) return 0;
-    values.push(id);
-    const result = await execute(
-      `UPDATE penalty_tickets SET ${updates.join(", ")}, updated_at = NOW() WHERE id = ?`,
-      values,
-    );
-    return result.affectedRows;
+  async updateTicket(id: string, params: { licensePlate?: string; amount?: number; reason?: string; dueDate?: string | null; locationName?: string | null }): Promise<number> {
+    const fields: Record<string, unknown> = {};
+    if (params.licensePlate !== undefined) fields.license_plate = params.licensePlate.trim().toUpperCase();
+    if (params.amount !== undefined) fields.amount = params.amount;
+    if (params.reason !== undefined) fields.reason = params.reason.trim();
+    if (params.dueDate !== undefined) fields.due_date = params.dueDate ? parseDate(params.dueDate) : null;
+    if (params.locationName !== undefined) fields.location_name = params.locationName;
+    if (!Object.keys(fields).length) return 0;
+    fields.updated_at = new Date();
+    return (await tickets().updateOne({ _id: id }, { $set: fields })).matchedCount;
   }
 
   async appendRemarks(id: string, note: string): Promise<number> {
-    const row = await this.findById(id);
-    if (!row) return 0;
+    const ticket = await tickets().findOne({ _id: id });
+    if (!ticket) return 0;
     const stamp = new Date().toISOString();
     const trimmed = note.trim();
-    const next = row.remarks
-      ? `${row.remarks}\n[${stamp}] ${trimmed}`
-      : `[${stamp}] ${trimmed}`;
-    // `remarks` = full audit log; `note` = latest admin note (handy for DB browsing / exports)
-    const result = await execute(
-      `UPDATE penalty_tickets SET remarks = ?, note = ?, updated_at = NOW() WHERE id = ?`,
-      [next, trimmed, id],
-    );
-    return result.affectedRows;
+    const next = ticket.remarks ? `${String(ticket.remarks)}\n[${stamp}] ${trimmed}` : `[${stamp}] ${trimmed}`;
+    return (await tickets().updateOne({ _id: id }, { $set: { remarks: next, note: trimmed, updated_at: new Date() } })).matchedCount;
   }
 
-  async setStatus(
-    id: string,
-    status: TicketStatus,
-    extras?: { paidAt?: Date | null; paymentId?: string | null },
-  ): Promise<number> {
-    const paidAt = extras?.paidAt;
-    const paymentId = extras?.paymentId;
-    if (status === "paid") {
-      const result = await execute(
-        `UPDATE penalty_tickets SET status = ?, paid_at = COALESCE(?, NOW()), payment_id = ?, updated_at = NOW() WHERE id = ?`,
-        [status, paidAt ?? null, paymentId ?? null, id],
-      );
-      return result.affectedRows;
-    }
-    if (status === "cancelled") {
-      const result = await execute(
-        `UPDATE penalty_tickets SET status = ?, updated_at = NOW() WHERE id = ?`,
-        [status, id],
-      );
-      return result.affectedRows;
-    }
-    const result = await execute(
-      `UPDATE penalty_tickets SET status = ?, updated_at = NOW() WHERE id = ?`,
-      [status, id],
-    );
-    return result.affectedRows;
+  async setStatus(id: string, status: TicketStatus, extras?: { paidAt?: Date | null; paymentId?: string | null }): Promise<number> {
+    const fields: Record<string, unknown> = { status, updated_at: new Date() };
+    if (status === "paid") { fields.paid_at = extras?.paidAt ?? new Date(); fields.payment_id = extras?.paymentId ?? null; }
+    return (await tickets().updateOne({ _id: id }, { $set: fields })).matchedCount;
   }
 }

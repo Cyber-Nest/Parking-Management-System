@@ -42,11 +42,13 @@ export class TransactionService {
       }
     });
 
+    if (!result) throw new Error('Transaction was saved but could not be loaded');
+
     return {
-      id: result?.id,
-      transaction_reference: result?.transaction_reference,
-      amount: result?.amount,
-      status: result?.status,
+      id: result.id,
+      transaction_reference: result.transaction_reference,
+      amount: result.amount,
+      status: result.status,
       created_at: new Date(),
     };
   }
